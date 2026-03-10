@@ -3,66 +3,100 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tracker de Ganancia Muscular</title>
+    <title>Tracker de Potencia - Voley & Fútbol</title>
+    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAVmHAAAACXBIWXMAAAsTAAALEwEAmpwYAAACxklEQVR4nO2YTUgUURTH//+9O5PjjI0R9pGCIYkiqCBIKIKgghKCEEIJggoigoiCCoqIIiICK4iIIogIogiqoIIgIgiqCKqggiCqCKqggqgIioIigoigIoiIoCKKCv8eXvW/Xv8O6+7M3pkPZne22b8HwA/w5Xw8C4B/gY24Rnx4FQAjYhN+vXgFALw4D984F/5xTnxwEQA8OAtfOAn9wYfzcI/z8IXz8IWf6p//h4P9cIcX+8U+bHIn5+E758I958InuPDB7XCHp/un/v4u6s8h/u53Y/88FvbhZ+/A+t4Fq4m88U7Xf0f9b6/b/f4u+u6i7f7pX7T5P/f7fN6P+R3V4eS9S4eT95YfCqf0I9r/Sj6qf0X7P6H9p9S/4rE4/Yjqj/Ljh8NrvzofD+9f3of4X+fDf6YfSvefG4fS/+4WnIeX4Dx84zx8AnHwCa44DzfBGX64v6IPr8F3PhL6U//8I9Q/pP4p9X/4uTjwfXFwDpzD5/AnuOI8vAVR8AlEwSe44jz8DafwMfwMfoIrfAw9OAnOwUlwDk4C5+EpOAWm4BSYAm7hJv7gXbwD/9rP4B9wBk5A5+AhOIGm4ASeArfDHeCGM8ApMAGmwBS4A9ygKThb8F1Mgykwhf3NFN7FNJgC61D/oPqH6p8S+5j0L6p/vP/b5/N+4Tz8Adf5SPhP/fMv7v6p//wU+/7C/fC3P8X3/Y37X+/+w4v7w5P3R0J/55+/uN8T3u8n5792X//C+X+W2p74/8S/5L8fFvxX7P8X/V/sf73/P/mP15f4/w8T/Y8X9X/T/yX+S/xX7f+R7v8O9V9X9Y/3f0v956fq+7+4/5eN/v/Wf//B5+XG58Xm5+nG5+XW5+vW5+vm5+Pm58Pm5+Pm56L4XN4X5Xm44pW54pW54pX5YhXpYhUfP5//4H/8f/x/4v9N/X9p/V9S9/9hS+3/D5e//+D/D/7/+Af/f5P/AP8BEwY/f/kPABMAAAAASUVORK5CYII=">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Montserrat', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: {
+                            950: '#020617',
+                            900: '#1e293b',
+                            800: '#334155',
+                        },
+                        red: {
+                            600: '#dc2626',
+                            700: '#b91c1c',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        body { background-color: #121212; color: #e0e0e0; font-family: sans-serif; }
-        .tab-btn.active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
-        input[type="number"] { background-color: #1e1e1e; border: 1px solid #333; color: white; text-align: center; }
-        input[type="checkbox"] { width: 22px; height: 22px; accent-color: #3b82f6; }
+        body { background-color: #020617; color: #e2e8f0; }
+        .tab-btn.active { border-bottom: 3px solid #dc2626; color: white; font-weight: 700; }
+        input[type="number"] { background-color: #111827; border: 1px solid #374151; color: white; text-align: center; font-family: sans-serif; }
+        input[type="checkbox"] { width: 20px; height: 20px; accent-color: #dc2626; cursor: pointer;}
+        .image-container img {
+            width: 100%;
+            aspect-ratio: 1 / 1; /* Cuadrado en Mobile y Desktop */
+            object-cover: center;
+            opacity: 0.9;
+            border-radius: 8px;
+        }
+        .canvas-container {
+            display: none; /* Se oculta por defecto */
+            margin-top: 1rem;
+            height: 200px; /* Gráfico compacto por ejercicio */
+        }
     </style>
 </head>
-<body class="p-4 pb-20">
+<body class="p-4 pb-20 max-w-7xl mx-auto">
 
-    <h1 class="text-2xl font-bold text-center mb-6 text-blue-500">Mi Rutina - Voley & Fútbol</h1>
+    <header class="text-center mb-10 mt-6 flex flex-col items-center gap-2">
+        <h1 class="text-2xl md:text-3xl font-bold text-white">Mi Potencia</h1>
+        <div class="h-1 w-20 bg-red-600 rounded"></div>
+    </header>
 
-    <div class="flex justify-around border-b border-gray-700 mb-6 pb-2">
-        <button class="tab-btn active font-semibold text-lg" onclick="showDay('martes')">Martes</button>
-        <button class="tab-btn font-semibold text-lg" onclick="showDay('jueves')">Jueves</button>
-        <button class="tab-btn font-semibold text-lg" onclick="showDay('sabado')">Sábado</button>
+    <div class="flex justify-around border-b border-gray-700 mb-8 pb-3">
+        <button class="tab-btn active font-semibold text-lg md:text-xl transition-colors" onclick="showDay('martes')">Martes</button>
+        <button class="tab-btn font-semibold text-lg md:text-xl transition-colors" onclick="showDay('jueves')">Jueves</button>
+        <button class="tab-btn font-semibold text-lg md:text-xl transition-colors" onclick="showDay('sabado')">Sábado</button>
     </div>
 
-    <div id="exercise-container" class="space-y-6"></div>
-
-    <div class="mt-10 bg-gray-800 p-4 rounded-lg shadow-lg">
-        <h2 class="text-xl font-bold mb-4 text-center">Evolución de Cargas (Kg)</h2>
-        <canvas id="progressChart"></canvas>
-    </div>
+    <div id="exercise-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
 
     <script>
-        // Base de datos de la rutina completa
+        // Base de datos completa con IDs de videos de YouTube (Técnica correcta)
         const routine = {
             martes: [
-                { id: 'm1', name: 'Press Inclinado con Barra', sets: 4, target: '8-10 reps', img: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=press+inclinado+con+barra+tecnica' },
-                { id: 'm2', name: 'Jalón al Pecho (Abierto)', sets: 3, target: '10-12 reps', img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=jalon+al+pecho+agarre+abierto+tecnica' },
-                { id: 'm3', name: 'Remo Gironda', sets: 3, target: '10-12 reps', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=remo+gironda+tecnica' },
-                { id: 'm4', name: 'Curl de Bíceps', sets: 3, target: '10 reps', img: 'https://images.unsplash.com/photo-1581009137042-c552e485697a?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=curl+de+biceps+con+barra+tecnica' },
-                { id: 'm5', name: 'Extensión de Tríceps (Soga)', sets: 3, target: '12 reps', img: 'https://images.unsplash.com/photo-1530822847156-5df684ec5ee1?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=extension+de+triceps+en+polea+con+cuerda' },
-                { id: 'm6', name: 'Elevaciones Laterales (Dropset)', sets: 3, target: 'Al fallo', img: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=elevaciones+laterales+mancuernas+tecnica' },
-                { id: 'm7', name: 'Encogimientos con Mancuernas', sets: 2, target: '15-20 reps', img: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=encogimientos+de+hombros+con+mancuernas' }
+                { id: 'm1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', img: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'k38wP7gSffE' },
+                { id: 'm2', name: 'Jalón al Pecho (Abierto)', sets: 3, target: '10-12 reps', img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'r5fSUnv6bIs' },
+                { id: 'm3', name: 'Remo Gironda', sets: 3, target: '10-12 reps', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'm4Xg_OqH8G8' },
+                { id: 'm4', name: 'Curl de Bíceps', sets: 3, target: '10 reps', img: 'https://images.unsplash.com/photo-1581009137042-c552e485697a?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'E9MREzY9XVE' },
+                { id: 'm5', name: 'Extensión Tríceps (Soga)', sets: 3, target: '12 reps', img: 'https://images.unsplash.com/photo-1530822847156-5df684ec5ee1?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'p_85_K-vQ6M' },
+                { id: 'm6', name: 'Elevaciones Laterales (Dropset)', sets: 3, target: 'Al fallo', img: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'r-4N7k73f-M' },
+                { id: 'm7', name: 'Encogimientos con Mancuernas', sets: 2, target: '15-20 reps', img: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'rX4r9M_h9t0' }
             ],
             jueves: [
-                { id: 'j1', name: 'Sentadilla Libre (Explosiva)', sets: 4, target: '6-8 reps', img: 'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=sentadilla+libre+tecnica+correcta' },
-                { id: 'j2', name: 'Extensión Cuádriceps (+1 Der.)', sets: 4, target: '15 reps', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=extension+de+cuadriceps+maquina' },
-                { id: 'j3', name: 'Curl de Isquios', sets: 4, target: '12 reps', img: 'https://images.unsplash.com/photo-1574680178050-55c6a6a96e0a?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=curl+de+isquiotibiales+maquina' },
-                { id: 'j4', name: 'Pantorrillas Parado', sets: 4, target: '15 reps', img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=elevacion+de+talones+de+pie' },
-                { id: 'j5', name: 'Plancha Frontal (Plank)', sets: 3, target: '45-60 seg', img: 'https://images.unsplash.com/photo-1566241477600-ac0244c70133?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=plancha+abdominal+tecnica' },
-                { id: 'j6', name: 'Elevación de Piernas', sets: 3, target: '15 reps', img: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=elevacion+de+piernas+acostado' },
-                { id: 'j7', name: 'Rueda Abdominal / Deadbug', sets: 3, target: '12 reps', img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=rueda+abdominal+tecnica+correcta' }
+                { id: 'j1', name: 'Sentadilla Libre (Explosiva)', sets: 4, target: '6-8 reps', img: 'https://images.unsplash.com/photo-1566241440091-ec10de8db2e1?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'T85fX_T6B-w' },
+                { id: 'j2', name: 'Extensión Cuádriceps (+1 Der.)', sets: 4, target: '15 reps', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=600&h=600&q=80', ytId: '3U22F43yT-4' },
+                { id: 'j3', name: 'Curl de Isquios', sets: 4, target: '12 reps', img: 'https://images.unsplash.com/photo-1574680178050-55c6a6a96e0a?auto=format&fit=crop&w=600&h=600&q=80', ytId: '74D9Mv0p_M0' },
+                { id: 'j4', name: 'Pantorrillas Parado', sets: 4, target: '15 reps', img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'rOa36q0A0Rk' },
+                { id: 'j5', name: 'Plancha Frontal (Plank)', sets: 3, target: '45-60 seg', img: 'https://images.unsplash.com/photo-1566241477600-ac0244c70133?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'tU9JkR3x4T4' },
+                { id: 'j6', name: 'Elevación de Piernas', sets: 3, target: '15 reps', img: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=600&h=600&q=80', ytId: '9g10O6S5kEM' },
+                { id: 'j7', name: 'Rueda Abdominal / Deadbug', sets: 3, target: '12 reps', img: 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?auto=format&fit=crop&w=600&h=600&q=80', ytId: 't0VfC37fMAM' }
             ],
             sabado: [
-                { id: 's1', name: 'Press Inclinado con Barra', sets: 4, target: '8-10 reps', img: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=press+inclinado+con+barra+tecnica' },
-                { id: 's2', name: 'Jalón al Pecho (Cerrado)', sets: 3, target: '10-12 reps', img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=jalon+al+pecho+agarre+estrecho+supino' },
-                { id: 's3', name: 'Remo Gironda', sets: 3, target: '10-12 reps', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=remo+gironda+tecnica' },
-                { id: 's4', name: 'Curl de Bíceps', sets: 3, target: '10 reps', img: 'https://images.unsplash.com/photo-1581009137042-c552e485697a?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=curl+de+biceps+con+mancuernas' },
-                { id: 's5', name: 'Extensión de Tríceps (Polea)', sets: 3, target: '12 reps', img: 'https://images.unsplash.com/photo-1530822847156-5df684ec5ee1?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=extension+de+triceps+en+polea' },
-                { id: 's6', name: 'Elevaciones Laterales', sets: 3, target: 'Al fallo', img: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=elevaciones+laterales+mancuernas' },
-                { id: 's7', name: 'Encogimientos con Mancuernas', sets: 2, target: '15-20 reps', img: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=400&q=80', video: 'https://www.youtube.com/results?search_query=encogimientos+de+hombros+con+mancuernas' }
+                { id: 's1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', img: 'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'k38wP7gSffE' },
+                { id: 's2', name: 'Jalón al Pecho (Cerrado)', sets: 3, target: '10-12 reps', img: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'qj8C3f8hB8k' },
+                { id: 's3', name: 'Remo Gironda', sets: 3, target: '10-12 reps', img: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'm4Xg_OqH8G8' },
+                { id: 's4', name: 'Curl de Bíceps', sets: 3, target: '10 reps', img: 'https://images.unsplash.com/photo-1581009137042-c552e485697a?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'E9MREzY9XVE' },
+                { id: 's5', name: 'Extensión de Tríceps (Polea)', sets: 3, target: '12 reps', img: 'https://images.unsplash.com/photo-1530822847156-5df684ec5ee1?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'p_85_K-vQ6M' },
+                { id: 's6', name: 'Elevaciones Laterales', sets: 3, target: 'Al fallo', img: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'r-4N7k73f-M' },
+                { id: 's7', name: 'Encogimientos con Mancuernas', sets: 2, target: '15-20 reps', img: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=600&h=600&q=80', ytId: 'rX4r9M_h9t0' }
             ]
         };
 
-        let chartInstance = null;
+        const currentCharts = {}; // Para destruir gráficos anteriores y ahorrar memoria
 
         function showDay(day) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -77,29 +111,48 @@
                 let setsHtml = '';
                 for(let i=1; i<=ex.sets; i++) {
                     setsHtml += `
-                        <div class="flex items-center justify-between mb-3 bg-gray-700 p-2 rounded">
-                            <span class="w-16 text-sm">Serie ${i}</span>
-                            <input type="number" id="peso-${ex.id}-${i}" placeholder="Kg/Lbs" class="w-20 p-1 rounded">
-                            <input type="number" id="reps-${ex.id}-${i}" placeholder="Reps" class="w-16 p-1 rounded">
+                        <div class="flex items-center justify-between mb-3 bg-gray-900/50 p-2 rounded-lg border border-gray-700/50">
+                            <span class="w-16 text-sm text-gray-400">Serie ${i}</span>
+                            <input type="number" id="peso-${ex.id}-${i}" placeholder="Kg" class="w-20 p-2 rounded-md font-sans text-lg">
+                            <input type="number" id="reps-${ex.id}-${i}" placeholder="Reps" class="w-16 p-2 rounded-md font-sans text-lg">
                             <input type="checkbox" id="check-${ex.id}-${i}">
                         </div>
                     `;
                 }
 
                 const card = `
-                    <div class="bg-gray-800 p-4 rounded-lg shadow-lg border border-gray-700">
-                        <img src="${ex.img}" alt="${ex.name}" class="w-full h-40 object-cover rounded mb-4 opacity-80">
-                        <h3 class="text-xl font-bold mb-1 text-white">${ex.name}</h3>
-                        <p class="text-sm text-gray-400 mb-2">Objetivo: ${ex.sets} series x ${ex.target}</p>
+                    <div class="bg-dark-900/50 p-6 rounded-2xl shadow-xl border border-gray-700">
+                        <div class="image-container mb-5">
+                            <img src="${ex.img}" alt="${ex.name}">
+                        </div>
+                        <h3 class="text-2xl font-semibold mb-1 text-white">${ex.name}</h3>
+                        <p class="text-sm text-gray-400 mb-5">Objetivo: ${ex.sets} series x ${ex.target}</p>
                         
-                        <a href="${ex.video}" target="_blank" class="block text-center mb-4 text-red-500 hover:text-red-400 text-sm font-semibold border border-red-500 rounded py-1 transition-colors">
-                            ▶️ Ver Video Explicativo en YouTube
-                        </a>
+                        <div class="aspect-video rounded-lg overflow-hidden border border-gray-700 mb-6">
+                            <iframe 
+                                class="w-full h-full" 
+                                src="https://www.youtube.com/embed/${ex.ytId}" 
+                                title="Técnica de ${ex.name}" 
+                                frameborder="0" 
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                allowfullscreen>
+                            </iframe>
+                        </div>
 
                         ${setsHtml}
-                        <button onclick="saveData('${ex.id}', ${ex.sets}, '${ex.name}')" class="mt-4 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 px-4 rounded transition-colors">
-                            Guardar Progreso
-                        </button>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                            <button onclick="saveData('${ex.id}', ${ex.sets}, '${ex.name}')" class="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl transition-colors">
+                                Guardar Hoy
+                            </button>
+                            <button onclick="toggleChart('${ex.id}', '${ex.name}')" id="btn-chart-${ex.id}" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-3 px-4 rounded-xl transition-colors text-sm">
+                                Ver Evolución
+                            </button>
+                        </div>
+
+                        <div id="chart-container-${ex.id}" class="canvas-container">
+                            <canvas id="chart-${ex.id}"></canvas>
+                        </div>
                     </div>
                 `;
                 container.innerHTML += card;
@@ -117,7 +170,7 @@
             }
 
             if(maxWeight > 0) {
-                const today = new Date().toLocaleDateString('es-AR');
+                const today = new Date().toLocaleDateString('es-AR', {day: 'numeric', month: 'short'});
                 let history = JSON.parse(localStorage.getItem('workoutData')) || {};
                 
                 if(!history[exName]) history[exName] = { dates: [], weights: [] };
@@ -126,69 +179,99 @@
                 if(lastIndex > -1) {
                     history[exName].weights[lastIndex] = maxWeight;
                 } else {
+                    // Limite de historial de 10 sesiones por gráfico para no saturar
+                    if(history[exName].dates.length >= 10){
+                        history[exName].dates.shift();
+                        history[exName].weights.shift();
+                    }
                     history[exName].dates.push(today);
                     history[exName].weights.push(maxWeight);
                 }
 
                 localStorage.setItem('workoutData', JSON.stringify(history));
                 
-                // Efecto visual de guardado
+                // Efecto visual
                 const btn = event.target;
                 const originalText = btn.innerText;
-                btn.innerText = "¡Guardado! ✓";
-                btn.classList.replace('bg-blue-600', 'bg-green-600');
+                btn.innerText = "✓ Hecho";
+                btn.classList.replace('bg-red-600', 'bg-green-600');
                 setTimeout(() => {
                     btn.innerText = originalText;
-                    btn.classList.replace('bg-green-600', 'bg-blue-600');
-                }, 2000);
+                    btn.classList.replace('bg-green-600', 'bg-red-600');
+                }, 1500);
 
-                updateChart();
+                // Si el gráfico está abierto, actualizarlo
+                const chartDiv = document.getElementById(`chart-container-${exId}`);
+                if(chartDiv.style.display === 'block') {
+                    renderIndividualChart(exId, exName);
+                }
+
             } else {
-                alert('Por favor, tildá al menos una serie y agregá el peso para guardar tu progreso.');
+                alert('Tildá al menos una serie completada y poné el peso máximo para guardar el progreso de hoy.');
             }
         }
 
-        function updateChart() {
-            const data = JSON.parse(localStorage.getItem('workoutData')) || {};
-            const ctx = document.getElementById('progressChart').getContext('2d');
+        function toggleChart(exId, exName) {
+            const chartDiv = document.getElementById(`chart-container-${exId}`);
+            const btn = document.getElementById(`btn-chart-${exId}`);
             
-            const datasets = Object.keys(data).map((exName, index) => {
-                const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
-                return {
-                    label: exName,
-                    data: data[exName].weights,
-                    borderColor: colors[index % colors.length],
-                    backgroundColor: colors[index % colors.length],
-                    tension: 0.3,
-                    fill: false,
-                    pointRadius: 4
-                };
-            });
+            if(chartDiv.style.display === 'block') {
+                chartDiv.style.display = 'none';
+                btn.innerText = "Ver Evolución";
+            } else {
+                chartDiv.style.display = 'block';
+                btn.innerText = "Ocultar Evolución";
+                renderIndividualChart(exId, exName);
+            }
+        }
 
-            let allDates = [];
-            Object.values(data).forEach(ex => {
-                if(ex.dates.length > allDates.length) allDates = ex.dates;
-            });
+        function renderIndividualChart(exId, exName) {
+            const historyData = JSON.parse(localStorage.getItem('workoutData')) || {};
+            const exerciseData = historyData[exName];
 
-            if(chartInstance) chartInstance.destroy();
+            if(!exerciseData || exerciseData.dates.length < 2) {
+                const ctx = document.getElementById(`chart-${exId}`).getContext('2d');
+                ctx.font = '14px Montserrat sans-serif';
+                ctx.fillStyle = '#aaa';
+                ctx.fillText('Se necesitan al menos 2 sesiones guardadas', 10, 50);
+                return;
+            }
 
-            chartInstance = new Chart(ctx, {
+            if(currentCharts[exId]) {
+                currentCharts[exId].destroy();
+            }
+
+            const ctx = document.getElementById(`chart-${exId}`).getContext('2d');
+            
+            currentCharts[exId] = new Chart(ctx, {
                 type: 'line',
-                data: { labels: allDates, datasets: datasets },
+                data: {
+                    labels: exerciseData.dates,
+                    datasets: [{
+                        label: 'Máxima Carga (Kg)',
+                        data: exerciseData.weights,
+                        borderColor: '#dc2626', // Rojo
+                        backgroundColor: 'rgba(220, 38, 38, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.3,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#fff'
+                    }]
+                },
                 options: {
                     responsive: true,
+                    maintainAspectRatio: false,
                     scales: {
-                        y: { beginAtZero: false, grid: { color: '#333' }, ticks: { color: '#aaa' } },
-                        x: { grid: { color: '#333' }, ticks: { color: '#aaa' } }
+                        y: { beginAtZero: false, grid: { color: '#444' }, ticks: { color: '#aaa', font: {family: 'Montserrat'} } },
+                        x: { grid: { display: false }, ticks: { color: '#aaa', font: {family: 'Montserrat'} } }
                     },
-                    plugins: { legend: { labels: { color: '#e0e0e0', font: { size: 10 } } } }
+                    plugins: { legend: { display: false } }
                 }
             });
         }
 
-        // Iniciar App
+        // Iniciar
         showDay('martes');
-        updateChart();
     </script>
 </body>
 </html>
