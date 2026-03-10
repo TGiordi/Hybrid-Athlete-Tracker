@@ -15,11 +15,11 @@
                     fontFamily: { sans: ['Montserrat', 'sans-serif'], },
                     colors: {
                         custom: {
-                            bg: '#0a0a0a',       // Fondo principal bien oscuro
-                            card: '#171717',     // Fondo de tarjetas
-                            border: '#262626',   // Bordes sutiles
-                            primary: '#F54927',  // Tu color F54927
-                            hover: '#d43e20',    // Un tono más oscuro para el hover
+                            bg: '#0a0a0a',       
+                            card: '#171717',     
+                            border: '#262626',   
+                            primary: '#F54927',  
+                            hover: '#d43e20',    
                             text: '#F8FAFC',     
                             textMuted: '#94A3B8' 
                         }
@@ -31,7 +31,6 @@
     <style>
         body { background-color: #0a0a0a; color: #F8FAFC; }
         
-        /* Solución Definitiva para Inputs Cortados */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; display: none; }
         input[type=number] { -moz-appearance: textfield; font-family: 'Montserrat', sans-serif; }
@@ -60,9 +59,6 @@
     <div id="exercise-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
 
     <script>
-        Chart.defaults.font.family = "'Montserrat', sans-serif";
-        Chart.defaults.color = '#94A3B8';
-
         const routine = {
             martes: [
                 { id: 'm1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' },
@@ -77,14 +73,14 @@
                 { id: 'j1', name: 'Sentadilla Libre', sets: 4, target: '6-8 reps', ytId: 'VZpCjz340CY' },
                 { id: 'j2', name: 'Extensión Cuádriceps', sets: 4, target: '15 reps', ytId: 'YyvSfVjQeL0' },
                 { id: 'j3', name: 'Curl de Isquios', sets: 4, target: '12 reps', ytId: 'NSgMSk3L_Z4' },
-                { id: 'j4', name: 'Pantorrillas Parado', sets: 4, target: '15 reps', ytId: '9gqP9qy1h0E' }, // ID Nuevo
+                { id: 'j4', name: 'Pantorrillas Parado', sets: 4, target: '15 reps', ytId: '9gqP9qy1h0E' }, 
                 { id: 'j5', name: 'Plancha Frontal (Plank)', sets: 3, target: '45-60 seg', ytId: 'pSHjTRCQxIw' },
-                { id: 'j6', name: 'Elevación de Piernas', sets: 3, target: '15 reps', ytId: 'vHKtGCQP4Ug' }, // ID Nuevo
-                { id: 'j7', name: 'Rueda Abdominal / Deadbug', sets: 3, target: '12 reps', ytId: '0edLJHwE-M8' } // ID Nuevo
+                { id: 'j6', name: 'Elevación de Piernas', sets: 3, target: '15 reps', ytId: 'vHKtGCQP4Ug' }, 
+                { id: 'j7', name: 'Rueda Abdominal / Deadbug', sets: 3, target: '12 reps', ytId: '0edLJHwE-M8' } 
             ],
             sabado: [
                 { id: 's1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' },
-                { id: 's2', name: 'Jalón al Pecho (Cerrado)', sets: 3, target: '10-12 reps', ytId: 'CpvGa9QzNzM' }, // ID Nuevo
+                { id: 's2', name: 'Jalón al Pecho (Cerrado)', sets: 3, target: '10-12 reps', ytId: 'CpvGa9QzNzM' }, 
                 { id: 's3', name: 'Remo Gironda', sets: 3, target: '10-12 reps', ytId: 'GZbfZ033f74' },
                 { id: 's4', name: 'Curl de Bíceps', sets: 3, target: '10 reps', ytId: 'ykJmrZ5v0Oo' },
                 { id: 's5', name: 'Extensión Tríceps (Polea)', sets: 3, target: '12 reps', ytId: '2-LAMcpzODU' },
@@ -95,78 +91,81 @@
 
         const currentCharts = {};
 
+        // Función Blindada para mostrar los ejercicios
         function showDay(day) {
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if(btn.innerText.toLowerCase() === day || (day==='sabado' && btn.innerText==='Sábado')) btn.classList.add('active');
-            });
+            try {
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if(btn.innerText.toLowerCase() === day || (day==='sabado' && btn.innerText==='Sábado')) btn.classList.add('active');
+                });
 
-            const container = document.getElementById('exercise-container');
-            container.innerHTML = '';
+                const container = document.getElementById('exercise-container');
+                container.innerHTML = '';
 
-            routine[day].forEach(ex => {
-                let setsHtml = '';
-                for(let i=1; i<=ex.sets; i++) {
-                    setsHtml += `
-                        <div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm">
-                            <span class="w-16 text-sm font-medium text-custom-textMuted">Serie ${i}</span>
+                routine[day].forEach(ex => {
+                    let setsHtml = '';
+                    for(let i=1; i<=ex.sets; i++) {
+                        setsHtml += `
+                            <div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm">
+                                <span class="w-16 text-sm font-medium text-custom-textMuted">Serie ${i}</span>
+                                <input type="number" id="peso-${ex.id}-${i}" placeholder="Kg" class="w-[70px] h-[40px] px-1 rounded bg-custom-bg border border-custom-border text-custom-text text-center focus:outline-none focus:border-custom-primary transition-colors text-lg font-semibold">
+                                <input type="number" id="reps-${ex.id}-${i}" placeholder="Rep" class="w-[70px] h-[40px] px-1 rounded bg-custom-bg border border-custom-border text-custom-text text-center focus:outline-none focus:border-custom-primary transition-colors text-lg font-semibold">
+                                <input type="checkbox" id="check-${ex.id}-${i}">
+                            </div>
+                        `;
+                    }
+
+                    const card = `
+                        <div class="bg-custom-card p-5 md:p-6 rounded-2xl shadow-lg border border-custom-border">
                             
-                            <input type="number" id="peso-${ex.id}-${i}" placeholder="Kg" class="w-[70px] h-[40px] px-1 rounded bg-custom-bg border border-custom-border text-custom-text text-center focus:outline-none focus:border-custom-primary transition-colors text-lg font-semibold">
-                            <input type="number" id="reps-${ex.id}-${i}" placeholder="Rep" class="w-[70px] h-[40px] px-1 rounded bg-custom-bg border border-custom-border text-custom-text text-center focus:outline-none focus:border-custom-primary transition-colors text-lg font-semibold">
+                            <div class="mb-5 bg-[#0d0d0d] rounded-xl overflow-hidden flex flex-col justify-center items-center border border-custom-border relative aspect-square">
+                                <img src="gifs/${ex.id}.gif" alt="Anatomía de ${ex.name}" class="absolute inset-0 w-full h-full object-contain z-10" onerror="this.style.display='none'; document.getElementById('fallback-${ex.id}').style.display='flex';">
+                                
+                                <div id="fallback-${ex.id}" style="display: none;" class="flex-col items-center justify-center p-4 text-center z-0 w-full h-full bg-[#0d0d0d]">
+                                    <svg class="w-12 h-12 text-custom-primary mb-2 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    <p class="text-xs text-custom-textMuted font-medium">Falta agregar tu GIF anatómico</p>
+                                    <p class="text-[10px] text-[#475569] mt-1">Guardalo en GitHub como: <br><span class="text-custom-primary font-mono font-bold">${ex.id}.gif</span></p>
+                                </div>
+                            </div>
                             
-                            <input type="checkbox" id="check-${ex.id}-${i}">
+                            <h3 class="text-xl md:text-2xl font-bold mb-1 text-custom-text">${ex.name}</h3>
+                            <p class="text-sm font-medium text-custom-textMuted mb-5">Objetivo: ${ex.sets} series x ${ex.target}</p>
+                            
+                            <div class="aspect-video rounded-lg overflow-hidden border border-custom-border mb-6 bg-black shadow-inner">
+                                <iframe 
+                                    class="w-full h-full" 
+                                    src="https://www.youtube.com/embed/${ex.ytId}" 
+                                    title="Técnica de ${ex.name}" 
+                                    frameborder="0" 
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                    allowfullscreen>
+                                </iframe>
+                            </div>
+
+                            ${setsHtml}
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                                <button onclick="saveData('${ex.id}', ${ex.sets}, '${ex.name}')" class="bg-custom-primary hover:bg-custom-hover text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-md">
+                                    Guardar Hoy
+                                </button>
+                                <button onclick="toggleChart('${ex.id}', '${ex.name}')" id="btn-chart-${ex.id}" class="bg-custom-bg hover:bg-custom-border border border-custom-border text-custom-textMuted font-medium py-3 px-4 rounded-xl transition-colors text-sm shadow-sm">
+                                    Ver Evolución
+                                </button>
+                            </div>
+
+                            <div id="chart-container-${ex.id}" class="canvas-container bg-custom-bg p-3 rounded-xl border border-custom-border">
+                                <div id="no-data-${ex.id}" class="absolute inset-0 flex items-center justify-center text-custom-textMuted font-medium text-sm hidden">
+                                    Se necesitan al menos 2 sesiones
+                                </div>
+                                <canvas id="chart-${ex.id}"></canvas>
+                            </div>
                         </div>
                     `;
-                }
-
-                const card = `
-                    <div class="bg-custom-card p-5 md:p-6 rounded-2xl shadow-lg border border-custom-border">
-                        
-                        <div class="mb-5 bg-[#0d0d0d] rounded-xl overflow-hidden flex flex-col justify-center items-center border border-custom-border relative aspect-square">
-                            <img src="gifs/${ex.id}.gif" alt="Anatomía de ${ex.name}" class="absolute inset-0 w-full h-full object-contain z-10" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                            
-                            <div class="hidden flex-col items-center justify-center p-4 text-center z-0 w-full h-full bg-[#0d0d0d]">
-                                <svg class="w-12 h-12 text-custom-primary mb-2 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                <p class="text-xs text-custom-textMuted font-medium">Falta agregar tu GIF anatómico</p>
-                                <p class="text-[10px] text-[#475569] mt-1">Guardalo en GitHub como: <br><span class="text-custom-primary font-mono font-bold">${ex.id}.gif</span></p>
-                            </div>
-                        </div>
-                        
-                        <h3 class="text-xl md:text-2xl font-bold mb-1 text-custom-text">${ex.name}</h3>
-                        <p class="text-sm font-medium text-custom-textMuted mb-5">Objetivo: ${ex.sets} series x ${ex.target}</p>
-                        
-                        <div class="aspect-video rounded-lg overflow-hidden border border-custom-border mb-6 bg-black shadow-inner">
-                            <iframe 
-                                class="w-full h-full" 
-                                src="https://www.youtube.com/embed/${ex.ytId}" 
-                                title="Técnica de ${ex.name}" 
-                                frameborder="0" 
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                allowfullscreen>
-                            </iframe>
-                        </div>
-
-                        ${setsHtml}
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                            <button onclick="saveData('${ex.id}', ${ex.sets}, '${ex.name}')" class="bg-custom-primary hover:bg-custom-hover text-white font-bold py-3 px-4 rounded-xl transition-colors shadow-md">
-                                Guardar Hoy
-                            </button>
-                            <button onclick="toggleChart('${ex.id}', '${ex.name}')" id="btn-chart-${ex.id}" class="bg-custom-bg hover:bg-custom-border border border-custom-border text-custom-textMuted font-medium py-3 px-4 rounded-xl transition-colors text-sm shadow-sm">
-                                Ver Evolución
-                            </button>
-                        </div>
-
-                        <div id="chart-container-${ex.id}" class="canvas-container bg-custom-bg p-3 rounded-xl border border-custom-border">
-                            <div id="no-data-${ex.id}" class="absolute inset-0 flex items-center justify-center text-custom-textMuted font-medium text-sm hidden">
-                                Se necesitan al menos 2 sesiones
-                            </div>
-                            <canvas id="chart-${ex.id}"></canvas>
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += card;
-            });
+                    container.innerHTML += card;
+                });
+            } catch (error) {
+                console.error("Fallo general al cargar los ejercicios:", error);
+            }
         }
 
         function saveData(exId, totalSets, exName) {
@@ -181,6 +180,133 @@
 
             if(maxWeight > 0) {
                 const today = new Date().toLocaleDateString('es-AR', {day: 'numeric', month: 'short'});
-                let history = JSON.parse(localStorage.getItem('workoutData')) || {};
                 
-                if(!history[exName]) history[exName] = { dates:
+                // Lectura segura de la base de datos local
+                let history = {};
+                try {
+                    history = JSON.parse(localStorage.getItem('workoutData')) || {};
+                } catch(e) { history = {}; }
+                
+                if(!history[exName]) history[exName] = { dates: [], weights: [] };
+                
+                const lastIndex = history[exName].dates.indexOf(today);
+                if(lastIndex > -1) {
+                    history[exName].weights[lastIndex] = maxWeight;
+                } else {
+                    if(history[exName].dates.length >= 10){
+                        history[exName].dates.shift();
+                        history[exName].weights.shift();
+                    }
+                    history[exName].dates.push(today);
+                    history[exName].weights.push(maxWeight);
+                }
+
+                localStorage.setItem('workoutData', JSON.stringify(history));
+                
+                const btn = event.target;
+                const originalText = btn.innerText;
+                btn.innerText = "✓ Registrado";
+                btn.classList.replace('bg-custom-primary', 'bg-emerald-600');
+                btn.classList.replace('hover:bg-custom-hover', 'hover:bg-emerald-700');
+                
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                    btn.classList.replace('bg-emerald-600', 'bg-custom-primary');
+                    btn.classList.replace('hover:bg-emerald-700', 'hover:bg-custom-hover');
+                }, 1500);
+
+                const chartDiv = document.getElementById(`chart-container-${exId}`);
+                if(chartDiv.style.display === 'block') {
+                    renderIndividualChart(exId, exName);
+                }
+
+            } else {
+                alert('Tildá al menos una serie completada y poné el peso máximo para guardar el progreso de hoy.');
+            }
+        }
+
+        function toggleChart(exId, exName) {
+            const chartDiv = document.getElementById(`chart-container-${exId}`);
+            const btn = document.getElementById(`btn-chart-${exId}`);
+            
+            if(chartDiv.style.display === 'block') {
+                chartDiv.style.display = 'none';
+                btn.innerText = "Ver Evolución";
+            } else {
+                chartDiv.style.display = 'block';
+                btn.innerText = "Ocultar Evolución";
+                renderIndividualChart(exId, exName);
+            }
+        }
+
+        // Gráfico Blindado (No rompe la app si el internet falla)
+        function renderIndividualChart(exId, exName) {
+            let historyData = {};
+            try {
+                historyData = JSON.parse(localStorage.getItem('workoutData')) || {};
+            } catch(e) { historyData = {}; }
+            
+            const exerciseData = historyData[exName];
+
+            const noDataMsg = document.getElementById(`no-data-${exId}`);
+            const canvasEl = document.getElementById(`chart-${exId}`);
+
+            if(!exerciseData || exerciseData.dates.length < 2) {
+                noDataMsg.classList.remove('hidden');
+                canvasEl.style.display = 'none';
+                return;
+            } else {
+                noDataMsg.classList.add('hidden');
+                canvasEl.style.display = 'block';
+            }
+
+            if(typeof Chart === 'undefined') {
+                noDataMsg.innerText = "No se pudieron cargar los gráficos (Revisá tu conexión)";
+                noDataMsg.classList.remove('hidden');
+                canvasEl.style.display = 'none';
+                return;
+            }
+
+            // Aplicar tipografía solo si Chart está disponible
+            Chart.defaults.font.family = "'Montserrat', sans-serif";
+            Chart.defaults.color = '#94A3B8';
+
+            if(currentCharts[exId]) { currentCharts[exId].destroy(); }
+
+            const ctx = canvasEl.getContext('2d');
+            
+            currentCharts[exId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: exerciseData.dates,
+                    datasets: [{
+                        label: 'Máxima Carga (Kg)',
+                        data: exerciseData.weights,
+                        borderColor: '#F54927', 
+                        backgroundColor: 'rgba(245, 73, 39, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.3,
+                        pointRadius: 5,
+                        pointBackgroundColor: '#F8FAFC',
+                        pointBorderColor: '#F54927'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: false, grid: { color: '#262626' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // Evento seguro: Solo dibuja cuando toda la página esté lista
+        document.addEventListener('DOMContentLoaded', () => {
+            showDay('martes');
+        });
+    </script>
+</body>
+</html>
