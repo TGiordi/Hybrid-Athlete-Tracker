@@ -28,29 +28,57 @@
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
         
-        .glow-text { text-shadow: 0 0 20px rgba(245, 73, 39, 0.5); }
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: #F54927; }
         #modal-auth { transition: background-color 0.4s ease, border-color 0.4s ease; }
 
-        /* ANIMACIONES PREMIUM */
+        /* ========================================== */
+        /* EFECTOS VISUALES PREMIUM (1.5 - 2 segs)    */
+        /* ========================================== */
+        
+        /* 1. Desplazamiento hacia arriba suave */
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(40px); }
+            from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .animate-fade-up {
-            animation: fadeInUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        .animate-title-entrance {
+            animation: fadeInUp 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        /* Cursor de la máquina de escribir */
+        /* 2. Reflejo de luz sobre el texto */
+        .title-wrapper {
+            position: relative;
+            display: inline-block;
+            overflow: hidden;
+        }
+        .title-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -150%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+            transform: skewX(-25deg);
+            animation: lightSweep 2s ease-in-out forwards;
+            animation-delay: 0.2s; /* Empieza un poquito después de subir */
+        }
+        @keyframes lightSweep {
+            0% { left: -150%; }
+            100% { left: 200%; }
+        }
+
+        /* Tipeo de máquina */
         .typewriter-cursor {
             border-right: 2px solid #F54927;
             animation: blink 0.75s step-end infinite;
             padding-right: 4px;
         }
         @keyframes blink { 50% { border-color: transparent; } }
+        
+        .glow-text { text-shadow: 0 0 20px rgba(245, 73, 39, 0.5); }
     </style>
 </head>
 <body class="font-sans">
@@ -72,21 +100,23 @@
     </nav>
 
     <main id="view-landing" class="flex-grow flex flex-col items-center justify-center text-center px-4 py-20">
-        <div class="animate-fade-up" style="opacity: 0;">
+        
+        <div class="animate-title-entrance" style="opacity: 0;">
             <div class="bg-custom-primary/10 border border-custom-primary/20 text-custom-primary text-[10px] font-extrabold px-3 py-1 rounded-full mb-6 tracking-[0.2em] uppercase inline-block">Versión 2.0 Cloud</div>
             
-            <h1 class="text-5xl md:text-7xl font-black mb-6 italic tracking-tight uppercase leading-none">
-                Entrena <span class="text-custom-primary glow-text">Híbrido</span>
+            <h1 class="text-5xl md:text-7xl font-black mb-6 italic tracking-tight uppercase leading-none title-wrapper">
+                Entrena <span class="text-custom-primary glow-text relative z-10">Híbrido</span>
             </h1>
             
             <p class="text-custom-textMuted max-w-lg mb-10 text-lg leading-relaxed h-[60px] md:h-[30px] mx-auto">
                 <span id="typewriter-text" class="typewriter-cursor"></span>
             </p>
             
-            <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95">
+            <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95 mt-4">
                 COMIENZA TU PROGRESO
             </button>
         </div>
+
     </main>
 
     <main id="view-app" class="hidden flex-grow max-w-5xl mx-auto w-full px-4 py-10">
@@ -129,6 +159,10 @@
                     </button>
                 </div>
 
+                <div id="forgot-password-container" class="text-right">
+                    <span onclick="handleResetPassword()" class="text-xs text-custom-textMuted hover:text-custom-primary cursor-pointer transition-colors font-medium">¿Olvidaste tu contraseña?</span>
+                </div>
+
                 <button id="btn-auth-action" onclick="handleAuth()" class="w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg">Iniciar Sesión</button>
                 <p id="auth-toggle-msg" class="text-center text-xs text-custom-textMuted mt-4 transition-colors">¿No tenés cuenta? <span onclick="toggleAuthMode()" class="text-custom-primary cursor-pointer font-bold underline">Registrate acá</span></p>
             </div>
@@ -165,16 +199,15 @@
     </div>
 
     <script>
-        // --- 0. EFECTO TYPEWRITER ---
+        // --- EFECTO TYPEWRITER MÁS RÁPIDO ---
         const subtitleText = "La plataforma de alto rendimiento para quienes dominan el gimnasio y el campo de juego.";
         let i = 0;
         function typeWriter() {
             if (i < subtitleText.length) {
                 document.getElementById("typewriter-text").innerHTML += subtitleText.charAt(i);
                 i++;
-                setTimeout(typeWriter, 40); // Velocidad de tipeo
+                setTimeout(typeWriter, 20); // Reducido a 20ms para el doble de velocidad
             } else {
-                // Quita el cursor parpadeante al terminar para que quede más limpio
                 document.getElementById("typewriter-text").classList.remove('typewriter-cursor');
             }
         }
@@ -193,8 +226,7 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
-            // Iniciar animación de tipeo al cargar la página
-            setTimeout(typeWriter, 1000); // Espera 1 segundo para que primero suba el título
+            setTimeout(typeWriter, 800); // Arranca casi con la animación del título
             
             try {
                 if (window.supabase) {
@@ -212,34 +244,33 @@
             const toggleMsg = document.getElementById('auth-toggle-msg');
             const closeBtn = document.getElementById('close-auth-btn');
             const eyeBtn = document.getElementById('eye-btn');
+            const forgotPass = document.getElementById('forgot-password-container');
             const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
             
             if(isSignUp) {
                 modal.classList.replace('bg-custom-card', 'bg-custom-primary');
                 modal.classList.replace('border-custom-border', 'border-[#d43e20]');
                 title.innerText = "Crear Nueva Cuenta";
-                inputs.forEach(inp => {
-                    inp.className = "w-full bg-black/10 border border-[#171717] p-3 pr-12 rounded-xl outline-none focus:border-[#171717] text-white placeholder-white shadow-inner transition-all";
-                });
+                inputs.forEach(inp => { inp.className = "w-full bg-black/10 border border-[#171717] p-3 pr-12 rounded-xl outline-none focus:border-[#171717] text-white placeholder-white shadow-inner transition-all"; });
                 eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-white/70 hover:text-white transition-colors cursor-pointer";
                 btn.innerText = "Registrarme";
                 btn.className = "w-full bg-[#171717] text-white py-3 rounded-xl font-bold hover:bg-black border border-black/50 transition-colors shadow-lg";
                 toggleMsg.innerHTML = "O <span onclick='toggleAuthMode()' class='cursor-pointer font-extrabold underline hover:text-black transition-colors'>ingresá a tu cuenta acá</span>";
                 toggleMsg.className = "text-center text-xs text-white mt-4 transition-colors";
                 closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors";
+                forgotPass.classList.add('hidden'); // Escondemos recuperar clave en registro
             } else {
                 modal.classList.replace('bg-custom-primary', 'bg-custom-card');
                 modal.classList.replace('border-[#d43e20]', 'border-custom-border');
                 title.innerText = "Bienvenido Atleta";
-                inputs.forEach(inp => {
-                    inp.className = "w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white transition-all";
-                });
+                inputs.forEach(inp => { inp.className = "w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white transition-all"; });
                 eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer";
                 btn.innerText = "Iniciar Sesión";
                 btn.className = "w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg";
                 toggleMsg.innerHTML = "¿No tenés cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold underline'>Registrate acá</span>";
                 toggleMsg.className = "text-center text-xs text-custom-textMuted mt-4 transition-colors";
                 closeBtn.className = "mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors";
+                forgotPass.classList.remove('hidden'); // Mostramos recuperar clave en ingreso
             }
             document.getElementById('auth-message').classList.add('hidden');
         }
@@ -266,7 +297,6 @@
             document.querySelectorAll('.modal-content').forEach(m => m.style.display = 'none');
             document.getElementById(modalId).style.display = 'block';
             document.body.style.overflow = 'hidden';
-            
             if(modalId === 'modal-auth') {
                 isSignUp = false;
                 updateAuthUI();
@@ -296,7 +326,29 @@
             }
         }
 
-        // --- AUTH & CLOUD ---
+        // --- AUTH & RECUPERACIÓN ---
+        async function handleResetPassword() {
+            const email = document.getElementById('auth-email').value;
+            if(!email) return showMessage("Ingresá tu email arriba y presioná este botón nuevamente.");
+            
+            const btn = document.getElementById('btn-auth-action');
+            btn.innerText = "Enviando...";
+            btn.disabled = true;
+
+            try {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: 'https://tgiordi.github.io/Hybrid-Athlete-Tracker/',
+                });
+                if (error) throw error;
+                showMessage("Te enviamos un email para restablecer la contraseña.", false);
+            } catch (err) {
+                showMessage(err.message, true);
+            } finally {
+                btn.innerText = "Iniciar Sesión";
+                btn.disabled = false;
+            }
+        }
+
         async function handleAuth() {
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
