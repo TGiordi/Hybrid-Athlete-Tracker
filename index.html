@@ -28,7 +28,6 @@
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
         
-        /* Solución para el fondo azul/blanco del autocompletado en navegadores */
         input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {
             -webkit-box-shadow: 0 0 0 30px #171717 inset !important;
             -webkit-text-fill-color: white !important;
@@ -41,9 +40,6 @@
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: #F54927; }
         #modal-auth { transition: background-color 0.4s ease, border-color 0.4s ease; }
 
-        /* ========================================== */
-        /* ANIMACIONES Y REFLEJO ORGÁNICO             */
-        /* ========================================== */
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
@@ -52,7 +48,32 @@
             animation: fadeInUp 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        /* Reflejo de luz solo por dentro de la letra */
+        /* Contenedor del título con padding extra para evitar que se corte la cursiva */
+        .title-wrapper {
+            position: relative;
+            display: inline-block;
+            overflow: hidden;
+            padding: 10px 40px; 
+            margin: -10px -40px; 
+        }
+
+        .title-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 40%;
+            height: 100%;
+            background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
+            transform: skewX(-20deg);
+            animation: lightSweep 2.5s ease-in-out forwards;
+            animation-delay: 0.8s; 
+        }
+        @keyframes lightSweep {
+            0% { left: -100%; }
+            100% { left: 200%; }
+        }
+
         .glow-text {
             background: linear-gradient(120deg, #F54927 0%, #F54927 40%, #ffffff 50%, #F54927 60%, #F54927 100%);
             background-size: 200% auto;
@@ -60,7 +81,7 @@
             -webkit-background-clip: text;
             background-clip: text;
             animation: textShine 3s ease-in-out infinite;
-            filter: drop-shadow(0 0 8px rgba(245, 73, 39, 0.3)); /* Brillo suave exterior */
+            filter: drop-shadow(0 0 10px rgba(245, 73, 39, 0.4));
             animation-delay: 1s;
         }
         @keyframes textShine {
@@ -96,17 +117,20 @@
 
     <main id="view-landing" class="flex-grow flex flex-col items-center justify-center text-center px-4 py-20">
         <div class="animate-title-entrance flex flex-col items-center w-full" style="opacity: 0;">
-            <div class="bg-custom-primary/10 border border-custom-primary/20 text-custom-primary text-[10px] font-extrabold px-3 py-1 rounded-full mb-6 tracking-[0.2em] uppercase">Versión 2.0 Cloud</div>
             
-            <h1 class="text-5xl md:text-7xl font-black mb-6 italic tracking-tight uppercase leading-none text-center">
+            <h1 class="text-5xl md:text-7xl font-black mb-4 italic tracking-tight uppercase leading-none text-center title-wrapper">
                 Entrena <span class="glow-text">Híbrido</span>
             </h1>
+            
+            <div class="bg-custom-primary/10 border border-custom-primary/20 text-custom-primary text-[10px] font-extrabold px-4 py-1.5 rounded-full mb-8 tracking-[0.2em] uppercase inline-block">
+                Versión 2.0 Cloud
+            </div>
             
             <p class="text-custom-textMuted max-w-lg mb-10 text-lg leading-relaxed h-[60px] md:h-[30px] mx-auto text-center font-medium">
                 <span id="typewriter-text" class="typewriter-cursor"></span>
             </p>
             
-            <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95 mt-4 text-white">
+            <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95 mt-2 text-white">
                 COMIENZA TU PROGRESO
             </button>
         </div>
@@ -215,7 +239,7 @@
         let isSignUp = false;
 
         const routine = {
-            martes: [{ id: 'm1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' }, { id: 'm2', name: 'Jalón al Pecho (Abierto)', sets: 3, target: '10-12 reps', ytId: 'ryKtvHifeiU' }],
+            martes: [{ id: 'm1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' }, { id: 'm2', name: 'Jalón al Pecho (Abierto)', sets: 3, target: '10-12 reps', ytId: 'ryKtvHifeiU' }, { id: 'm3', name: 'Remo Gironda', sets: 3, target: '10-12 reps', ytId: 'GZbfZ033f74' }, { id: 'm4', name: 'Curl de Bíceps', sets: 3, target: '10 reps', ytId: 'ykJmrZ5v0Oo' }],
             jueves: [{ id: 'j1', name: 'Sentadilla Libre', sets: 4, target: '6-8 reps', ytId: 'VZpCjz340CY' }],
             sabado: [{ id: 's1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' }]
         };
@@ -232,7 +256,7 @@
             } catch(e) { console.error("Error", e); }
         });
 
-        // --- UI Y CONTRASTES CORREGIDOS ---
+        // --- UI ---
         function updateAuthUI() {
             const modal = document.getElementById('modal-auth');
             const title = document.getElementById('auth-title');
@@ -244,7 +268,6 @@
             const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
             
             if(isSignUp) {
-                // REGISTRO (Fondo naranja, controles gris oscuro #171717)
                 modal.classList.replace('bg-custom-card', 'bg-custom-primary');
                 modal.classList.replace('border-custom-border', 'border-[#d43e20]');
                 title.innerText = "Crear Nueva Cuenta";
@@ -259,7 +282,6 @@
                 closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors";
                 forgotPass.classList.add('hidden');
             } else {
-                // INGRESO (Fondo oscuro, controles naranjas)
                 modal.classList.replace('bg-custom-primary', 'bg-custom-card');
                 modal.classList.replace('border-[#d43e20]', 'border-custom-border');
                 title.innerText = "Bienvenido Atleta";
@@ -305,7 +327,7 @@
         function closeAllModals() {
             document.getElementById('modal-overlay').style.display = 'none';
             document.body.style.overflow = 'auto';
-            window.location.hash = ''; // Limpia el hash si venias de recuperar clave
+            window.location.hash = ''; 
         }
 
         function showMessage(text, isError = true) {
@@ -322,7 +344,6 @@
             }
         }
 
-        // --- AUTH & RECUPERACIÓN CON FIX DE URL ---
         const redirectUrl = "https://tgiordi.github.io/Hybrid-Athlete-Tracker/";
 
         async function handleResetPassword() {
@@ -375,11 +396,8 @@
 
             try {
                 if (isSignUp) {
-                    // SE AGREGA LA OPCIÓN DE REDIRECT DIRECTO AL REPOSITORIO
                     const { data, error } = await supabaseClient.auth.signUp({ 
-                        email, 
-                        password,
-                        options: { emailRedirectTo: redirectUrl }
+                        email, password, options: { emailRedirectTo: redirectUrl }
                     });
                     if (error) throw error;
                     showMessage("¡Cuenta creada! Ya podés iniciar sesión.", false);
@@ -398,7 +416,6 @@
             }
         }
 
-        // Resto del código (Dashboard y SaveToCloud) se mantiene igual
         async function checkSession() {
             if (!supabaseClient) return;
             const { data: { session } } = await supabaseClient.auth.getSession();
