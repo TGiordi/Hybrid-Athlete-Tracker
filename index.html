@@ -27,14 +27,30 @@
         .tab-btn.active { border-bottom: 3px solid #F54927; color: white; font-weight: 700; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
-        .glow-text { text-shadow: 0 0 15px rgba(245, 73, 39, 0.4); }
+        
+        .glow-text { text-shadow: 0 0 20px rgba(245, 73, 39, 0.5); }
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: #F54927; }
-        
-        /* Transición suave para el cambio de color del modal */
         #modal-auth { transition: background-color 0.4s ease, border-color 0.4s ease; }
+
+        /* ANIMACIONES PREMIUM */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-up {
+            animation: fadeInUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        /* Cursor de la máquina de escribir */
+        .typewriter-cursor {
+            border-right: 2px solid #F54927;
+            animation: blink 0.75s step-end infinite;
+            padding-right: 4px;
+        }
+        @keyframes blink { 50% { border-color: transparent; } }
     </style>
 </head>
 <body class="font-sans">
@@ -56,10 +72,21 @@
     </nav>
 
     <main id="view-landing" class="flex-grow flex flex-col items-center justify-center text-center px-4 py-20">
-        <div class="bg-custom-primary/10 border border-custom-primary/20 text-custom-primary text-[10px] font-extrabold px-3 py-1 rounded-full mb-6 tracking-[0.2em] uppercase">Versión 2.0 Cloud</div>
-        <h1 class="text-5xl md:text-7xl font-black mb-6 italic tracking-tight uppercase leading-none">Entrena <span class="text-custom-primary glow-text">Híbrido</span></h1>
-        <p class="text-custom-textMuted max-w-lg mb-10 text-lg leading-relaxed">La plataforma de ingeniería deportiva para quienes dominan el gimnasio y el campo de juego.</p>
-        <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95">COMIENZA TU PROGRESO</button>
+        <div class="animate-fade-up" style="opacity: 0;">
+            <div class="bg-custom-primary/10 border border-custom-primary/20 text-custom-primary text-[10px] font-extrabold px-3 py-1 rounded-full mb-6 tracking-[0.2em] uppercase inline-block">Versión 2.0 Cloud</div>
+            
+            <h1 class="text-5xl md:text-7xl font-black mb-6 italic tracking-tight uppercase leading-none">
+                Entrena <span class="text-custom-primary glow-text">Híbrido</span>
+            </h1>
+            
+            <p class="text-custom-textMuted max-w-lg mb-10 text-lg leading-relaxed h-[60px] md:h-[30px] mx-auto">
+                <span id="typewriter-text" class="typewriter-cursor"></span>
+            </p>
+            
+            <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95">
+                COMIENZA TU PROGRESO
+            </button>
+        </div>
     </main>
 
     <main id="view-app" class="hidden flex-grow max-w-5xl mx-auto w-full px-4 py-10">
@@ -138,6 +165,20 @@
     </div>
 
     <script>
+        // --- 0. EFECTO TYPEWRITER ---
+        const subtitleText = "La plataforma de alto rendimiento para quienes dominan el gimnasio y el campo de juego.";
+        let i = 0;
+        function typeWriter() {
+            if (i < subtitleText.length) {
+                document.getElementById("typewriter-text").innerHTML += subtitleText.charAt(i);
+                i++;
+                setTimeout(typeWriter, 40); // Velocidad de tipeo
+            } else {
+                // Quita el cursor parpadeante al terminar para que quede más limpio
+                document.getElementById("typewriter-text").classList.remove('typewriter-cursor');
+            }
+        }
+
         const SUPABASE_URL = "https://kqmkseiwgdzwzmtqdcxk.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbWtzZWl3Z2R6d3ptdHFkY3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzQ0NTMsImV4cCI6MjA4ODgxMDQ1M30.b3kQ8JSYaMCrRdgxoyek6xXF4Hhv_9H8edEN4c7oF8U";
         
@@ -152,6 +193,9 @@
         };
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Iniciar animación de tipeo al cargar la página
+            setTimeout(typeWriter, 1000); // Espera 1 segundo para que primero suba el título
+            
             try {
                 if (window.supabase) {
                     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -160,7 +204,7 @@
             } catch(e) { console.error("Error", e); }
         });
 
-        // --- LÓGICA DE UI (Diseño Dinámico Naranja/Oscuro) ---
+        // --- LÓGICA DE UI Dinámica ---
         function updateAuthUI() {
             const modal = document.getElementById('modal-auth');
             const title = document.getElementById('auth-title');
@@ -171,44 +215,30 @@
             const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
             
             if(isSignUp) {
-                // MODO REGISTRO (Fondo Naranja, Botón Gris)
                 modal.classList.replace('bg-custom-card', 'bg-custom-primary');
                 modal.classList.replace('border-custom-border', 'border-[#d43e20]');
-                
                 title.innerText = "Crear Nueva Cuenta";
-                
                 inputs.forEach(inp => {
-                    inp.className = "w-full bg-black/20 border border-white/30 p-3 pr-12 rounded-xl outline-none focus:border-white text-white placeholder-white/70 shadow-inner transition-all";
+                    inp.className = "w-full bg-black/10 border border-[#171717] p-3 pr-12 rounded-xl outline-none focus:border-[#171717] text-white placeholder-white shadow-inner transition-all";
                 });
-                
                 eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-white/70 hover:text-white transition-colors cursor-pointer";
-                
                 btn.innerText = "Registrarme";
                 btn.className = "w-full bg-[#171717] text-white py-3 rounded-xl font-bold hover:bg-black border border-black/50 transition-colors shadow-lg";
-                
                 toggleMsg.innerHTML = "O <span onclick='toggleAuthMode()' class='cursor-pointer font-extrabold underline hover:text-black transition-colors'>ingresá a tu cuenta acá</span>";
                 toggleMsg.className = "text-center text-xs text-white mt-4 transition-colors";
-                
                 closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors";
             } else {
-                // MODO INGRESO (Fondo Oscuro, Botón Naranja)
                 modal.classList.replace('bg-custom-primary', 'bg-custom-card');
                 modal.classList.replace('border-[#d43e20]', 'border-custom-border');
-                
                 title.innerText = "Bienvenido Atleta";
-                
                 inputs.forEach(inp => {
                     inp.className = "w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white transition-all";
                 });
-                
                 eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer";
-
                 btn.innerText = "Iniciar Sesión";
                 btn.className = "w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg";
-                
                 toggleMsg.innerHTML = "¿No tenés cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold underline'>Registrate acá</span>";
                 toggleMsg.className = "text-center text-xs text-custom-textMuted mt-4 transition-colors";
-                
                 closeBtn.className = "mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors";
             }
             document.getElementById('auth-message').classList.add('hidden');
@@ -238,7 +268,6 @@
             document.body.style.overflow = 'hidden';
             
             if(modalId === 'modal-auth') {
-                // Resetear siempre al estado inicial (Ingreso)
                 isSignUp = false;
                 updateAuthUI();
                 document.getElementById('auth-password').type = 'password';
@@ -259,11 +288,15 @@
             const msgBox = document.getElementById('auth-message');
             msgBox.innerText = text;
             msgBox.classList.remove('hidden', 'bg-red-500/10', 'text-red-500', 'bg-green-500/10', 'text-green-500');
-            msgBox.classList.add(isError ? 'bg-red-500/10' : 'bg-[#171717]', isError ? 'text-red-500' : 'text-green-500');
-            if(!isError && isSignUp) msgBox.classList.replace('bg-[#171717]', 'bg-black/40');
+            if(isError) {
+                msgBox.classList.add('bg-red-500/10', 'text-red-500');
+            } else {
+                const bgColor = isSignUp ? 'bg-black/40' : 'bg-green-500/10';
+                msgBox.classList.add(bgColor, 'text-green-500');
+            }
         }
 
-        // --- AUTH & CLOUD (Igual que antes) ---
+        // --- AUTH & CLOUD ---
         async function handleAuth() {
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
