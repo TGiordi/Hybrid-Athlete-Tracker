@@ -34,7 +34,6 @@
     <style>
         body { background-color: #0a0a0a; color: #F8FAFC; display: flex; flex-direction: column; min-height: 100vh; }
         
-        /* Inputs arreglados */
         input[type=number]::-webkit-inner-spin-button, 
         input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; display: none; }
         input[type=number] { -moz-appearance: textfield; font-family: 'Montserrat', sans-serif; }
@@ -44,17 +43,20 @@
         input[type="checkbox"] { width: 24px; height: 24px; accent-color: #F54927; cursor: pointer;}
         .canvas-container { display: none; margin-top: 1.5rem; height: 200px; position: relative; }
         
-        /* Transiciones suaves para cambiar de pantalla */
         .view-section { transition: opacity 0.3s ease-in-out; }
         .hidden-view { display: none !important; opacity: 0; }
-        
-        /* Efecto de resplandor para el logo */
         .glow-text { text-shadow: 0 0 15px rgba(245, 73, 39, 0.5); }
+
+        /* Estilos para el scrollbar de los modales */
+        .modal-scroll::-webkit-scrollbar { width: 8px; }
+        .modal-scroll::-webkit-scrollbar-track { background: #0a0a0a; }
+        .modal-scroll::-webkit-scrollbar-thumb { background: #262626; border-radius: 4px; }
+        .modal-scroll::-webkit-scrollbar-thumb:hover { background: #F54927; }
     </style>
 </head>
 <body class="font-sans">
 
-    <nav class="border-b border-custom-border bg-custom-bg/90 backdrop-blur-md sticky top-0 z-50">
+    <nav class="border-b border-custom-border bg-custom-bg/90 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center gap-3 cursor-pointer" onclick="switchView('landing')">
@@ -94,23 +96,9 @@
                 Ver Funcionamiento
             </button>
         </div>
-        
-        <div class="mt-20 w-full max-w-4xl bg-custom-card border border-custom-border rounded-t-2xl shadow-2xl p-4 overflow-hidden relative opacity-80">
-            <div class="absolute inset-0 bg-gradient-to-t from-custom-bg to-transparent z-10"></div>
-            <div class="flex justify-between items-center mb-4 border-b border-custom-border pb-2">
-                <div class="w-1/3 h-4 bg-custom-border rounded"></div>
-                <div class="w-1/4 h-4 bg-custom-primary/50 rounded"></div>
-            </div>
-            <div class="space-y-3">
-                <div class="h-12 bg-[#202020] rounded-lg"></div>
-                <div class="h-12 bg-[#202020] rounded-lg"></div>
-                <div class="h-12 bg-[#202020] rounded-lg"></div>
-            </div>
-        </div>
     </main>
 
     <main id="view-app" class="view-section hidden-view flex-grow max-w-7xl mx-auto w-full px-4 pb-20 pt-6">
-        
         <header class="text-center mb-8 flex flex-col items-center gap-2">
             <h2 class="text-2xl font-bold text-custom-text uppercase tracking-wider">Tu Rutina</h2>
             <div class="h-1 w-16 bg-custom-primary rounded"></div>
@@ -125,22 +113,95 @@
         <div id="exercise-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
     </main>
 
-    <footer class="border-t border-custom-border bg-custom-card mt-auto">
+    <footer class="border-t border-custom-border bg-custom-card mt-auto relative z-10">
         <div class="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-4">
             <div class="flex items-center gap-2">
                 <span class="font-bold text-lg">HAT</span>
                 <span class="text-custom-textMuted text-sm">© 2026</span>
             </div>
             <div class="flex gap-6 text-sm text-custom-textMuted font-medium">
-                <a href="#" class="hover:text-custom-primary transition-colors">Términos</a>
-                <a href="#" class="hover:text-custom-primary transition-colors">Privacidad</a>
-                <a href="#" class="hover:text-custom-primary transition-colors">Soporte</a>
+                <button onclick="openModal('modal-terms')" class="hover:text-custom-primary transition-colors cursor-pointer">Términos</button>
+                <button onclick="openModal('modal-privacy')" class="hover:text-custom-primary transition-colors cursor-pointer">Privacidad</button>
+                <button onclick="openModal('modal-support')" class="hover:text-custom-primary transition-colors cursor-pointer">Soporte</button>
             </div>
         </div>
     </footer>
 
+    <div id="modal-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 transition-opacity">
+        
+        <div id="modal-terms" class="hidden bg-custom-card border border-custom-border rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl relative">
+            <div class="p-6 border-b border-custom-border flex justify-between items-center">
+                <h3 class="text-2xl font-bold text-custom-text">Términos y Condiciones</h3>
+                <button onclick="closeModal()" class="text-custom-textMuted hover:text-custom-primary transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto modal-scroll text-custom-textMuted space-y-4 text-sm leading-relaxed">
+                <p>Bienvenido a Hybrid Athlete Tracker (HAT). Al utilizar nuestra plataforma, aceptas los siguientes términos:</p>
+                <h4 class="text-white font-semibold text-base mt-4">1. Uso del Servicio</h4>
+                <p>HAT es una herramienta digital diseñada para el registro de entrenamientos. Eres responsable de mantener la confidencialidad de tu cuenta y de los datos que subes a ella.</p>
+                <h4 class="text-white font-semibold text-base mt-4">2. Descargo de Responsabilidad Médica y Deportiva</h4>
+                <p>HAT no provee consejos médicos ni de entrenamiento profesional. Los ejercicios listados y los videos incrustados son únicamente de referencia. Consultá a un profesional de la salud o del deporte antes de comenzar cualquier rutina. HAT no se hace responsable por lesiones generadas durante el entrenamiento.</p>
+                <h4 class="text-white font-semibold text-base mt-4">3. Contenido Generado por el Usuario</h4>
+                <p>Eres dueño de los datos y archivos multimedia (GIFs, imágenes) que subas, pero nos otorgas licencia para alojarlos y mostrarlos en tu perfil. Está prohibido subir contenido ilegal, ofensivo o que viole derechos de autor de terceros.</p>
+                <h4 class="text-white font-semibold text-base mt-4">4. Legislación y Jurisdicción</h4>
+                <p>Estos términos se rigen bajo las leyes de la República Argentina. Cualquier disputa relacionada con la plataforma será sometida a la jurisdicción de los tribunales competentes.</p>
+            </div>
+        </div>
+
+        <div id="modal-privacy" class="hidden bg-custom-card border border-custom-border rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl relative">
+            <div class="p-6 border-b border-custom-border flex justify-between items-center">
+                <h3 class="text-2xl font-bold text-custom-text">Política de Privacidad</h3>
+                <button onclick="closeModal()" class="text-custom-textMuted hover:text-custom-primary transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto modal-scroll text-custom-textMuted space-y-4 text-sm leading-relaxed">
+                <p>En HAT valoramos tu privacidad y la seguridad de tus datos de entrenamiento.</p>
+                <h4 class="text-white font-semibold text-base mt-4">1. ¿Qué datos recopilamos?</h4>
+                <p>Para brindar nuestro servicio, recopilamos: tu dirección de correo electrónico (al registrarte), tu progreso de cargas (peso y repeticiones ingresadas) y los archivos multimedia que decidas subir como referencia para tus ejercicios.</p>
+                <h4 class="text-white font-semibold text-base mt-4">2. Uso de la Información</h4>
+                <p>Tus datos se utilizan exclusivamente para renderizar tus gráficos de progreso y mantener tu sesión activa. No vendemos ni comercializamos tus datos personales a terceros.</p>
+                <h4 class="text-white font-semibold text-base mt-4">3. Seguridad</h4>
+                <p>Utilizamos infraestructura de terceros (Backend as a Service) que cumple con los estándares de encriptación actuales para proteger tus credenciales y datos almacenados.</p>
+                <h4 class="text-white font-semibold text-base mt-4">4. Tus Derechos</h4>
+                <p>En cualquier momento puedes solicitar la exportación de tu historial de entrenamiento o la eliminación permanente de tu cuenta y todos sus datos asociados contactando a nuestro soporte.</p>
+            </div>
+        </div>
+
+        <div id="modal-support" class="hidden bg-custom-card border border-custom-border rounded-2xl w-full max-w-md flex flex-col shadow-2xl relative">
+            <div class="p-6 border-b border-custom-border flex justify-between items-center">
+                <h3 class="text-2xl font-bold text-custom-text">Soporte Técnico</h3>
+                <button onclick="closeModal()" class="text-custom-textMuted hover:text-custom-primary transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-sm text-custom-textMuted mb-6">¿Tuviste un problema con tus cargas o encontraste un bug? Escribinos y lo solucionamos rápido.</p>
+                <form class="space-y-4" onsubmit="event.preventDefault(); alert('Formulario enviado (simulación). ¡Pronto implementaremos el backend de emails!'); closeModal();">
+                    <div>
+                        <label class="block text-xs font-semibold text-custom-textMuted uppercase mb-1">Nombre</label>
+                        <input type="text" required class="w-full bg-custom-bg border border-custom-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-custom-primary transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-custom-textMuted uppercase mb-1">Email</label>
+                        <input type="email" required class="w-full bg-custom-bg border border-custom-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-custom-primary transition-colors">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-custom-textMuted uppercase mb-1">Mensaje</label>
+                        <textarea required rows="4" class="w-full bg-custom-bg border border-custom-border rounded-lg px-4 py-2 text-white focus:outline-none focus:border-custom-primary transition-colors resize-none"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-custom-primary hover:bg-custom-hover text-white font-bold py-3 rounded-xl transition-colors mt-2">
+                        Enviar Mensaje
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
     <script>
-        // --- SISTEMA DE NAVEGACIÓN (Simulador de Login) ---
+        // --- NAVEGACIÓN ---
         function switchView(viewName) {
             const landing = document.getElementById('view-landing');
             const app = document.getElementById('view-app');
@@ -152,7 +213,6 @@
                 app.classList.remove('hidden-view');
                 loginBtn.classList.add('hidden');
                 logoutBtn.classList.remove('hidden');
-                // Cargar el día martes por defecto al entrar
                 showDay('martes'); 
             } else {
                 app.classList.add('hidden-view');
@@ -162,7 +222,33 @@
             }
         }
 
-        // --- LÓGICA DE LA APLICACIÓN (Tu Tracker) ---
+        // --- MANEJO DE MODALES ---
+        function openModal(modalId) {
+            const overlay = document.getElementById('modal-overlay');
+            // Ocultar todos los modales primero
+            document.getElementById('modal-terms').classList.add('hidden');
+            document.getElementById('modal-privacy').classList.add('hidden');
+            document.getElementById('modal-support').classList.add('hidden');
+            
+            // Mostrar el overlay y el modal solicitado
+            overlay.classList.remove('hidden');
+            document.getElementById(modalId).classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Evitar scroll del body
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.add('hidden');
+            document.body.style.overflow = 'auto'; // Restaurar scroll
+        }
+
+        // Cerrar modal al hacer click fuera de la caja
+        document.getElementById('modal-overlay').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+
+        // --- LÓGICA DE LA APLICACIÓN (Rutina y Gráficos) ---
+        
         const routine = {
             martes: [
                 { id: 'm1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' },
@@ -220,10 +306,8 @@
 
                     const card = `
                         <div class="bg-custom-card p-5 md:p-6 rounded-2xl shadow-lg border border-custom-border">
-                            
                             <div class="mb-5 bg-[#0d0d0d] rounded-xl overflow-hidden flex flex-col justify-center items-center border border-custom-border relative aspect-square">
                                 <img src="gifs/${ex.id}.gif" alt="Anatomía de ${ex.name}" class="absolute inset-0 w-full h-full object-contain z-10" onerror="this.style.display='none'; document.getElementById('fallback-${ex.id}').style.display='flex';">
-                                
                                 <div id="fallback-${ex.id}" style="display: none;" class="flex-col items-center justify-center p-4 text-center z-0 w-full h-full bg-[#0d0d0d]">
                                     <svg class="w-12 h-12 text-custom-primary mb-2 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                                     <p class="text-xs text-custom-textMuted font-medium">Falta agregar tu GIF anatómico</p>
@@ -235,14 +319,7 @@
                             <p class="text-sm font-medium text-custom-textMuted mb-5">Objetivo: ${ex.sets} series x ${ex.target}</p>
                             
                             <div class="aspect-video rounded-lg overflow-hidden border border-custom-border mb-6 bg-black shadow-inner">
-                                <iframe 
-                                    class="w-full h-full" 
-                                    src="https://www.youtube.com/embed/${ex.ytId}" 
-                                    title="Técnica de ${ex.name}" 
-                                    frameborder="0" 
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                    allowfullscreen>
-                                </iframe>
+                                <iframe class="w-full h-full" src="https://www.youtube.com/embed/${ex.ytId}" title="Técnica de ${ex.name}" frameborder="0" allowfullscreen></iframe>
                             </div>
 
                             ${setsHtml}
@@ -266,9 +343,7 @@
                     `;
                     container.innerHTML += card;
                 });
-            } catch (error) {
-                console.error("Fallo general al cargar los ejercicios:", error);
-            }
+            } catch (error) { console.error("Fallo:", error); }
         }
 
         function saveData(exId, totalSets, exName) {
@@ -340,7 +415,7 @@
                 renderIndividualChart(exId, exName);
             }
         }
-
+        
         function renderIndividualChart(exId, exName) {
             let historyData = {};
             try {
@@ -402,6 +477,7 @@
                 }
             });
         }
+
     </script>
 </body>
 </html>
