@@ -4,30 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HAT | Hybrid Athlete Tracker</title>
-    
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F54927'/><path d='M20 30h15v40H20zM65 30h15v40H65zM35 45h30v10H35z' fill='%23ffffff'/></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Montserrat', 'sans-serif'], },
+                    fontFamily: { sans: ['Montserrat', 'sans-serif'] },
                     colors: { custom: { bg: '#0a0a0a', card: '#171717', border: '#262626', primary: '#F54927', hover: '#d43e20', text: '#F8FAFC', textMuted: '#94A3B8' } }
                 }
             }
         }
     </script>
     <style>
-        body { background-color: #0a0a0a; color: #F8FAFC; min-height: 100vh; }
-        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        body { background-color: #0a0a0a; color: #F8FAFC; min-height: 100vh; overflow-x: hidden; }
         .hidden-view { display: none !important; }
         .tab-btn.active { border-bottom: 3px solid #F54927; color: white; font-weight: 700; }
-        .canvas-container { display: none; height: 200px; position: relative; }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
     </style>
 </head>
 <body class="font-sans flex flex-col">
@@ -49,16 +45,16 @@
     </nav>
 
     <main id="view-landing" class="flex-grow flex flex-col items-center justify-center text-center px-4 py-20">
-        <h1 class="text-5xl md:text-7xl font-black mb-6 italic tracking-tight uppercase">Entrena <span class="text-custom-primary">Híbrido</span></h1>
+        <h1 class="text-5xl md:text-7xl font-black mb-6 italic tracking-tight uppercase leading-none">Entrena <span class="text-custom-primary">Híbrido</span></h1>
         <p class="text-custom-textMuted max-w-lg mb-10 text-lg">La plataforma definitiva para atletas que dominan el gimnasio y el campo de juego.</p>
-        <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-lg transition-transform hover:scale-105">COMIENZA TU PROGRESO</button>
+        <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-lg transition-transform hover:scale-105 active:scale-95">COMIENZA TU PROGRESO</button>
     </main>
 
     <main id="view-app" class="hidden-view flex-grow max-w-5xl mx-auto w-full px-4 py-10">
         <div class="flex justify-around border-b border-custom-border mb-8 pb-3">
-            <button class="tab-btn active px-4 pb-2" onclick="changeDay('martes')">Martes</button>
-            <button class="tab-btn px-4 pb-2" onclick="changeDay('jueves')">Jueves</button>
-            <button class="tab-btn px-4 pb-2" onclick="changeDay('sabado')">Sábado</button>
+            <button class="tab-btn active px-4 pb-2" onclick="changeDay('martes', event)">Martes</button>
+            <button class="tab-btn px-4 pb-2" onclick="changeDay('jueves', event)">Jueves</button>
+            <button class="tab-btn px-4 pb-2" onclick="changeDay('sabado', event)">Sábado</button>
         </div>
         <div id="exercise-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
     </main>
@@ -67,44 +63,80 @@
         <div class="bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm shadow-2xl">
             <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center">Bienvenido Atleta</h2>
             <div class="space-y-4">
-                <input type="email" id="auth-email" placeholder="Tu Email" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl focus:border-custom-primary outline-none">
-                <input type="password" id="auth-password" placeholder="Tu Contraseña" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl focus:border-custom-primary outline-none">
+                <input type="email" id="auth-email" placeholder="Tu Email" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary">
+                <input type="password" id="auth-password" placeholder="Contraseña" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary">
                 <button id="btn-auth-action" onclick="handleAuth()" class="w-full bg-custom-primary py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors">Iniciar Sesión</button>
                 <p id="auth-toggle-msg" class="text-center text-xs text-custom-textMuted mt-4">¿No tienes cuenta? <span onclick="toggleAuthMode()" class="text-custom-primary cursor-pointer font-bold">Regístrate</span></p>
             </div>
-            <button onclick="closeModal('modal-auth')" class="mt-6 w-full text-xs text-custom-textMuted uppercase tracking-widest">Cerrar</button>
+            <button onclick="closeModal('modal-auth')" class="mt-6 w-full text-xs text-custom-textMuted uppercase tracking-widest text-center">Cerrar</button>
         </div>
     </div>
 
     <script>
-        // CONFIGURACIÓN SUPABASE
+        // CONFIGURACIÓN
         const SUPABASE_URL = "https://kqmkseiwgdzwzmtqdcxk.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."; // Tu llave anon (corta aquí por seguridad, pon la completa)
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbWtzZWl3Z2R6d3ptdHFkY3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzQ0NTMsImV4cCI6MjA4ODgxMDQ1M30.b3kQ8JSYaMCrRdgxoyek6xXF4Hhv_9H8edEN4c7oF8U";
+        
+        let supabase;
+        try {
+            supabase = typeof supabase !== 'undefined' ? supabase : window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch(e) { console.error("Supabase failed to load", e); }
 
         let currentUserId = null;
         let isSignUp = false;
 
-        // EJERCICIOS (Tu rutina fija actual)
         const routine = {
-            martes: [{ id: 'm1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' }, { id: 'm2', name: 'Jalón al Pecho (Abierto)', sets: 3, target: '10-12 reps', ytId: 'ryKtvHifeiU' }],
-            jueves: [{ id: 'j1', name: 'Sentadilla Libre', sets: 4, target: '6-8 reps', ytId: 'VZpCjz340CY' }],
-            sabado: [{ id: 's1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' }]
+            martes: [
+                { id: 'm1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' },
+                { id: 'm2', name: 'Jalón al Pecho (Abierto)', sets: 3, target: '10-12 reps', ytId: 'ryKtvHifeiU' },
+                { id: 'm3', name: 'Remo Gironda', sets: 3, target: '10-12 reps', ytId: 'GZbfZ033f74' }
+            ],
+            jueves: [
+                { id: 'j1', name: 'Sentadilla Libre', sets: 4, target: '6-8 reps', ytId: 'VZpCjz340CY' }
+            ],
+            sabado: [
+                { id: 's1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' }
+            ]
         };
 
-        // --- AUTH LOGIC ---
+        // --- FUNCIONES CORE ---
+        function openModal(id) {
+            document.getElementById(id).style.display = 'flex';
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function toggleAuthMode() {
+            isSignUp = !isSignUp;
+            document.getElementById('auth-title').innerText = isSignUp ? "Crea tu Perfil" : "Bienvenido Atleta";
+            document.getElementById('btn-auth-action').innerText = isSignUp ? "Registrarme" : "Iniciar Sesión";
+            document.getElementById('auth-toggle-msg').innerHTML = isSignUp ? "¿Ya tienes cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold'>Ingresa</span>" : "¿No tienes cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold'>Regístrate</span>";
+        }
+
         async function handleAuth() {
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
+            const btn = document.getElementById('btn-auth-action');
+            btn.disabled = true;
+            btn.innerText = "Procesando...";
 
-            if (isSignUp) {
-                const { data, error } = await supabase.auth.signUp({ email, password });
-                if (error) alert(error.message);
-                else alert("¡Revisa tu email para confirmar el registro!");
-            } else {
-                const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-                if (error) alert(error.message);
-                else checkSession();
+            try {
+                if (isSignUp) {
+                    const { error } = await supabase.auth.signUp({ email, password });
+                    if (error) throw error;
+                    alert("¡Revisa tu email para confirmar el registro!");
+                } else {
+                    const { error } = await supabase.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                    checkSession();
+                }
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión";
             }
         }
 
@@ -127,70 +159,69 @@
             location.reload();
         }
 
-        function toggleAuthMode() {
-            isSignUp = !isSignUp;
-            document.getElementById('auth-title').innerText = isSignUp ? "Crea tu Perfil" : "Bienvenido Atleta";
-            document.getElementById('btn-auth-action').innerText = isSignUp ? "Registrarme" : "Iniciar Sesión";
-            document.getElementById('auth-toggle-msg').innerHTML = isSignUp ? "¿Ya tienes cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold'>Ingresa</span>" : "¿No tienes cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold'>Regístrate</span>";
-        }
+        function changeDay(day, event) {
+            if(event) {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                event.target.classList.add('active');
+            }
 
-        // --- APP LOGIC ---
-        function changeDay(day) {
             const container = document.getElementById('exercise-container');
             container.innerHTML = '';
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            event?.target?.classList?.add('active');
 
             routine[day].forEach(ex => {
                 let setsHtml = '';
                 for(let i=1; i<=ex.sets; i++) {
                     setsHtml += `
-                        <div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border">
-                            <span class="text-xs text-custom-textMuted">SET ${i}</span>
-                            <input type="number" id="peso-${ex.id}-${i}" placeholder="Kg" class="w-20 bg-transparent text-center font-bold text-lg outline-none border-b border-custom-border focus:border-custom-primary">
-                            <input type="number" id="reps-${ex.id}-${i}" placeholder="Rep" class="w-16 bg-transparent text-center font-bold text-lg outline-none border-b border-custom-border focus:border-custom-primary">
+                        <div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm">
+                            <span class="w-16 text-xs font-medium text-custom-textMuted">Serie ${i}</span>
+                            <input type="number" id="peso-${ex.id}-${i}" placeholder="Kg" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-semibold outline-none focus:border-custom-primary">
+                            <input type="number" id="reps-${ex.id}-${i}" placeholder="Rep" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-semibold outline-none focus:border-custom-primary">
                             <input type="checkbox" id="check-${ex.id}-${i}" class="w-6 h-6 accent-custom-primary">
                         </div>
                     `;
                 }
+
                 container.innerHTML += `
-                    <div class="bg-custom-card p-6 rounded-3xl border border-custom-border">
-                        <h3 class="text-xl font-bold mb-4">${ex.name}</h3>
+                    <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-lg">
+                        <h3 class="text-xl font-bold mb-4 text-white">${ex.name}</h3>
                         <div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black">
                             <iframe class="w-full h-full" src="https://www.youtube.com/embed/${ex.ytId}" frameborder="0" allowfullscreen></iframe>
                         </div>
                         ${setsHtml}
-                        <button onclick="saveToCloud('${ex.id}', ${ex.sets}, '${ex.name}')" class="w-full bg-custom-primary mt-4 py-3 rounded-xl font-bold hover:shadow-[0_0_15px_rgba(245,73,39,0.4)] transition-all">GUARDAR PROGRESO</button>
+                        <button onclick="saveToCloud('${ex.id}', ${ex.sets}, '${ex.name}')" class="w-full bg-custom-primary mt-4 py-4 rounded-xl font-bold hover:bg-custom-hover transition-all transform active:scale-95 shadow-md">GUARDAR PROGRESO</button>
                     </div>
                 `;
             });
         }
 
         async function saveToCloud(exId, totalSets, exName) {
+            let logs = [];
             for(let i=1; i<=totalSets; i++) {
                 const checked = document.getElementById(`check-${exId}-${i}`).checked;
-                if(checked) {
-                    const weight = document.getElementById(`peso-${exId}-${i}`).value;
-                    const reps = document.getElementById(`reps-${exId}-${i}`).value;
-                    
-                    const { error } = await supabase.from('workout_logs').insert({
+                const weight = document.getElementById(`peso-${exId}-${i}`).value;
+                const reps = document.getElementById(`reps-${exId}-${i}`).value;
+
+                if(checked && weight && reps) {
+                    logs.push({
                         user_id: currentUserId,
                         exercise_name: exName,
-                        weight: weight,
-                        reps: reps,
+                        weight: parseFloat(weight),
+                        reps: parseInt(reps),
                         set_number: i
                     });
-                    if(error) console.error(error);
                 }
             }
-            alert("¡Cargas guardadas en la nube!");
+
+            if(logs.length === 0) return alert("Marca al menos una serie completa con peso y reps.");
+
+            try {
+                const { error } = await supabase.from('workout_logs').insert(logs);
+                if(error) throw error;
+                alert("¡Progresos sincronizados con la nube!");
+            } catch (e) { alert("Error al guardar: " + e.message); }
         }
 
-        function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-
-        // Inicializar
-        window.onload = checkSession;
+        document.addEventListener('DOMContentLoaded', checkSession);
     </script>
 </body>
 </html>
