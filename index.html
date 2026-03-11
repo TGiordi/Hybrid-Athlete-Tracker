@@ -160,6 +160,7 @@
 
         <div id="modal-edit-log" class="modal-content hidden bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl">
             <h2 id="edit-log-title" class="text-xl font-bold mb-6 text-center text-custom-primary border-b border-custom-border pb-3">Editar Sesión</h2>
+            <div id="edit-error-msg" class="hidden text-red-500 bg-red-500/10 p-2 rounded mb-4 text-xs font-bold text-center"></div>
             <div id="edit-log-sets-container" class="space-y-3 mb-6 max-h-[40vh] overflow-y-auto custom-scroll pr-2">
                 </div>
             <button id="btn-save-edit" class="w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg">Actualizar Datos</button>
@@ -171,7 +172,8 @@
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
             </div>
             <h2 class="text-2xl font-bold text-white mb-2">¿Eliminar Sesión?</h2>
-            <p class="text-sm text-custom-textMuted mb-8">Esta acción no se puede deshacer. Se borrarán todas las series que registraste en este día para este ejercicio.</p>
+            <p class="text-sm text-custom-textMuted mb-6">Esta acción no se puede deshacer. Se borrarán todas las series registradas en este día.</p>
+            <div id="delete-error-msg" class="hidden text-red-500 bg-red-500/10 p-2 rounded mb-4 text-xs font-bold"></div>
             <div class="flex gap-4">
                 <button onclick="closeAllModals()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl hover:bg-[#262626] font-bold transition-colors">Cancelar</button>
                 <button id="btn-confirm-delete" class="flex-1 bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 font-bold shadow-lg transition-colors">Sí, eliminar</button>
@@ -223,6 +225,7 @@
             sabado: [{ id: 's1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' }]
         };
 
+        // --- INICIALIZACIÓN ---
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(typeWriter, 500); 
             if (typeof Chart !== 'undefined') { Chart.defaults.font.family = "'Montserrat', sans-serif"; Chart.defaults.color = '#94A3B8'; }
@@ -247,45 +250,30 @@
             } else { checkSession(); }
         }
 
-        // --- SISTEMA DE MODALES (TAILWIND PURO) ---
+        // --- UI BASE ---
         function openModal(modalId) {
-            // Mostrar fondo
             const overlay = document.getElementById('modal-overlay');
-            overlay.classList.remove('hidden');
-            overlay.classList.add('flex');
-            
-            // Ocultar todos los modales internos
+            overlay.classList.remove('hidden'); overlay.classList.add('flex');
             document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden'));
-            
-            // Mostrar el modal seleccionado
-            const targetModal = document.getElementById(modalId);
-            targetModal.classList.remove('hidden');
-            
+            document.getElementById(modalId).classList.remove('hidden');
             document.body.style.overflow = 'hidden';
-            if(modalId === 'modal-auth') { 
-                isSignUp = false; updateAuthUI(); 
-                document.getElementById('auth-password').type = 'password'; 
-            }
+            if(modalId === 'modal-auth') { isSignUp = false; updateAuthUI(); document.getElementById('auth-password').type = 'password'; }
+            if(modalId === 'modal-edit-log') document.getElementById('edit-error-msg').classList.add('hidden');
+            if(modalId === 'modal-confirm-delete') document.getElementById('delete-error-msg').classList.add('hidden');
         }
 
         function closeAllModals() {
             const overlay = document.getElementById('modal-overlay');
-            overlay.classList.add('hidden');
-            overlay.classList.remove('flex');
+            overlay.classList.add('hidden'); overlay.classList.remove('flex');
             document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden'));
-            document.body.style.overflow = 'auto'; 
-            window.location.hash = ''; 
+            document.body.style.overflow = 'auto'; window.location.hash = ''; 
         }
 
-        function updateAuthUI() {
-            const modal = document.getElementById('modal-auth');
-            const title = document.getElementById('auth-title');
-            const btn = document.getElementById('btn-auth-action');
-            const toggleMsg = document.getElementById('auth-toggle-msg');
-            const closeBtn = document.getElementById('close-auth-btn');
-            const eyeBtn = document.getElementById('eye-btn');
-            const forgotPass = document.getElementById('forgot-password-container');
-            const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
+        function updateAuthUI() { /* igual */
+            const modal = document.getElementById('modal-auth'); const title = document.getElementById('auth-title');
+            const btn = document.getElementById('btn-auth-action'); const toggleMsg = document.getElementById('auth-toggle-msg');
+            const closeBtn = document.getElementById('close-auth-btn'); const eyeBtn = document.getElementById('eye-btn');
+            const forgotPass = document.getElementById('forgot-password-container'); const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
             
             if(isSignUp) {
                 modal.classList.replace('bg-custom-card', 'bg-custom-primary'); modal.classList.replace('border-custom-border', 'border-[#d43e20]');
@@ -325,8 +313,7 @@
         }
 
         function showMessage(text, isError = true) {
-            const msgBox = document.getElementById('auth-message');
-            msgBox.innerText = text;
+            const msgBox = document.getElementById('auth-message'); msgBox.innerText = text;
             msgBox.classList.remove('hidden', 'bg-red-500/10', 'text-red-500', 'text-red-400', 'bg-green-500/10', 'text-green-500', 'text-green-400', 'bg-[#171717]', 'border-[#262626]');
             if(isError) {
                 if(isSignUp) msgBox.classList.add('bg-[#171717]', 'text-red-400', 'border-[#262626]');
@@ -404,7 +391,7 @@
         async function handleSignOut() { if (supabaseClient) await supabaseClient.auth.signOut(); location.reload(); }
 
         // =========================================================================
-        // FASE 3: APP Y UPSERT BLINDADO
+        // FASE 3: APP - TÉCNICA "DELETE + INSERT" PARA SOBRESCRIBIR SIN ERRORES
         // =========================================================================
         function changeDay(day, event) {
             if(event) {
@@ -463,29 +450,30 @@
                 const weight = document.getElementById(`peso-${exId}-${i}`).value;
                 const reps = document.getElementById(`reps-${exId}-${i}`).value;
                 if(checked && weight && reps) {
-                    logs.push({ 
-                        user_id: currentUserId, exercise_name: exName, 
-                        weight: parseFloat(weight), reps: parseInt(reps), 
-                        set_number: i, log_date: dateString 
-                    });
+                    logs.push({ user_id: currentUserId, exercise_name: exName, weight: parseFloat(weight), reps: parseInt(reps), set_number: i, log_date: dateString });
                 }
             }
             if(logs.length === 0) {
                 const originalText = btnText.innerText; btn.classList.add('bg-red-600'); btnText.innerText = "MARCÁ 1 SERIE MÍNIMO";
-                setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = originalText; }, 2000);
-                return;
+                setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = originalText; }, 2000); return;
             }
+            
             btnText.innerText = "GUARDANDO...";
             try {
-                // FIX UPSERT: Sin espacios en onConflict
-                const { error } = await supabaseClient.from('workout_logs').upsert(logs, { 
-                    onConflict: 'user_id,exercise_name,log_date,set_number' 
-                });
-                if(error) throw error;
+                // TÉCNICA INFALIBLE: Borramos todo lo anotado HOY para este ejercicio y metemos los datos frescos.
+                const { error: delErr } = await supabaseClient.from('workout_logs')
+                    .delete()
+                    .eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', dateString);
+                if(delErr) throw delErr;
+
+                // Insertamos la nueva tanda
+                const { error: insErr } = await supabaseClient.from('workout_logs').insert(logs);
+                if(insErr) throw insErr;
                 
                 btn.classList.replace('bg-custom-primary', 'bg-green-600'); btnText.innerText = "¡GUARDADO!";
                 const evoContainer = document.getElementById(`evo-container-${exId}`);
                 if(!evoContainer.classList.contains('hidden')) loadEvolucion(exId, exName, true);
+                
                 setTimeout(() => { btn.classList.replace('bg-green-600', 'bg-custom-primary'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000);
             } catch (e) { 
                 console.error("Error BD:", e);
@@ -494,6 +482,9 @@
             }
         }
 
+        // =========================================================================
+        // MOTOR DE TABLAS Y GRÁFICOS
+        // =========================================================================
         async function loadEvolucion(exId, exName, forceReload = false) {
             const container = document.getElementById(`evo-container-${exId}`);
             const btn = document.getElementById(`btn-evo-${exId}`);
@@ -561,51 +552,53 @@
             } catch(err) { console.error(err); btn.innerText = "ERROR"; setTimeout(() => { btn.innerText = "VER PROGRESO"; }, 2000); }
         }
 
-        // --- FUNCIONES CRUD Y MODALES BLINDADOS ---
+        // --- FUNCIONES CRUD (MODALES) ---
         function promptDeleteLog(exName, rawDate, exId) {
-            try {
-                openModal('modal-confirm-delete');
-                const btn = document.getElementById('btn-confirm-delete');
-                btn.onclick = async () => {
-                    btn.innerText = "Borrando...";
-                    try {
-                        const {error} = await supabaseClient.from('workout_logs')
-                            .delete().eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', rawDate);
-                        if(error) throw error;
-                        closeAllModals(); loadEvolucion(exId, exName, true); 
-                    } catch(e) { alert("Error al borrar: " + e.message); }
-                    finally { btn.innerText = "Sí, eliminar"; }
-                };
-            } catch(e) { alert("Error interno: " + e.message); }
+            openModal('modal-confirm-delete');
+            const btn = document.getElementById('btn-confirm-delete');
+            const msgBox = document.getElementById('delete-error-msg');
+            btn.onclick = async () => {
+                btn.innerText = "Borrando..."; btn.disabled = true; msgBox.classList.add('hidden');
+                try {
+                    const {error} = await supabaseClient.from('workout_logs')
+                        .delete().eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', rawDate);
+                    if(error) throw error;
+                    closeAllModals(); loadEvolucion(exId, exName, true); 
+                } catch(e) { 
+                    msgBox.innerText = "Bloqueado por base de datos: " + e.message; 
+                    msgBox.classList.remove('hidden');
+                } finally { btn.innerText = "Sí, eliminar"; btn.disabled = false; }
+            };
         }
 
         function promptEditLog(exId, exName, dateStr) {
-            try {
-                const dayData = window.currentHistory[exId][dateStr];
-                document.getElementById('edit-log-title').innerText = `Corregir ${dateStr}`;
-                let html = '';
-                dayData.sets.forEach(s => {
-                    html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set}</span><div class="flex items-center gap-2"><input type="number" id="edit-w-${s.id}" value="${s.weight}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">kg</span><span class="text-custom-textMuted mx-1">x</span><input type="number" id="edit-r-${s.id}" value="${s.reps}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">rep</span></div></div>`;
-                });
-                document.getElementById('edit-log-sets-container').innerHTML = html;
-                
-                const btn = document.getElementById('btn-save-edit');
-                btn.onclick = async () => {
-                    btn.innerText = "Actualizando..."; btn.disabled = true;
-                    try {
-                        for(let s of dayData.sets) {
-                            const w = document.getElementById(`edit-w-${s.id}`).value;
-                            const r = document.getElementById(`edit-r-${s.id}`).value;
-                            const {error} = await supabaseClient.from('workout_logs')
-                                .update({ weight: parseFloat(w), reps: parseInt(r) }).eq('id', s.id);
-                            if(error) throw error;
-                        }
-                        closeAllModals(); loadEvolucion(exId, exName, true);
-                    } catch(e) { alert("Error al actualizar: " + e.message); }
-                    finally { btn.innerText = "Actualizar Datos"; btn.disabled = false; }
-                };
-                openModal('modal-edit-log');
-            } catch(e) { alert("Error interno: " + e.message); }
+            const dayData = window.currentHistory[exId][dateStr];
+            document.getElementById('edit-log-title').innerText = `Corregir ${dateStr}`;
+            let html = '';
+            dayData.sets.forEach(s => {
+                html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set}</span><div class="flex items-center gap-2"><input type="number" id="edit-w-${s.id}" value="${s.weight}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">kg</span><span class="text-custom-textMuted mx-1">x</span><input type="number" id="edit-r-${s.id}" value="${s.reps}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">rep</span></div></div>`;
+            });
+            document.getElementById('edit-log-sets-container').innerHTML = html;
+            
+            const btn = document.getElementById('btn-save-edit');
+            const msgBox = document.getElementById('edit-error-msg');
+            btn.onclick = async () => {
+                btn.innerText = "Actualizando..."; btn.disabled = true; msgBox.classList.add('hidden');
+                try {
+                    for(let s of dayData.sets) {
+                        const w = document.getElementById(`edit-w-${s.id}`).value;
+                        const r = document.getElementById(`edit-r-${s.id}`).value;
+                        const {error} = await supabaseClient.from('workout_logs')
+                            .update({ weight: parseFloat(w), reps: parseInt(r) }).eq('id', s.id);
+                        if(error) throw error;
+                    }
+                    closeAllModals(); loadEvolucion(exId, exName, true);
+                } catch(e) { 
+                    msgBox.innerText = "Bloqueado por base de datos: " + e.message; 
+                    msgBox.classList.remove('hidden');
+                } finally { btn.innerText = "Actualizar Datos"; btn.disabled = false; }
+            };
+            openModal('modal-edit-log');
         }
     </script>
 </body>
