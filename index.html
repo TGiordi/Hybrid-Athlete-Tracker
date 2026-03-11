@@ -284,7 +284,7 @@
             setTimeout(typeWriter, 500); 
             if (typeof Chart !== 'undefined') { Chart.defaults.font.family = "'Montserrat', sans-serif"; Chart.defaults.color = '#94A3B8'; }
             
-            // --- EVENT LISTENERS PARA LA TECLA ENTER EN CONTRASEÑAS ---
+            // Event Listeners para la tecla Enter
             document.getElementById('auth-password').addEventListener('keypress', function (e) {
                 if (e.key === 'Enter') handleAuth();
             });
@@ -296,7 +296,6 @@
                 if (window.supabase) {
                     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     
-                    // ESCUDO ANTI-BUGS DE EVENTOS DE SESION (Fix del flujo de reseteo)
                     let isRecovering = false;
                     supabaseClient.auth.onAuthStateChange((event, session) => {
                         if (event === 'PASSWORD_RECOVERY') {
@@ -394,7 +393,6 @@
                 } else {
                     const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
                     if (error) throw error;
-                    // El listener onAuthStateChange se encarga de redirigir
                 }
             } catch (err) {
                 let errorTxt = err.message;
@@ -555,7 +553,6 @@
                 event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white');
                 event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
             } else {
-                // Si se llama por código (no por clic), intentamos resaltar el botón correspondiente
                 document.querySelectorAll('.tab-btn').forEach(b => { 
                     if(b.innerText.toLowerCase() === day.toLowerCase()) {
                         b.classList.add('active'); b.classList.remove('text-custom-textMuted'); b.classList.add('text-white');
@@ -600,9 +597,9 @@
                             </div>`;
                     }
 
-                    // UX MEDIA: Imagen primero, Video después
+                    // UX MEDIA: Imagen primero (con ajuste dinámico w-full h-auto), Video después
                     let mediaHtml = '';
-                    if(ex.has_image && ex.image_url) { mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden bg-[#0d0d0d] border border-custom-border flex justify-center items-center relative aspect-square"><img src="${ex.image_url}" class="absolute inset-0 w-full h-full object-contain z-10" onerror="this.style.display='none';"></div>`; }
+                    if(ex.has_image && ex.image_url) { mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden border border-custom-border w-full"><img src="${ex.image_url}" class="w-full h-auto block" onerror="this.parentElement.style.display='none';"></div>`; }
                     if(ex.has_video && ex.youtube_url) { mediaHtml += `<div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${ex.youtube_url}" frameborder="0" allowfullscreen></iframe></div>`; }
 
                     container.innerHTML += `
