@@ -9,7 +9,6 @@
     
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <script>
@@ -19,13 +18,8 @@
                     fontFamily: { sans: ['Montserrat', 'sans-serif'], },
                     colors: {
                         custom: {
-                            bg: '#0a0a0a',       
-                            card: '#171717',     
-                            border: '#262626',   
-                            primary: '#F54927',  
-                            hover: '#d43e20',    
-                            text: '#F8FAFC',     
-                            textMuted: '#94A3B8' 
+                            bg: '#0a0a0a', card: '#171717', border: '#262626', 
+                            primary: '#F54927', hover: '#d43e20', text: '#F8FAFC', textMuted: '#94A3B8' 
                         }
                     }
                 }
@@ -33,8 +27,7 @@
         }
     </script>
     <style>
-        body { background-color: #0a0a0a; color: #F8FAFC; min-height: 100vh; display: flex; flex-direction: column; }
-        .hidden-view { display: none !important; }
+        body { background-color: #0a0a0a; color: #F8FAFC; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
         .tab-btn.active { border-bottom: 3px solid #F54927; color: white; font-weight: 700; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         .glow-text { text-shadow: 0 0 15px rgba(245, 73, 39, 0.4); }
@@ -65,7 +58,7 @@
         <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95">COMIENZA TU PROGRESO</button>
     </main>
 
-    <main id="view-app" class="hidden-view flex-grow max-w-5xl mx-auto w-full px-4 py-10">
+    <main id="view-app" class="hidden flex-grow max-w-5xl mx-auto w-full px-4 py-10">
         <div class="flex justify-around border-b border-custom-border mb-8 pb-3">
             <button class="tab-btn active px-4 pb-2 text-lg" onclick="changeDay('martes', event)">Martes</button>
             <button class="tab-btn px-4 pb-2 text-lg" onclick="changeDay('jueves', event)">Jueves</button>
@@ -88,13 +81,13 @@
         </div>
     </footer>
 
-    <div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex-col items-center justify-center p-4">
         
-        <div id="modal-auth" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm">
+        <div id="modal-auth" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm relative">
             <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center">Bienvenido Atleta</h2>
             <div class="space-y-4">
-                <input type="email" id="auth-email" placeholder="Email" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary">
-                <input type="password" id="auth-password" placeholder="Contraseña" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary">
+                <input type="email" id="auth-email" placeholder="Email" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary text-white">
+                <input type="password" id="auth-password" placeholder="Contraseña" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary text-white">
                 <button id="btn-auth-action" onclick="handleAuth()" class="w-full bg-custom-primary py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg">Iniciar Sesión</button>
                 <p id="auth-toggle-msg" class="text-center text-xs text-custom-textMuted mt-4">¿No tienes cuenta? <span onclick="toggleAuthMode()" class="text-custom-primary cursor-pointer font-bold underline">Regístrate</span></p>
             </div>
@@ -107,38 +100,25 @@
                 <p>HAT es una herramienta de registro de datos personales. No sustituye el consejo de un profesional de la salud.</p>
                 <p>Al registrarte, aceptas que el uso de la plataforma es bajo tu propio riesgo. HAT no se responsabiliza por lesiones resultantes de una mala ejecución técnica.</p>
             </div>
-            <button onclick="closeAllModals()" class="mt-8 bg-custom-border px-6 py-2 rounded-lg text-xs font-bold">Cerrar</button>
+            <button onclick="closeAllModals()" class="mt-8 bg-custom-border px-6 py-2 rounded-lg text-xs font-bold hover:text-white transition-colors">Cerrar</button>
         </div>
 
         <div id="modal-privacy" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-2xl">
             <h2 class="text-xl font-bold mb-4 text-custom-primary">Privacidad</h2>
             <p class="text-sm text-custom-textMuted leading-relaxed">Tus datos de carga y email están encriptados y protegidos mediante la infraestructura de Supabase. No compartimos información con terceros.</p>
-            <button onclick="closeAllModals()" class="mt-8 bg-custom-border px-6 py-2 rounded-lg text-xs font-bold">Cerrar</button>
+            <button onclick="closeAllModals()" class="mt-8 bg-custom-border px-6 py-2 rounded-lg text-xs font-bold hover:text-white transition-colors">Cerrar</button>
         </div>
 
         <div id="modal-support" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm">
             <h2 class="text-xl font-bold mb-4 text-custom-primary">Soporte</h2>
             <p class="text-sm text-custom-textMuted mb-6">¿Necesitás ayuda con tu cuenta? Contactanos.</p>
-            <input type="text" placeholder="Asunto" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl mb-3 outline-none">
-            <textarea placeholder="Tu mensaje..." class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl mb-4 h-32 outline-none"></textarea>
-            <button onclick="closeAllModals()" class="w-full bg-custom-primary py-3 rounded-xl font-bold">Enviar</button>
+            <input type="text" placeholder="Asunto" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl mb-3 outline-none text-white">
+            <textarea placeholder="Tu mensaje..." class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl mb-4 h-32 outline-none text-white resize-none"></textarea>
+            <button onclick="closeAllModals()" class="w-full bg-custom-primary py-3 rounded-xl font-bold hover:bg-custom-hover">Enviar y Cerrar</button>
         </div>
-
     </div>
 
     <script>
-        // CONFIGURACIÓN BACKEND
-        const SUPABASE_URL = "https://kqmkseiwgdzwzmtqdcxk.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbWtzZWl3Z2R6d3ptdHFkY3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzQ0NTMsImV4cCI6MjA4ODgxMDQ1M30.b3kQ8JSYaMCrRdgxoyek6xXF4Hhv_9H8edEN4c7oF8U";
-        
-        let supabase;
-        try {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } catch(e) { console.error("Error al conectar con Supabase"); }
-
-        let currentUserId = null;
-        let isSignUp = false;
-
         const routine = {
             martes: [
                 { id: 'm1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' },
@@ -153,38 +133,56 @@
             ]
         };
 
-        // --- FUNCIONES VISUALES (BLINDADAS) ---
+        let isSignUp = false;
+
+        // Función para abrir Modales
         function openModal(modalId) {
-            document.getElementById('modal-overlay').style.display = 'flex';
-            document.querySelectorAll('.modal-content').forEach(m => m.style.display = 'none');
-            document.getElementById(modalId).style.display = 'block';
-            document.body.style.overflow = 'hidden';
+            const overlay = document.getElementById('modal-overlay');
+            const modals = document.querySelectorAll('.modal-content');
+            
+            // Ocultar todos los modales internos
+            modals.forEach(m => m.classList.add('hidden'));
+            
+            // Mostrar el overlay (fondo negro)
+            overlay.classList.remove('hidden');
+            overlay.classList.add('flex');
+            
+            // Mostrar el modal específico
+            document.getElementById(modalId).classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; // Bloquear scroll de fondo
         }
 
+        // Función para cerrar Modales
         function closeAllModals() {
-            document.getElementById('modal-overlay').style.display = 'none';
-            document.body.style.overflow = 'auto';
+            const overlay = document.getElementById('modal-overlay');
+            overlay.classList.add('hidden');
+            overlay.classList.remove('flex');
+            document.body.style.overflow = 'auto'; // Devolver scroll
         }
 
+        // Función para cambiar textos de Login/Registro
         function toggleAuthMode() {
             isSignUp = !isSignUp;
             document.getElementById('auth-title').innerText = isSignUp ? "Crea tu Cuenta" : "Bienvenido Atleta";
             document.getElementById('btn-auth-action').innerText = isSignUp ? "Registrarme" : "Iniciar Sesión";
-            document.getElementById('auth-toggle-msg').innerHTML = isSignUp ? "¿Ya tenés cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold'>Ingresá</span>" : "¿No tenés cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold font-bold'>Registrate</span>";
+            
+            const msgHtml = isSignUp 
+                ? "¿Ya tenés cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold underline'>Ingresá</span>" 
+                : "¿No tenés cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold underline'>Registrate</span>";
+            
+            document.getElementById('auth-toggle-msg').innerHTML = msgHtml;
         }
 
-        // --- LÓGICA APP ---
+        // Función para cambiar de día y dibujar ejercicios
         function changeDay(day, event) {
             if(event) {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
                 event.target.classList.add('active');
             }
-            renderExercises(day);
-        }
 
-        function renderExercises(day) {
             const container = document.getElementById('exercise-container');
             container.innerHTML = '';
+
             routine[day].forEach(ex => {
                 let setsHtml = '';
                 for(let i=1; i<=ex.sets; i++) {
@@ -193,11 +191,18 @@
                             <span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span>
                             <input type="number" id="peso-${ex.id}-${i}" placeholder="Kg" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary">
                             <input type="number" id="reps-${ex.id}-${i}" placeholder="Rep" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary">
-                            <input type="checkbox" id="check-${ex.id}-${i}" class="w-6 h-6 accent-custom-primary">
+                            <input type="checkbox" id="check-${ex.id}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer">
                         </div>`;
                 }
+
                 container.innerHTML += `
                     <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl">
+                        <div class="mb-5 bg-[#0d0d0d] rounded-xl overflow-hidden flex flex-col justify-center items-center border border-custom-border relative aspect-square">
+                            <img src="gifs/${ex.id}.gif" class="absolute inset-0 w-full h-full object-contain z-10" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div style="display: none;" class="flex-col items-center justify-center p-4 text-center z-0 w-full h-full bg-[#0d0d0d]">
+                                <p class="text-xs text-custom-textMuted font-medium">GIF pendiente de subir</p>
+                            </div>
+                        </div>
                         <h3 class="text-xl font-bold mb-4 text-white uppercase italic tracking-tighter">${ex.name}</h3>
                         <div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border">
                             <iframe class="w-full h-full" src="https://www.youtube.com/embed/${ex.ytId}" frameborder="0" allowfullscreen></iframe>
@@ -208,70 +213,110 @@
             });
         }
 
-        // --- LÓGICA SUPABASE ---
+        // Aseguramos que el overlay se cierre si haces clic afuera del cuadro
+        document.getElementById('modal-overlay').addEventListener('click', (e) => {
+            if(e.target.id === 'modal-overlay') closeAllModals();
+        });
+    </script>
+
+
+    <script>
+        const SUPABASE_URL = "https://kqmkseiwgdzwzmtqdcxk.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbWtzZWl3Z2R6d3ptdHFkY3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzQ0NTMsImV4cCI6MjA4ODgxMDQ1M30.b3kQ8JSYaMCrRdgxoyek6xXF4Hhv_9H8edEN4c7oF8U";
+        
+        let supabase = null;
+        let currentUserId = null;
+
+        // Inicialización segura de Supabase
+        try {
+            if (window.supabase) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                checkSession(); // Comprobar si ya está logueado
+            } else {
+                console.warn("Supabase no cargó. Modo offline activado.");
+            }
+        } catch(e) { console.error("Error al iniciar DB", e); }
+
         async function handleAuth() {
+            if (!supabase) return alert("Fallo en la conexión al servidor. Intentá en un momento.");
+            
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
             const btn = document.getElementById('btn-auth-action');
-            if(!email || !password) return alert("Completá los campos");
+            
+            if(!email || !password) return alert("Completá todos los campos");
             btn.innerText = "Procesando...";
 
             try {
                 if (isSignUp) {
                     const { error } = await supabase.auth.signUp({ email, password });
                     if (error) throw error;
-                    alert("¡Confirmá tu registro en tu email!");
+                    alert("¡Cuenta creada! Revisá tu mail para confirmar.");
                 } else {
                     const { error } = await supabase.auth.signInWithPassword({ email, password });
                     if (error) throw error;
-                    checkSession();
+                    checkSession(); // Si entra bien, cambia la pantalla
                 }
-            } catch (err) { alert(err.message); }
-            finally { btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión"; }
-        }
-
-        async function checkSession() {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-                currentUserId = session.user.id;
-                document.getElementById('view-landing').classList.add('hidden-view');
-                document.getElementById('view-app').classList.remove('hidden-view');
-                document.getElementById('auth-controls').classList.add('hidden');
-                document.getElementById('user-controls').classList.remove('hidden');
-                document.getElementById('user-display').innerText = session.user.email;
-                closeAllModals();
-                renderExercises('martes');
+            } catch (err) { 
+                alert(err.message); 
+            } finally { 
+                btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión"; 
             }
         }
 
+        async function checkSession() {
+            if (!supabase) return;
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    currentUserId = session.user.id;
+                    
+                    // Cambios visuales al estar logueado
+                    document.getElementById('view-landing').classList.add('hidden');
+                    document.getElementById('view-app').classList.remove('hidden');
+                    document.getElementById('auth-controls').classList.add('hidden');
+                    document.getElementById('user-controls').classList.remove('hidden');
+                    document.getElementById('user-controls').classList.add('flex');
+                    document.getElementById('user-display').innerText = session.user.email;
+                    
+                    closeAllModals();
+                    changeDay('martes'); // Dibuja la rutina
+                }
+            } catch(e) { console.error(e); }
+        }
+
         async function handleSignOut() {
-            await supabase.auth.signOut();
+            if (supabase) await supabase.auth.signOut();
             location.reload();
         }
 
         async function saveToCloud(exId, totalSets, exName) {
+            if (!supabase) return alert("Modo offline: No se puede guardar en la nube.");
+            
             let logs = [];
             for(let i=1; i<=totalSets; i++) {
                 const checked = document.getElementById(`check-${exId}-${i}`).checked;
                 const weight = document.getElementById(`peso-${exId}-${i}`).value;
                 const reps = document.getElementById(`reps-${exId}-${i}`).value;
+                
                 if(checked && weight && reps) {
-                    logs.push({ user_id: currentUserId, exercise_name: exName, weight: parseFloat(weight), reps: parseInt(reps), set_number: i });
+                    logs.push({ 
+                        user_id: currentUserId, 
+                        exercise_name: exName, 
+                        weight: parseFloat(weight), 
+                        reps: parseInt(reps), 
+                        set_number: i 
+                    });
                 }
             }
-            if(logs.length === 0) return alert("Marcá al menos una serie completa");
+            if(logs.length === 0) return alert("Marcá al menos una serie con datos completos.");
+            
             try {
                 const { error } = await supabase.from('workout_logs').insert(logs);
                 if(error) throw error;
-                alert("¡Datos sincronizados!");
+                alert("¡Sesión guardada exitosamente!");
             } catch (e) { alert("Error: " + e.message); }
         }
-
-        // Inicialización
-        document.addEventListener('DOMContentLoaded', checkSession);
-        document.getElementById('modal-overlay').addEventListener('click', (e) => {
-            if(e.target.id === 'modal-overlay') closeAllModals();
-        });
     </script>
 </body>
 </html>
