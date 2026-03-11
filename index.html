@@ -4,83 +4,137 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HAT | Hybrid Athlete Tracker</title>
+    
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F54927'/><path d='M20 30h15v40H20zM65 30h15v40H65zM35 45h30v10H35z' fill='%23ffffff'/></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Montserrat', 'sans-serif'] },
-                    colors: { custom: { bg: '#0a0a0a', card: '#171717', border: '#262626', primary: '#F54927', hover: '#d43e20', text: '#F8FAFC', textMuted: '#94A3B8' } }
+                    fontFamily: { sans: ['Montserrat', 'sans-serif'], },
+                    colors: {
+                        custom: {
+                            bg: '#0a0a0a',       
+                            card: '#171717',     
+                            border: '#262626',   
+                            primary: '#F54927',  
+                            hover: '#d43e20',    
+                            text: '#F8FAFC',     
+                            textMuted: '#94A3B8' 
+                        }
+                    }
                 }
             }
         }
     </script>
     <style>
-        body { background-color: #0a0a0a; color: #F8FAFC; min-height: 100vh; overflow-x: hidden; }
+        body { background-color: #0a0a0a; color: #F8FAFC; min-height: 100vh; display: flex; flex-direction: column; }
         .hidden-view { display: none !important; }
         .tab-btn.active { border-bottom: 3px solid #F54927; color: white; font-weight: 700; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        .glow-text { text-shadow: 0 0 15px rgba(245, 73, 39, 0.4); }
     </style>
 </head>
-<body class="font-sans flex flex-col">
+<body class="font-sans">
 
     <nav class="border-b border-custom-border bg-custom-bg/90 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
-            <div class="flex items-center gap-2 cursor-pointer" onclick="location.reload()">
-                <div class="bg-custom-primary p-1.5 rounded-lg font-black text-xs text-white">HAT</div>
-                <span class="font-bold tracking-tighter text-xl">Hybrid Athlete</span>
+            <div class="flex items-center gap-3 cursor-pointer" onclick="location.reload()">
+                <svg class="w-8 h-8 text-custom-primary" viewBox="0 0 100 100" fill="currentColor"><rect width="100" height="100" rx="20"/><path d="M20 30h15v40H20zM65 30h15v40H65zM35 45h30v10H35z" fill="#0a0a0a"/></svg>
+                <span class="font-bold text-xl tracking-tighter">Hybrid Athlete <span class="text-custom-primary">Tracker</span></span>
             </div>
-            <div id="auth-buttons">
+            <div id="auth-controls">
                 <button onclick="openModal('modal-auth')" class="text-sm font-semibold border border-custom-border px-4 py-2 rounded-lg hover:border-custom-primary transition-all">Ingresar</button>
             </div>
-            <div id="user-menu" class="hidden flex items-center gap-4">
-                <span id="user-email-display" class="text-xs text-custom-textMuted hidden md:block"></span>
-                <button onclick="handleSignOut()" class="text-xs font-bold text-custom-primary border border-custom-primary/20 px-3 py-1.5 rounded-md">Salir</button>
+            <div id="user-controls" class="hidden flex items-center gap-4">
+                <span id="user-display" class="text-xs text-custom-textMuted hidden sm:block font-medium"></span>
+                <button onclick="handleSignOut()" class="text-xs font-bold text-custom-primary border border-custom-primary/20 px-3 py-1.5 rounded-md hover:bg-custom-primary/10 transition-all">Salir</button>
             </div>
         </div>
     </nav>
 
     <main id="view-landing" class="flex-grow flex flex-col items-center justify-center text-center px-4 py-20">
-        <h1 class="text-5xl md:text-7xl font-black mb-6 italic tracking-tight uppercase leading-none">Entrena <span class="text-custom-primary">Híbrido</span></h1>
-        <p class="text-custom-textMuted max-w-lg mb-10 text-lg">La plataforma definitiva para atletas que dominan el gimnasio y el campo de juego.</p>
-        <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-lg transition-transform hover:scale-105 active:scale-95">COMIENZA TU PROGRESO</button>
+        <div class="bg-custom-primary/10 border border-custom-primary/20 text-custom-primary text-[10px] font-extrabold px-3 py-1 rounded-full mb-6 tracking-[0.2em] uppercase">Versión 2.0 Cloud</div>
+        <h1 class="text-5xl md:text-7xl font-black mb-6 italic tracking-tight uppercase leading-none">Entrena <span class="text-custom-primary glow-text">Híbrido</span></h1>
+        <p class="text-custom-textMuted max-w-lg mb-10 text-lg leading-relaxed">La plataforma de ingeniería deportiva para quienes dominan el gimnasio y el campo de juego.</p>
+        <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95">COMIENZA TU PROGRESO</button>
     </main>
 
     <main id="view-app" class="hidden-view flex-grow max-w-5xl mx-auto w-full px-4 py-10">
         <div class="flex justify-around border-b border-custom-border mb-8 pb-3">
-            <button class="tab-btn active px-4 pb-2" onclick="changeDay('martes', event)">Martes</button>
-            <button class="tab-btn px-4 pb-2" onclick="changeDay('jueves', event)">Jueves</button>
-            <button class="tab-btn px-4 pb-2" onclick="changeDay('sabado', event)">Sábado</button>
+            <button class="tab-btn active px-4 pb-2 text-lg" onclick="changeDay('martes', event)">Martes</button>
+            <button class="tab-btn px-4 pb-2 text-lg" onclick="changeDay('jueves', event)">Jueves</button>
+            <button class="tab-btn px-4 pb-2 text-lg" onclick="changeDay('sabado', event)">Sábado</button>
         </div>
         <div id="exercise-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
     </main>
 
-    <div id="modal-auth" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm shadow-2xl">
+    <footer class="border-t border-custom-border bg-custom-card mt-auto py-8">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
+            <div class="flex items-center gap-2">
+                <span class="font-black text-xl tracking-tighter">HAT</span>
+                <span class="text-custom-textMuted text-xs font-medium">© 2026</span>
+            </div>
+            <div class="flex gap-8 text-xs font-bold text-custom-textMuted uppercase tracking-widest">
+                <button onclick="openModal('modal-terms')" class="hover:text-custom-primary transition-colors">Términos</button>
+                <button onclick="openModal('modal-privacy')" class="hover:text-custom-primary transition-colors">Privacidad</button>
+                <button onclick="openModal('modal-support')" class="hover:text-custom-primary transition-colors">Soporte</button>
+            </div>
+        </div>
+    </footer>
+
+    <div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+        
+        <div id="modal-auth" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm">
             <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center">Bienvenido Atleta</h2>
             <div class="space-y-4">
-                <input type="email" id="auth-email" placeholder="Tu Email" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary">
+                <input type="email" id="auth-email" placeholder="Email" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary">
                 <input type="password" id="auth-password" placeholder="Contraseña" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary">
-                <button id="btn-auth-action" onclick="handleAuth()" class="w-full bg-custom-primary py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors">Iniciar Sesión</button>
-                <p id="auth-toggle-msg" class="text-center text-xs text-custom-textMuted mt-4">¿No tienes cuenta? <span onclick="toggleAuthMode()" class="text-custom-primary cursor-pointer font-bold">Regístrate</span></p>
+                <button id="btn-auth-action" onclick="handleAuth()" class="w-full bg-custom-primary py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg">Iniciar Sesión</button>
+                <p id="auth-toggle-msg" class="text-center text-xs text-custom-textMuted mt-4">¿No tienes cuenta? <span onclick="toggleAuthMode()" class="text-custom-primary cursor-pointer font-bold underline">Regístrate</span></p>
             </div>
-            <button onclick="closeModal('modal-auth')" class="mt-6 w-full text-xs text-custom-textMuted uppercase tracking-widest text-center">Cerrar</button>
+            <button onclick="closeAllModals()" class="mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold">Cerrar</button>
         </div>
+
+        <div id="modal-terms" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <h2 class="text-xl font-bold mb-4 text-custom-primary">Términos y Condiciones</h2>
+            <div class="text-sm text-custom-textMuted space-y-4 leading-relaxed">
+                <p>HAT es una herramienta de registro de datos personales. No sustituye el consejo de un profesional de la salud.</p>
+                <p>Al registrarte, aceptas que el uso de la plataforma es bajo tu propio riesgo. HAT no se responsabiliza por lesiones resultantes de una mala ejecución técnica.</p>
+            </div>
+            <button onclick="closeAllModals()" class="mt-8 bg-custom-border px-6 py-2 rounded-lg text-xs font-bold">Cerrar</button>
+        </div>
+
+        <div id="modal-privacy" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-2xl">
+            <h2 class="text-xl font-bold mb-4 text-custom-primary">Privacidad</h2>
+            <p class="text-sm text-custom-textMuted leading-relaxed">Tus datos de carga y email están encriptados y protegidos mediante la infraestructura de Supabase. No compartimos información con terceros.</p>
+            <button onclick="closeAllModals()" class="mt-8 bg-custom-border px-6 py-2 rounded-lg text-xs font-bold">Cerrar</button>
+        </div>
+
+        <div id="modal-support" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm">
+            <h2 class="text-xl font-bold mb-4 text-custom-primary">Soporte</h2>
+            <p class="text-sm text-custom-textMuted mb-6">¿Necesitás ayuda con tu cuenta? Contactanos.</p>
+            <input type="text" placeholder="Asunto" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl mb-3 outline-none">
+            <textarea placeholder="Tu mensaje..." class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl mb-4 h-32 outline-none"></textarea>
+            <button onclick="closeAllModals()" class="w-full bg-custom-primary py-3 rounded-xl font-bold">Enviar</button>
+        </div>
+
     </div>
 
     <script>
-        // CONFIGURACIÓN
+        // CONFIGURACIÓN BACKEND
         const SUPABASE_URL = "https://kqmkseiwgdzwzmtqdcxk.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbWtzZWl3Z2R6d3ptdHFkY3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzQ0NTMsImV4cCI6MjA4ODgxMDQ1M30.b3kQ8JSYaMCrRdgxoyek6xXF4Hhv_9H8edEN4c7oF8U";
         
         let supabase;
         try {
-            supabase = typeof supabase !== 'undefined' ? supabase : window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        } catch(e) { console.error("Supabase failed to load", e); }
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        } catch(e) { console.error("Error al conectar con Supabase"); }
 
         let currentUserId = null;
         let isSignUp = false;
@@ -99,45 +153,81 @@
             ]
         };
 
-        // --- FUNCIONES CORE ---
-        function openModal(id) {
-            document.getElementById(id).style.display = 'flex';
+        // --- FUNCIONES VISUALES (BLINDADAS) ---
+        function openModal(modalId) {
+            document.getElementById('modal-overlay').style.display = 'flex';
+            document.querySelectorAll('.modal-content').forEach(m => m.style.display = 'none');
+            document.getElementById(modalId).style.display = 'block';
+            document.body.style.overflow = 'hidden';
         }
 
-        function closeModal(id) {
-            document.getElementById(id).style.display = 'none';
+        function closeAllModals() {
+            document.getElementById('modal-overlay').style.display = 'none';
+            document.body.style.overflow = 'auto';
         }
 
         function toggleAuthMode() {
             isSignUp = !isSignUp;
-            document.getElementById('auth-title').innerText = isSignUp ? "Crea tu Perfil" : "Bienvenido Atleta";
+            document.getElementById('auth-title').innerText = isSignUp ? "Crea tu Cuenta" : "Bienvenido Atleta";
             document.getElementById('btn-auth-action').innerText = isSignUp ? "Registrarme" : "Iniciar Sesión";
-            document.getElementById('auth-toggle-msg').innerHTML = isSignUp ? "¿Ya tienes cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold'>Ingresa</span>" : "¿No tienes cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold'>Regístrate</span>";
+            document.getElementById('auth-toggle-msg').innerHTML = isSignUp ? "¿Ya tenés cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold'>Ingresá</span>" : "¿No tenés cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold font-bold'>Registrate</span>";
         }
 
+        // --- LÓGICA APP ---
+        function changeDay(day, event) {
+            if(event) {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                event.target.classList.add('active');
+            }
+            renderExercises(day);
+        }
+
+        function renderExercises(day) {
+            const container = document.getElementById('exercise-container');
+            container.innerHTML = '';
+            routine[day].forEach(ex => {
+                let setsHtml = '';
+                for(let i=1; i<=ex.sets; i++) {
+                    setsHtml += `
+                        <div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm">
+                            <span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span>
+                            <input type="number" id="peso-${ex.id}-${i}" placeholder="Kg" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary">
+                            <input type="number" id="reps-${ex.id}-${i}" placeholder="Rep" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary">
+                            <input type="checkbox" id="check-${ex.id}-${i}" class="w-6 h-6 accent-custom-primary">
+                        </div>`;
+                }
+                container.innerHTML += `
+                    <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl">
+                        <h3 class="text-xl font-bold mb-4 text-white uppercase italic tracking-tighter">${ex.name}</h3>
+                        <div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border">
+                            <iframe class="w-full h-full" src="https://www.youtube.com/embed/${ex.ytId}" frameborder="0" allowfullscreen></iframe>
+                        </div>
+                        ${setsHtml}
+                        <button onclick="saveToCloud('${ex.id}', ${ex.sets}, '${ex.name}')" class="w-full bg-custom-primary mt-4 py-4 rounded-xl font-extrabold text-white tracking-widest hover:bg-custom-hover transition-all active:scale-95 shadow-lg">GUARDAR SESIÓN</button>
+                    </div>`;
+            });
+        }
+
+        // --- LÓGICA SUPABASE ---
         async function handleAuth() {
             const email = document.getElementById('auth-email').value;
             const password = document.getElementById('auth-password').value;
             const btn = document.getElementById('btn-auth-action');
-            btn.disabled = true;
+            if(!email || !password) return alert("Completá los campos");
             btn.innerText = "Procesando...";
 
             try {
                 if (isSignUp) {
                     const { error } = await supabase.auth.signUp({ email, password });
                     if (error) throw error;
-                    alert("¡Revisa tu email para confirmar el registro!");
+                    alert("¡Confirmá tu registro en tu email!");
                 } else {
                     const { error } = await supabase.auth.signInWithPassword({ email, password });
                     if (error) throw error;
                     checkSession();
                 }
-            } catch (error) {
-                alert(error.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión";
-            }
+            } catch (err) { alert(err.message); }
+            finally { btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión"; }
         }
 
         async function checkSession() {
@@ -146,11 +236,11 @@
                 currentUserId = session.user.id;
                 document.getElementById('view-landing').classList.add('hidden-view');
                 document.getElementById('view-app').classList.remove('hidden-view');
-                document.getElementById('auth-buttons').classList.add('hidden');
-                document.getElementById('user-menu').classList.remove('hidden');
-                document.getElementById('user-email-display').innerText = session.user.email;
-                closeModal('modal-auth');
-                changeDay('martes');
+                document.getElementById('auth-controls').classList.add('hidden');
+                document.getElementById('user-controls').classList.remove('hidden');
+                document.getElementById('user-display').innerText = session.user.email;
+                closeAllModals();
+                renderExercises('martes');
             }
         }
 
@@ -159,69 +249,29 @@
             location.reload();
         }
 
-        function changeDay(day, event) {
-            if(event) {
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                event.target.classList.add('active');
-            }
-
-            const container = document.getElementById('exercise-container');
-            container.innerHTML = '';
-
-            routine[day].forEach(ex => {
-                let setsHtml = '';
-                for(let i=1; i<=ex.sets; i++) {
-                    setsHtml += `
-                        <div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm">
-                            <span class="w-16 text-xs font-medium text-custom-textMuted">Serie ${i}</span>
-                            <input type="number" id="peso-${ex.id}-${i}" placeholder="Kg" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-semibold outline-none focus:border-custom-primary">
-                            <input type="number" id="reps-${ex.id}-${i}" placeholder="Rep" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-semibold outline-none focus:border-custom-primary">
-                            <input type="checkbox" id="check-${ex.id}-${i}" class="w-6 h-6 accent-custom-primary">
-                        </div>
-                    `;
-                }
-
-                container.innerHTML += `
-                    <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-lg">
-                        <h3 class="text-xl font-bold mb-4 text-white">${ex.name}</h3>
-                        <div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black">
-                            <iframe class="w-full h-full" src="https://www.youtube.com/embed/${ex.ytId}" frameborder="0" allowfullscreen></iframe>
-                        </div>
-                        ${setsHtml}
-                        <button onclick="saveToCloud('${ex.id}', ${ex.sets}, '${ex.name}')" class="w-full bg-custom-primary mt-4 py-4 rounded-xl font-bold hover:bg-custom-hover transition-all transform active:scale-95 shadow-md">GUARDAR PROGRESO</button>
-                    </div>
-                `;
-            });
-        }
-
         async function saveToCloud(exId, totalSets, exName) {
             let logs = [];
             for(let i=1; i<=totalSets; i++) {
                 const checked = document.getElementById(`check-${exId}-${i}`).checked;
                 const weight = document.getElementById(`peso-${exId}-${i}`).value;
                 const reps = document.getElementById(`reps-${exId}-${i}`).value;
-
                 if(checked && weight && reps) {
-                    logs.push({
-                        user_id: currentUserId,
-                        exercise_name: exName,
-                        weight: parseFloat(weight),
-                        reps: parseInt(reps),
-                        set_number: i
-                    });
+                    logs.push({ user_id: currentUserId, exercise_name: exName, weight: parseFloat(weight), reps: parseInt(reps), set_number: i });
                 }
             }
-
-            if(logs.length === 0) return alert("Marca al menos una serie completa con peso y reps.");
-
+            if(logs.length === 0) return alert("Marcá al menos una serie completa");
             try {
                 const { error } = await supabase.from('workout_logs').insert(logs);
                 if(error) throw error;
-                alert("¡Progresos sincronizados con la nube!");
-            } catch (e) { alert("Error al guardar: " + e.message); }
+                alert("¡Datos sincronizados!");
+            } catch (e) { alert("Error: " + e.message); }
         }
 
+        // Inicialización
         document.addEventListener('DOMContentLoaded', checkSession);
+        document.getElementById('modal-overlay').addEventListener('click', (e) => {
+            if(e.target.id === 'modal-overlay') closeAllModals();
+        });
     </script>
 </body>
 </html>
