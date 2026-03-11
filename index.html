@@ -6,7 +6,7 @@
     <title>HAT | Hybrid Athlete Tracker</title>
     
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%23F54927'/><path d='M20 30h15v40H20zM65 30h15v40H65zM35 45h30v10H35z' fill='%23ffffff'/></svg>">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
@@ -28,6 +28,13 @@
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
         
+        /* Solución para el fondo azul/blanco del autocompletado en navegadores */
+        input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #171717 inset !important;
+            -webkit-text-fill-color: white !important;
+            transition: background-color 5000s ease-in-out 0s;
+        }
+
         .custom-scroll::-webkit-scrollbar { width: 6px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
@@ -35,9 +42,8 @@
         #modal-auth { transition: background-color 0.4s ease, border-color 0.4s ease; }
 
         /* ========================================== */
-        /* ANIMACIONES DE ENTRADA Y REFLEJO MEJORADO  */
+        /* ANIMACIONES Y REFLEJO ORGÁNICO             */
         /* ========================================== */
-        
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
@@ -46,28 +52,20 @@
             animation: fadeInUp 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        .title-wrapper {
-            position: relative;
-            display: inline-block;
-            overflow: hidden;
-            padding-right: 10px; /* Evita recortes del brillo en cursiva */
+        /* Reflejo de luz solo por dentro de la letra */
+        .glow-text {
+            background: linear-gradient(120deg, #F54927 0%, #F54927 40%, #ffffff 50%, #F54927 60%, #F54927 100%);
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: textShine 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 8px rgba(245, 73, 39, 0.3)); /* Brillo suave exterior */
+            animation-delay: 1s;
         }
-        
-        .title-wrapper::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 40%;
-            height: 100%;
-            background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%);
-            transform: skewX(-20deg);
-            animation: lightSweep 2.5s ease-in-out forwards;
-            animation-delay: 0.8s; /* Espera a que termine de subir */
-        }
-        @keyframes lightSweep {
-            0% { left: -100%; }
-            100% { left: 200%; }
+        @keyframes textShine {
+            0% { background-position: 200% center; }
+            100% { background-position: -200% center; }
         }
 
         .typewriter-cursor {
@@ -76,8 +74,6 @@
             padding-right: 4px;
         }
         @keyframes blink { 50% { border-color: transparent; } }
-        
-        .glow-text { text-shadow: 0 0 20px rgba(245, 73, 39, 0.4); }
     </style>
 </head>
 <body class="font-sans">
@@ -102,15 +98,15 @@
         <div class="animate-title-entrance flex flex-col items-center w-full" style="opacity: 0;">
             <div class="bg-custom-primary/10 border border-custom-primary/20 text-custom-primary text-[10px] font-extrabold px-3 py-1 rounded-full mb-6 tracking-[0.2em] uppercase">Versión 2.0 Cloud</div>
             
-            <h1 class="text-5xl md:text-7xl font-black mb-6 italic tracking-tight uppercase leading-none title-wrapper text-center">
-                Entrena <span class="text-custom-primary glow-text relative z-10">Híbrido</span>
+            <h1 class="text-5xl md:text-7xl font-black mb-6 italic tracking-tight uppercase leading-none text-center">
+                Entrena <span class="glow-text">Híbrido</span>
             </h1>
             
-            <p class="text-custom-textMuted max-w-lg mb-10 text-lg leading-relaxed h-[60px] md:h-[30px] mx-auto text-center">
+            <p class="text-custom-textMuted max-w-lg mb-10 text-lg leading-relaxed h-[60px] md:h-[30px] mx-auto text-center font-medium">
                 <span id="typewriter-text" class="typewriter-cursor"></span>
             </p>
             
-            <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95 mt-4">
+            <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95 mt-4 text-white">
                 COMIENZA TU PROGRESO
             </button>
         </div>
@@ -144,34 +140,34 @@
         <div id="modal-auth" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm relative shadow-2xl">
             <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center text-white transition-colors">Bienvenido Atleta</h2>
             
-            <div id="auth-message" class="hidden text-center text-sm font-semibold mb-4 px-3 py-2 rounded-lg"></div>
+            <div id="auth-message" class="hidden text-center text-sm font-bold mb-4 px-3 py-3 rounded-lg border border-transparent"></div>
 
             <div class="space-y-4">
                 <input type="email" id="auth-email" placeholder="Email" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary text-white transition-all">
                 
                 <div class="relative w-full">
                     <input type="password" id="auth-password" placeholder="Contraseña (mín. 6)" class="w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white transition-all">
-                    <button type="button" onclick="togglePasswordVisibility('auth-password', 'eye-icon')" class="absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer">
+                    <button type="button" onclick="togglePasswordVisibility('auth-password', 'eye-icon')" id="eye-btn" class="absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer">
                         <svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
                     </button>
                 </div>
 
-                <div id="forgot-password-container" class="text-right">
-                    <span onclick="handleResetPassword()" class="text-xs text-custom-textMuted hover:text-custom-primary cursor-pointer transition-colors font-medium">¿Olvidaste tu contraseña?</span>
+                <div id="forgot-password-container" class="text-right transition-opacity">
+                    <span onclick="handleResetPassword()" class="text-xs text-custom-textMuted hover:text-custom-primary cursor-pointer transition-colors font-medium underline">¿Olvidaste tu contraseña?</span>
                 </div>
 
                 <button id="btn-auth-action" onclick="handleAuth()" class="w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg">Iniciar Sesión</button>
-                <p id="auth-toggle-msg" class="text-center text-xs text-custom-textMuted mt-4 transition-colors">¿No tenés cuenta? <span onclick="toggleAuthMode()" class="text-custom-primary cursor-pointer font-bold underline">Registrate acá</span></p>
+                <p id="auth-toggle-msg" class="text-center text-sm font-medium mt-4 transition-colors text-custom-textMuted">¿No tenés cuenta? <br><span onclick="toggleAuthMode()" class="text-custom-primary cursor-pointer font-bold underline mt-1 inline-block">Registrate gratis acá</span></p>
             </div>
-            <button onclick="closeAllModals()" class="mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cerrar</button>
+            <button onclick="closeAllModals()" id="close-auth-btn" class="mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cerrar</button>
         </div>
 
         <div id="modal-new-pwd" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm relative shadow-2xl">
             <h2 class="text-2xl font-bold mb-6 text-center text-white">Nueva Contraseña</h2>
-            <div id="new-pwd-message" class="hidden text-center text-sm font-semibold mb-4 px-3 py-2 rounded-lg bg-red-500/10 text-red-500"></div>
+            <div id="new-pwd-message" class="hidden text-center text-sm font-semibold mb-4 px-3 py-2 rounded-lg bg-[#171717] border border-[#262626] text-red-500"></div>
             
             <div class="relative w-full mb-6">
-                <input type="password" id="new-password-input" placeholder="Tu nueva contraseña" class="w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white">
+                <input type="password" id="new-password-input" placeholder="Escribí tu nueva contraseña" class="w-full bg-[#171717] border border-[#262626] p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white">
                 <button type="button" onclick="togglePasswordVisibility('new-password-input', 'eye-icon-new')" class="absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer">
                     <svg id="eye-icon-new" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
                 </button>
@@ -230,48 +226,52 @@
             try {
                 if (window.supabase) {
                     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                    
-                    // ESCUCHADOR DE RUTAS (Verifica si el usuario viene de "Recuperar clave")
-                    if(window.location.hash.includes('type=recovery')) {
-                        openModal('modal-new-pwd');
-                    } else {
-                        checkSession(); 
-                    }
+                    if(window.location.hash.includes('type=recovery')) openModal('modal-new-pwd');
+                    else checkSession(); 
                 }
             } catch(e) { console.error("Error", e); }
         });
 
-        // --- UI ---
+        // --- UI Y CONTRASTES CORREGIDOS ---
         function updateAuthUI() {
             const modal = document.getElementById('modal-auth');
             const title = document.getElementById('auth-title');
             const btn = document.getElementById('btn-auth-action');
             const toggleMsg = document.getElementById('auth-toggle-msg');
+            const closeBtn = document.getElementById('close-auth-btn');
             const eyeBtn = document.getElementById('eye-btn');
             const forgotPass = document.getElementById('forgot-password-container');
             const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
             
             if(isSignUp) {
+                // REGISTRO (Fondo naranja, controles gris oscuro #171717)
                 modal.classList.replace('bg-custom-card', 'bg-custom-primary');
                 modal.classList.replace('border-custom-border', 'border-[#d43e20]');
                 title.innerText = "Crear Nueva Cuenta";
-                inputs.forEach(inp => { inp.className = "w-full bg-black/10 border border-[#171717] p-3 pr-12 rounded-xl outline-none focus:border-[#171717] text-white placeholder-white shadow-inner transition-all"; });
-                eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-white/70 hover:text-white transition-colors cursor-pointer";
+                inputs.forEach(inp => { 
+                    inp.className = "w-full bg-[#171717] border border-[#262626] p-3 pr-12 rounded-xl outline-none focus:border-white text-white placeholder-white/50 transition-all"; 
+                });
+                eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-white/50 hover:text-white transition-colors cursor-pointer";
                 btn.innerText = "Registrarme";
                 btn.className = "w-full bg-[#171717] text-white py-3 rounded-xl font-bold hover:bg-black border border-black/50 transition-colors shadow-lg";
                 toggleMsg.innerHTML = "O <span onclick='toggleAuthMode()' class='cursor-pointer font-extrabold underline hover:text-black transition-colors'>ingresá a tu cuenta acá</span>";
-                toggleMsg.className = "text-center text-xs text-white mt-4 transition-colors";
+                toggleMsg.className = "text-center text-sm text-white mt-4 transition-colors font-medium";
+                closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors";
                 forgotPass.classList.add('hidden');
             } else {
+                // INGRESO (Fondo oscuro, controles naranjas)
                 modal.classList.replace('bg-custom-primary', 'bg-custom-card');
                 modal.classList.replace('border-[#d43e20]', 'border-custom-border');
                 title.innerText = "Bienvenido Atleta";
-                inputs.forEach(inp => { inp.className = "w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white transition-all"; });
+                inputs.forEach(inp => { 
+                    inp.className = "w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white transition-all"; 
+                });
                 eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer";
                 btn.innerText = "Iniciar Sesión";
                 btn.className = "w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg";
-                toggleMsg.innerHTML = "¿No tenés cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold underline'>Registrate acá</span>";
-                toggleMsg.className = "text-center text-xs text-custom-textMuted mt-4 transition-colors";
+                toggleMsg.innerHTML = "¿No tenés cuenta? <br><span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold underline inline-block mt-1'>Registrate gratis acá</span>";
+                toggleMsg.className = "text-center text-sm text-custom-textMuted mt-4 transition-colors font-medium";
+                closeBtn.className = "mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors";
                 forgotPass.classList.remove('hidden');
             }
             document.getElementById('auth-message').classList.add('hidden');
@@ -305,17 +305,26 @@
         function closeAllModals() {
             document.getElementById('modal-overlay').style.display = 'none';
             document.body.style.overflow = 'auto';
+            window.location.hash = ''; // Limpia el hash si venias de recuperar clave
         }
 
         function showMessage(text, isError = true) {
             const msgBox = document.getElementById('auth-message');
             msgBox.innerText = text;
-            msgBox.classList.remove('hidden', 'bg-red-500/10', 'text-red-500', 'bg-green-500/10', 'text-green-500');
-            if(isError) msgBox.classList.add('bg-red-500/10', 'text-red-500');
-            else msgBox.classList.add(isSignUp ? 'bg-black/40' : 'bg-green-500/10', 'text-green-500');
+            msgBox.classList.remove('hidden', 'bg-red-500/10', 'text-red-500', 'text-red-400', 'bg-green-500/10', 'text-green-500', 'text-green-400', 'bg-[#171717]', 'border-[#262626]');
+            
+            if(isError) {
+                if(isSignUp) msgBox.classList.add('bg-[#171717]', 'text-red-400', 'border-[#262626]');
+                else msgBox.classList.add('bg-red-500/10', 'text-red-500', 'border-red-500/20');
+            } else {
+                if(isSignUp) msgBox.classList.add('bg-[#171717]', 'text-green-400', 'border-[#262626]');
+                else msgBox.classList.add('bg-green-500/10', 'text-green-500', 'border-green-500/20');
+            }
         }
 
-        // --- AUTH ---
+        // --- AUTH & RECUPERACIÓN CON FIX DE URL ---
+        const redirectUrl = "https://tgiordi.github.io/Hybrid-Athlete-Tracker/";
+
         async function handleResetPassword() {
             const email = document.getElementById('auth-email').value;
             if(!email) return showMessage("Ingresá tu email arriba y presioná este botón.", true);
@@ -325,7 +334,7 @@
 
             try {
                 const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-                    redirectTo: 'https://tgiordi.github.io/Hybrid-Athlete-Tracker/',
+                    redirectTo: redirectUrl,
                 });
                 if (error) throw error;
                 showMessage("Si el email está registrado, te llegará un link para cambiar la contraseña.", false);
@@ -347,11 +356,10 @@
             try {
                 const { error } = await supabaseClient.auth.updateUser({ password: newPwd });
                 if (error) throw error;
-                window.location.hash = ''; // Limpia la URL
                 closeAllModals();
-                checkSession(); // Carga el dashboard
+                checkSession(); 
             } catch(e) {
-                msgBox.innerText = "El link ha caducado. Vuelve a pedir el correo.";
+                msgBox.innerText = "El link ha caducado. Volvé a pedir el correo.";
                 msgBox.classList.remove('hidden');
                 btn.innerText = "Guardar y Entrar"; btn.disabled = false;
             }
@@ -367,7 +375,12 @@
 
             try {
                 if (isSignUp) {
-                    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                    // SE AGREGA LA OPCIÓN DE REDIRECT DIRECTO AL REPOSITORIO
+                    const { data, error } = await supabaseClient.auth.signUp({ 
+                        email, 
+                        password,
+                        options: { emailRedirectTo: redirectUrl }
+                    });
                     if (error) throw error;
                     showMessage("¡Cuenta creada! Ya podés iniciar sesión.", false);
                 } else {
@@ -385,6 +398,7 @@
             }
         }
 
+        // Resto del código (Dashboard y SaveToCloud) se mantiene igual
         async function checkSession() {
             if (!supabaseClient) return;
             const { data: { session } } = await supabaseClient.auth.getSession();
@@ -406,7 +420,6 @@
             location.reload();
         }
 
-        // --- DASHBOARD APP ---
         function changeDay(day, event) {
             if(event) {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -427,6 +440,13 @@
                 }
                 container.innerHTML += `
                     <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl">
+                        <div class="mb-5 bg-[#0d0d0d] rounded-xl overflow-hidden flex flex-col justify-center items-center border border-custom-border relative aspect-square">
+                            <img src="gifs/${ex.id}.gif" class="absolute inset-0 w-full h-full object-contain z-10" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            <div style="display: none;" class="flex-col items-center justify-center p-4 text-center z-0 w-full h-full bg-[#0d0d0d]">
+                                <svg class="w-12 h-12 text-custom-primary mb-2 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                <p class="text-xs text-custom-textMuted font-medium">Falta tu GIF anatómico</p>
+                            </div>
+                        </div>
                         <h3 class="text-xl font-bold mb-4 text-white uppercase italic tracking-tighter">${ex.name}</h3>
                         <div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border">
                             <iframe class="w-full h-full" src="https://www.youtube.com/embed/${ex.ytId}" frameborder="0" allowfullscreen></iframe>
