@@ -31,6 +31,11 @@
         .tab-btn.active { border-bottom: 3px solid #F54927; color: white; font-weight: 700; }
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         .glow-text { text-shadow: 0 0 15px rgba(245, 73, 39, 0.4); }
+        /* Scrollbar personalizada para los modales legales */
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #171717; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #F54927; }
     </style>
 </head>
 <body class="font-sans">
@@ -67,63 +72,84 @@
         <div id="exercise-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
     </main>
 
-    <footer class="border-t border-custom-border bg-custom-card mt-auto py-8">
+    <footer class="border-t border-custom-border bg-custom-card mt-auto py-8 relative z-10">
         <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-6">
             <div class="flex items-center gap-2">
                 <span class="font-black text-xl tracking-tighter">HAT</span>
                 <span class="text-custom-textMuted text-xs font-medium">© 2026</span>
             </div>
             <div class="flex gap-8 text-xs font-bold text-custom-textMuted uppercase tracking-widest">
-                <button onclick="openModal('modal-terms')" class="hover:text-custom-primary transition-colors">Términos</button>
-                <button onclick="openModal('modal-privacy')" class="hover:text-custom-primary transition-colors">Privacidad</button>
-                <button onclick="openModal('modal-support')" class="hover:text-custom-primary transition-colors">Soporte</button>
+                <button onclick="openModal('modal-terms')" class="hover:text-custom-primary transition-colors cursor-pointer">Términos</button>
+                <button onclick="openModal('modal-privacy')" class="hover:text-custom-primary transition-colors cursor-pointer">Privacidad</button>
+                <button onclick="openModal('modal-support')" class="hover:text-custom-primary transition-colors cursor-pointer">Soporte</button>
             </div>
         </div>
     </footer>
 
     <div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex-col items-center justify-center p-4">
         
-        <div id="modal-auth" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm relative">
+        <div id="modal-auth" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm relative shadow-2xl">
             <h2 id="auth-title" class="text-2xl font-bold mb-6 text-center">Bienvenido Atleta</h2>
+            
+            <div id="auth-message" class="hidden text-center text-sm font-semibold mb-4 px-3 py-2 rounded-lg"></div>
+
             <div class="space-y-4">
                 <input type="email" id="auth-email" placeholder="Email" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary text-white">
-                <input type="password" id="auth-password" placeholder="Contraseña" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary text-white">
+                <input type="password" id="auth-password" placeholder="Contraseña (mínimo 6 caracteres)" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary text-white">
                 <button id="btn-auth-action" onclick="handleAuth()" class="w-full bg-custom-primary py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg">Iniciar Sesión</button>
                 <p id="auth-toggle-msg" class="text-center text-xs text-custom-textMuted mt-4">¿No tienes cuenta? <span onclick="toggleAuthMode()" class="text-custom-primary cursor-pointer font-bold underline">Regístrate</span></p>
             </div>
-            <button onclick="closeAllModals()" class="mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold">Cerrar</button>
+            <button onclick="closeAllModals()" class="mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cerrar</button>
         </div>
 
-        <div id="modal-terms" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
-            <h2 class="text-xl font-bold mb-4 text-custom-primary">Términos y Condiciones</h2>
-            <div class="text-sm text-custom-textMuted space-y-4 leading-relaxed">
-                <p>HAT es una herramienta de registro de datos personales. No sustituye el consejo de un profesional de la salud.</p>
-                <p>Al registrarte, aceptas que el uso de la plataforma es bajo tu propio riesgo. HAT no se responsabiliza por lesiones resultantes de una mala ejecución técnica.</p>
+        <div id="modal-terms" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scroll shadow-2xl">
+            <h2 class="text-2xl font-bold mb-6 text-custom-primary border-b border-custom-border pb-3">Términos y Condiciones</h2>
+            <div class="text-sm text-custom-textMuted space-y-5 leading-relaxed text-justify">
+                <p>Bienvenido a <strong class="text-white">Hybrid Athlete Tracker (HAT)</strong>. Al registrarte y utilizar nuestra plataforma, aceptas de manera plena y sin reservas los siguientes términos. Te recomendamos leerlos con atención antes de comenzar a cargar tus datos.</p>
+                <p><strong class="text-white">1. Propósito de la Herramienta:</strong> HAT es una plataforma digital desarrollada exclusivamente para el registro personal de métricas de entrenamiento. En ningún caso nuestra plataforma, algoritmos o videos de referencia sustituyen el diagnóstico, prescripción o consejo de un profesional de la salud o del deporte certificado.</p>
+                <p><strong class="text-white">2. Descargo de Responsabilidad Deportiva:</strong> El entrenamiento con sobrecarga conlleva riesgos inherentes. Al utilizar esta aplicación, declaras que te encuentras en condiciones físicas aptas para realizar ejercicio. HAT y sus desarrolladores no se responsabilizan por lesiones, daños físicos o perjuicios resultantes de una mala ejecución técnica de los ejercicios mostrados.</p>
+                <p><strong class="text-white">3. Propiedad Intelectual de Terceros:</strong> Los videos técnicos incrustados en la plataforma pertenecen a sus respectivos creadores en YouTube y son mostrados utilizando la API pública de la plataforma, respetando sus derechos de autor.</p>
             </div>
-            <button onclick="closeAllModals()" class="mt-8 bg-custom-border px-6 py-2 rounded-lg text-xs font-bold hover:text-white transition-colors">Cerrar</button>
+            <button onclick="closeAllModals()" class="mt-8 bg-custom-border hover:bg-custom-primary transition-colors px-8 py-3 rounded-xl text-xs font-bold w-full md:w-auto text-white">Aceptar y Cerrar</button>
         </div>
 
-        <div id="modal-privacy" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-2xl">
-            <h2 class="text-xl font-bold mb-4 text-custom-primary">Privacidad</h2>
-            <p class="text-sm text-custom-textMuted leading-relaxed">Tus datos de carga y email están encriptados y protegidos mediante la infraestructura de Supabase. No compartimos información con terceros.</p>
-            <button onclick="closeAllModals()" class="mt-8 bg-custom-border px-6 py-2 rounded-lg text-xs font-bold hover:text-white transition-colors">Cerrar</button>
+        <div id="modal-privacy" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scroll shadow-2xl">
+            <h2 class="text-2xl font-bold mb-6 text-custom-primary border-b border-custom-border pb-3">Política de Privacidad</h2>
+            <div class="text-sm text-custom-textMuted space-y-5 leading-relaxed text-justify">
+                <p>En <strong class="text-white">HAT</strong> la privacidad de tu información es nuestra prioridad. Entendemos que tus métricas corporales y rutinas son datos sensibles.</p>
+                <p><strong class="text-white">Protección de Datos:</strong> Tus credenciales de acceso (email y contraseña) y tu historial de cargas son procesados, encriptados y almacenados bajo los estándares de seguridad de grado industrial proporcionados por la infraestructura de Supabase (PostgreSQL).</p>
+                <p><strong class="text-white">Uso de la Información:</strong> Los datos que ingresas son utilizados única y exclusivamente para graficar tu progreso personal y permitir el funcionamiento interno de tu cuenta. No vendemos, alquilamos ni cedemos tu información o tus correos electrónicos a terceros, agencias de publicidad o bases de datos externas.</p>
+                <p>Tienes el derecho absoluto de solicitar en cualquier momento la eliminación permanente de tu cuenta y el borrado total de tus registros en nuestros servidores mediante el canal de soporte.</p>
+            </div>
+            <button onclick="closeAllModals()" class="mt-8 bg-custom-border hover:bg-custom-primary transition-colors px-8 py-3 rounded-xl text-xs font-bold w-full md:w-auto text-white">Comprendido</button>
         </div>
 
-        <div id="modal-support" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm">
-            <h2 class="text-xl font-bold mb-4 text-custom-primary">Soporte</h2>
-            <p class="text-sm text-custom-textMuted mb-6">¿Necesitás ayuda con tu cuenta? Contactanos.</p>
-            <input type="text" placeholder="Asunto" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl mb-3 outline-none text-white">
-            <textarea placeholder="Tu mensaje..." class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl mb-4 h-32 outline-none text-white resize-none"></textarea>
-            <button onclick="closeAllModals()" class="w-full bg-custom-primary py-3 rounded-xl font-bold hover:bg-custom-hover">Enviar y Cerrar</button>
+        <div id="modal-support" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm shadow-2xl">
+            <h2 class="text-2xl font-bold mb-4 text-custom-primary border-b border-custom-border pb-3">Soporte Técnico</h2>
+            <p class="text-sm text-custom-textMuted mb-6 leading-relaxed text-justify">¿Encontraste algún error de programación o necesitas ayuda con tu cuenta? Envianos los detalles y lo revisaremos.</p>
+            <input type="text" placeholder="Asunto (Ej. Error al guardar)" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl mb-3 outline-none text-white focus:border-custom-primary transition-colors">
+            <textarea placeholder="Explicá tu problema acá..." class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl mb-4 h-32 outline-none text-white resize-none custom-scroll focus:border-custom-primary transition-colors"></textarea>
+            <button onclick="closeAllModals()" class="w-full bg-custom-primary hover:bg-custom-hover py-3 rounded-xl font-bold transition-colors shadow-lg">Enviar Mensaje</button>
         </div>
+
     </div>
 
     <script>
+        // --- 1. CONFIGURACIÓN BASE DE DATOS ---
+        const SUPABASE_URL = "https://kqmkseiwgdzwzmtqdcxk.supabase.co";
+        // Pegá acá tu Project API Key COMPLETA:
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbWtzZWl3Z2R6d3ptdHFkY3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzQ0NTMsImV4cCI6MjA4ODgxMDQ1M30.b3kQ8JSYaMCrRdgxoyek6xXF4Hhv_9H8edEN4c7oF8U";
+        
+        let supabaseClient = null;
+        let currentUserId = null;
+        let isSignUp = false;
+
         const routine = {
             martes: [
                 { id: 'm1', name: 'Press Inclinado Barra', sets: 4, target: '8-10 reps', ytId: '2bKcaD7lHLs' },
                 { id: 'm2', name: 'Jalón al Pecho (Abierto)', sets: 3, target: '10-12 reps', ytId: 'ryKtvHifeiU' },
-                { id: 'm3', name: 'Remo Gironda', sets: 3, target: '10-12 reps', ytId: 'GZbfZ033f74' }
+                { id: 'm3', name: 'Remo Gironda', sets: 3, target: '10-12 reps', ytId: 'GZbfZ033f74' },
+                { id: 'm4', name: 'Curl de Bíceps', sets: 3, target: '10 reps', ytId: 'ykJmrZ5v0Oo' }
             ],
             jueves: [
                 { id: 'j1', name: 'Sentadilla Libre', sets: 4, target: '6-8 reps', ytId: 'VZpCjz340CY' }
@@ -133,47 +159,120 @@
             ]
         };
 
-        let isSignUp = false;
+        // Inicializar Supabase al cargar la página
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                if (window.supabase) {
+                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    checkSession(); 
+                }
+            } catch(e) { console.error("Error cargando base de datos", e); }
+        });
 
-        // Función para abrir Modales
+        // --- 2. FUNCIONES DE INTERFAZ (UI) ---
         function openModal(modalId) {
-            const overlay = document.getElementById('modal-overlay');
-            const modals = document.querySelectorAll('.modal-content');
+            document.getElementById('modal-overlay').style.display = 'flex';
+            document.querySelectorAll('.modal-content').forEach(m => m.style.display = 'none');
+            document.getElementById(modalId).style.display = 'block';
+            document.body.style.overflow = 'hidden';
             
-            // Ocultar todos los modales internos
-            modals.forEach(m => m.classList.add('hidden'));
-            
-            // Mostrar el overlay (fondo negro)
-            overlay.classList.remove('hidden');
-            overlay.classList.add('flex');
-            
-            // Mostrar el modal específico
-            document.getElementById(modalId).classList.remove('hidden');
-            document.body.style.overflow = 'hidden'; // Bloquear scroll de fondo
+            // Limpiar mensajes de error si se abre el auth
+            if(modalId === 'modal-auth') {
+                document.getElementById('auth-message').classList.add('hidden');
+            }
         }
 
-        // Función para cerrar Modales
         function closeAllModals() {
-            const overlay = document.getElementById('modal-overlay');
-            overlay.classList.add('hidden');
-            overlay.classList.remove('flex');
-            document.body.style.overflow = 'auto'; // Devolver scroll
+            document.getElementById('modal-overlay').style.display = 'none';
+            document.body.style.overflow = 'auto';
         }
 
-        // Función para cambiar textos de Login/Registro
+        document.getElementById('modal-overlay').addEventListener('click', (e) => {
+            if(e.target.id === 'modal-overlay') closeAllModals();
+        });
+
         function toggleAuthMode() {
             isSignUp = !isSignUp;
             document.getElementById('auth-title').innerText = isSignUp ? "Crea tu Cuenta" : "Bienvenido Atleta";
             document.getElementById('btn-auth-action').innerText = isSignUp ? "Registrarme" : "Iniciar Sesión";
+            document.getElementById('auth-message').classList.add('hidden');
             
             const msgHtml = isSignUp 
                 ? "¿Ya tenés cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold underline'>Ingresá</span>" 
                 : "¿No tenés cuenta? <span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold underline'>Registrate</span>";
-            
             document.getElementById('auth-toggle-msg').innerHTML = msgHtml;
         }
 
-        // Función para cambiar de día y dibujar ejercicios
+        function showMessage(text, isError = true) {
+            const msgBox = document.getElementById('auth-message');
+            msgBox.innerText = text;
+            msgBox.classList.remove('hidden', 'bg-red-500/10', 'text-red-500', 'bg-green-500/10', 'text-green-500');
+            
+            if (isError) {
+                msgBox.classList.add('bg-red-500/10', 'text-red-500');
+            } else {
+                msgBox.classList.add('bg-green-500/10', 'text-green-500');
+            }
+        }
+
+        // --- 3. LÓGICA DE USUARIOS ---
+        async function handleAuth() {
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const btn = document.getElementById('btn-auth-action');
+            
+            if(!email || !password) return showMessage("Por favor, completá tu email y contraseña.");
+            if(password.length < 6) return showMessage("La contraseña debe tener al menos 6 caracteres.");
+
+            btn.innerText = "Procesando...";
+            btn.disabled = true;
+
+            try {
+                if (isSignUp) {
+                    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                    if (error) throw error;
+                    showMessage("¡Cuenta creada! Revisá tu bandeja de entrada o SPAM para confirmarla.", false);
+                } else {
+                    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                    if (error) throw error;
+                    await checkSession(); 
+                }
+            } catch (err) {
+                let errorTxt = err.message;
+                if (errorTxt.includes("Invalid login credentials")) errorTxt = "Email o contraseña incorrectos.";
+                if (errorTxt.includes("User already registered")) errorTxt = "Este email ya tiene una cuenta.";
+                showMessage(errorTxt, true);
+            } finally {
+                btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión";
+                btn.disabled = false;
+            }
+        }
+
+        async function checkSession() {
+            if (!supabaseClient) return;
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                currentUserId = session.user.id;
+                document.getElementById('view-landing').classList.add('hidden');
+                document.getElementById('view-app').classList.remove('hidden');
+                document.getElementById('auth-controls').classList.add('hidden');
+                
+                const userControls = document.getElementById('user-controls');
+                userControls.classList.remove('hidden');
+                userControls.classList.add('flex');
+                
+                document.getElementById('user-display').innerText = session.user.email;
+                closeAllModals();
+                changeDay('martes'); 
+            }
+        }
+
+        async function handleSignOut() {
+            if (supabaseClient) await supabaseClient.auth.signOut();
+            location.reload();
+        }
+
+        // --- 4. DIBUJADO DE LA RUTINA ---
         function changeDay(day, event) {
             if(event) {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -200,7 +299,8 @@
                         <div class="mb-5 bg-[#0d0d0d] rounded-xl overflow-hidden flex flex-col justify-center items-center border border-custom-border relative aspect-square">
                             <img src="gifs/${ex.id}.gif" class="absolute inset-0 w-full h-full object-contain z-10" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                             <div style="display: none;" class="flex-col items-center justify-center p-4 text-center z-0 w-full h-full bg-[#0d0d0d]">
-                                <p class="text-xs text-custom-textMuted font-medium">GIF pendiente de subir</p>
+                                <svg class="w-12 h-12 text-custom-primary mb-2 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                <p class="text-xs text-custom-textMuted font-medium">Falta tu GIF anatómico</p>
                             </div>
                         </div>
                         <h3 class="text-xl font-bold mb-4 text-white uppercase italic tracking-tighter">${ex.name}</h3>
@@ -208,114 +308,56 @@
                             <iframe class="w-full h-full" src="https://www.youtube.com/embed/${ex.ytId}" frameborder="0" allowfullscreen></iframe>
                         </div>
                         ${setsHtml}
-                        <button onclick="saveToCloud('${ex.id}', ${ex.sets}, '${ex.name}')" class="w-full bg-custom-primary mt-4 py-4 rounded-xl font-extrabold text-white tracking-widest hover:bg-custom-hover transition-all active:scale-95 shadow-lg">GUARDAR SESIÓN</button>
+                        <button onclick="saveToCloud('${ex.id}', ${ex.sets}, '${ex.name}', event)" class="w-full bg-custom-primary mt-4 py-4 rounded-xl font-extrabold text-white tracking-widest hover:bg-custom-hover transition-all active:scale-95 shadow-lg relative overflow-hidden">
+                            <span class="relative z-10 btn-text">GUARDAR SESIÓN</span>
+                        </button>
                     </div>`;
             });
         }
 
-        // Aseguramos que el overlay se cierre si haces clic afuera del cuadro
-        document.getElementById('modal-overlay').addEventListener('click', (e) => {
-            if(e.target.id === 'modal-overlay') closeAllModals();
-        });
-    </script>
-
-
-    <script>
-        const SUPABASE_URL = "https://kqmkseiwgdzwzmtqdcxk.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbWtzZWl3Z2R6d3ptdHFkY3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzQ0NTMsImV4cCI6MjA4ODgxMDQ1M30.b3kQ8JSYaMCrRdgxoyek6xXF4Hhv_9H8edEN4c7oF8U";
-        
-        let supabase = null;
-        let currentUserId = null;
-
-        // Inicialización segura de Supabase
-        try {
-            if (window.supabase) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                checkSession(); // Comprobar si ya está logueado
-            } else {
-                console.warn("Supabase no cargó. Modo offline activado.");
-            }
-        } catch(e) { console.error("Error al iniciar DB", e); }
-
-        async function handleAuth() {
-            if (!supabase) return alert("Fallo en la conexión al servidor. Intentá en un momento.");
-            
-            const email = document.getElementById('auth-email').value;
-            const password = document.getElementById('auth-password').value;
-            const btn = document.getElementById('btn-auth-action');
-            
-            if(!email || !password) return alert("Completá todos los campos");
-            btn.innerText = "Procesando...";
-
-            try {
-                if (isSignUp) {
-                    const { error } = await supabase.auth.signUp({ email, password });
-                    if (error) throw error;
-                    alert("¡Cuenta creada! Revisá tu mail para confirmar.");
-                } else {
-                    const { error } = await supabase.auth.signInWithPassword({ email, password });
-                    if (error) throw error;
-                    checkSession(); // Si entra bien, cambia la pantalla
-                }
-            } catch (err) { 
-                alert(err.message); 
-            } finally { 
-                btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión"; 
-            }
-        }
-
-        async function checkSession() {
-            if (!supabase) return;
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    currentUserId = session.user.id;
-                    
-                    // Cambios visuales al estar logueado
-                    document.getElementById('view-landing').classList.add('hidden');
-                    document.getElementById('view-app').classList.remove('hidden');
-                    document.getElementById('auth-controls').classList.add('hidden');
-                    document.getElementById('user-controls').classList.remove('hidden');
-                    document.getElementById('user-controls').classList.add('flex');
-                    document.getElementById('user-display').innerText = session.user.email;
-                    
-                    closeAllModals();
-                    changeDay('martes'); // Dibuja la rutina
-                }
-            } catch(e) { console.error(e); }
-        }
-
-        async function handleSignOut() {
-            if (supabase) await supabase.auth.signOut();
-            location.reload();
-        }
-
-        async function saveToCloud(exId, totalSets, exName) {
-            if (!supabase) return alert("Modo offline: No se puede guardar en la nube.");
+        async function saveToCloud(exId, totalSets, exName, btnEvent) {
+            const btn = btnEvent.currentTarget;
+            const btnText = btn.querySelector('.btn-text');
             
             let logs = [];
             for(let i=1; i<=totalSets; i++) {
                 const checked = document.getElementById(`check-${exId}-${i}`).checked;
                 const weight = document.getElementById(`peso-${exId}-${i}`).value;
                 const reps = document.getElementById(`reps-${exId}-${i}`).value;
-                
                 if(checked && weight && reps) {
-                    logs.push({ 
-                        user_id: currentUserId, 
-                        exercise_name: exName, 
-                        weight: parseFloat(weight), 
-                        reps: parseInt(reps), 
-                        set_number: i 
-                    });
+                    logs.push({ user_id: currentUserId, exercise_name: exName, weight: parseFloat(weight), reps: parseInt(reps), set_number: i });
                 }
             }
-            if(logs.length === 0) return alert("Marcá al menos una serie con datos completos.");
+            
+            if(logs.length === 0) {
+                const originalText = btnText.innerText;
+                btn.classList.add('bg-red-600');
+                btnText.innerText = "MARCÁ 1 SERIE MÍNIMO";
+                setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = originalText; }, 2000);
+                return;
+            }
+
+            btnText.innerText = "GUARDANDO...";
             
             try {
-                const { error } = await supabase.from('workout_logs').insert(logs);
+                const { error } = await supabaseClient.from('workout_logs').insert(logs);
                 if(error) throw error;
-                alert("¡Sesión guardada exitosamente!");
-            } catch (e) { alert("Error: " + e.message); }
+                
+                btn.classList.remove('bg-custom-primary');
+                btn.classList.add('bg-green-600');
+                btnText.innerText = "¡PROGRESO GUARDADO!";
+                setTimeout(() => { 
+                    btn.classList.add('bg-custom-primary');
+                    btn.classList.remove('bg-green-600');
+                    btnText.innerText = "GUARDAR SESIÓN"; 
+                }, 2000);
+                
+            } catch (e) { 
+                console.error(e);
+                btn.classList.add('bg-red-600');
+                btnText.innerText = "ERROR AL GUARDAR";
+                setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000);
+            }
         }
     </script>
 </body>
