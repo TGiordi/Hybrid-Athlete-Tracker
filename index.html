@@ -28,7 +28,6 @@
         input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
         
-        /* Solución blindada para el fondo azul/blanco del autocompletado en navegadores */
         input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus, input:-webkit-autofill:active {
             -webkit-box-shadow: 0 0 0 30px #171717 inset !important;
             -webkit-text-fill-color: white !important;
@@ -42,31 +41,69 @@
         #modal-auth { transition: background-color 0.4s ease, border-color 0.4s ease; }
 
         /* ========================================== */
-        /* ANIMACIONES Y EFECTO ORGÁNICO PULIDO      */
+        /* EFECTOS VISUALES (Respiración y Reflejo)   */
         /* ========================================== */
+        
+        /* Halo de luz que respira en el fondo */
+        .bg-pulse {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80vw;
+            height: 80vw;
+            max-width: 600px;
+            max-height: 600px;
+            background: radial-gradient(circle, rgba(245,73,39,0.12) 0%, rgba(10,10,10,0) 60%);
+            border-radius: 50%;
+            animation: breathe 4s infinite alternate ease-in-out;
+            z-index: 0;
+            pointer-events: none;
+        }
+        @keyframes breathe {
+            0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.6; }
+            100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+        }
+
+        /* Animación de subida */
         @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .animate-title-entrance {
             animation: fadeInUp 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            position: relative;
+            z-index: 10;
         }
 
-        /* Reflejo de luz ORGÁNICO solo por dentro de la letra (no recortado) */
-        .glow-text {
-            background: linear-gradient(120deg, #F54927 0%, #F54927 40%, #ffffff 50%, #F54927 60%, #F54927 100%);
-            background-size: 200% auto;
-            color: transparent;
-            -webkit-background-clip: text;
-            background-clip: text;
-            animation: textShine 3s ease-in-out infinite;
-            filter: drop-shadow(0 0 8px rgba(245, 73, 39, 0.3)); /* Brillo suave exterior */
-            animation-delay: 1s;
+        /* Reflejo clásico y centrado perfecto */
+        .title-wrapper {
+            position: relative;
+            display: inline-block;
+            overflow: hidden;
+            /* El padding simétrico evita que se corte la cursiva sin perder el centro */
+            padding: 10px 20px; 
+            margin: -10px -20px; 
         }
-        @keyframes textShine {
-            0% { background-position: 200% center; }
-            100% { background-position: -200% center; }
+
+        .title-wrapper::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -150%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+            transform: skewX(-25deg);
+            animation: lightSweep 2.5s ease-in-out forwards;
+            animation-delay: 0.8s; 
         }
+        @keyframes lightSweep {
+            0% { left: -150%; }
+            100% { left: 200%; }
+        }
+
+        .glow-text { text-shadow: 0 0 20px rgba(245, 73, 39, 0.5); }
 
         .typewriter-cursor {
             border-right: 2px solid #F54927;
@@ -76,7 +113,7 @@
         @keyframes blink { 50% { border-color: transparent; } }
     </style>
 </head>
-<body class="font-sans">
+<body class="font-sans relative">
 
     <nav class="border-b border-custom-border bg-custom-bg/90 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
@@ -85,41 +122,46 @@
                 <span class="font-bold text-xl tracking-tighter">Hybrid Athlete <span class="text-custom-primary">Tracker</span></span>
             </div>
             <div id="auth-controls">
-                <button onclick="openModal('modal-auth')" class="text-sm font-semibold border border-custom-border px-4 py-2 rounded-lg hover:border-custom-primary transition-all">Ingresar</button>
+                <button onclick="openModal('modal-auth')" class="text-sm font-semibold border border-custom-border px-4 py-2 rounded-lg hover:border-custom-primary transition-all relative z-20 bg-[#0a0a0a]">Ingresar</button>
             </div>
             <div id="user-controls" class="hidden flex items-center gap-4">
                 <span id="user-display" class="text-xs text-custom-textMuted hidden sm:block font-medium"></span>
-                <button onclick="handleSignOut()" class="text-xs font-bold text-custom-primary border border-custom-primary/20 px-3 py-1.5 rounded-md hover:bg-custom-primary/10 transition-all">Salir</button>
+                <button onclick="handleSignOut()" class="text-xs font-bold text-custom-primary border border-custom-primary/20 px-3 py-1.5 rounded-md hover:bg-custom-primary/10 transition-all relative z-20 bg-[#0a0a0a]">Salir</button>
             </div>
         </div>
     </nav>
 
-    <main id="view-landing" class="flex-grow flex flex-col items-center justify-center text-center px-4 py-20">
+    <main id="view-landing" class="flex-grow flex flex-col items-center justify-center text-center px-4 py-20 relative">
+        
+        <div class="bg-pulse"></div>
+
         <div class="animate-title-entrance flex flex-col items-center w-full" style="opacity: 0;">
             
-            <h1 class="text-5xl md:text-7xl font-black mb-4 italic tracking-tight uppercase leading-none text-center px-4">
-                Entrena <span class="text-custom-primary glow-text relative z-10">Híbrido</span>
+            <h1 class="text-5xl md:text-7xl font-black mb-4 italic tracking-tight uppercase leading-none text-center title-wrapper">
+                Entrena <span class="text-custom-primary glow-text">Híbrido</span>
             </h1>
             
-            <div class="bg-custom-primary/10 border border-custom-primary/20 text-custom-primary text-[10px] font-extrabold px-3 py-1 rounded-full mb-8 tracking-[0.2em] uppercase">Versión 2.0 Cloud</div>
+            <div class="bg-custom-primary/10 border border-custom-primary/20 text-custom-primary text-[10px] font-extrabold px-4 py-1.5 rounded-full mb-8 tracking-[0.2em] uppercase inline-block">
+                Versión 2.0 Cloud
+            </div>
             
             <p class="text-custom-textMuted max-w-lg mb-10 text-lg leading-relaxed h-[60px] md:h-[30px] mx-auto text-center font-medium">
                 <span id="typewriter-text" class="typewriter-cursor"></span>
             </p>
             
-            <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95 mt-4 text-white">
+            <button onclick="openModal('modal-auth')" class="bg-custom-primary hover:bg-custom-hover px-10 py-4 rounded-2xl font-extrabold text-xl shadow-[0_0_30px_rgba(245,73,39,0.3)] transition-all hover:scale-105 active:scale-95 mt-2 text-white relative z-20">
                 COMIENZA TU PROGRESO
             </button>
         </div>
     </main>
 
-    <main id="view-app" class="hidden flex-grow max-w-5xl mx-auto w-full px-4 py-10">
-        <div class="flex justify-around border-b border-custom-border mb-8 pb-3">
-            <button class="tab-btn active px-4 pb-2 text-lg" onclick="changeDay('martes', event)">Martes</button>
-            <button class="tab-btn px-4 pb-2 text-lg" onclick="changeDay('jueves', event)">Jueves</button>
-            <button class="tab-btn px-4 pb-2 text-lg" onclick="changeDay('sabado', event)">Sábado</button>
+    <main id="view-app" class="hidden flex-grow max-w-5xl mx-auto w-full px-4 py-10 relative z-10">
+        <div class="flex justify-around border-b border-custom-border mb-8 pb-3 relative z-20">
+            <button class="tab-btn active px-4 pb-2 text-lg bg-[#0a0a0a]" onclick="changeDay('martes', event)">Martes</button>
+            <button class="tab-btn px-4 pb-2 text-lg bg-[#0a0a0a]" onclick="changeDay('jueves', event)">Jueves</button>
+            <button class="tab-btn px-4 pb-2 text-lg bg-[#0a0a0a]" onclick="changeDay('sabado', event)">Sábado</button>
         </div>
-        <div id="exercise-container" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+        <div id="exercise-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-20"></div>
     </main>
 
     <footer class="border-t border-custom-border bg-custom-card mt-auto py-8 relative z-10">
@@ -210,6 +252,7 @@
 
         const SUPABASE_URL = "https://kqmkseiwgdzwzmtqdcxk.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbWtzZWl3Z2R6d3ptdHFkY3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzQ0NTMsImV4cCI6MjA4ODgxMDQ1M30.b3kQ8JSYaMCrRdgxoyek6xXF4Hhv_9H8edEN4c7oF8U";
+        const REDIRECT_URL = "https://tgiordi.github.io/Hybrid-Athlete-Tracker/";
         
         let supabaseClient = null;
         let currentUserId = null;
@@ -227,33 +270,30 @@
             try {
                 if (window.supabase) {
                     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                    checkHashSession(); // VERIFICACIÓN BLINDADA
+                    checkHashSession(); 
                 }
             } catch(e) { console.error("Error", e); }
         });
 
-        // --- FUNCIÓN DE VERIFICACIÓN BLINDADA ANTI-404 ---
+        // --- HASH CHECK (El escudo contra el 404) ---
         async function checkHashSession() {
             if(window.location.hash) {
-                // Intercepta el Hash ANTES de que el Dashboard intente cargar
                 const { data: { session }, error } = await supabaseClient.auth.getSession();
                 if (session) {
                     currentUserId = session.user.id;
-                    // Limpia el Hash y carga el Dashboard
                     window.location.hash = ''; 
                     loadDashboardView(session.user.email);
                 } else if(window.location.hash.includes('type=recovery')) {
-                    // Si es recuperación, abre el modal
                     openModal('modal-new-pwd');
                 } else {
-                    checkSession(); // Sesión normal
+                    checkSession(); 
                 }
             } else {
-                checkSession(); // Sesión normal
+                checkSession(); 
             }
         }
 
-        // --- UI Y CONTRASTES CORREGIDOS ---
+        // --- UI ---
         function updateAuthUI() {
             const modal = document.getElementById('modal-auth');
             const title = document.getElementById('auth-title');
@@ -265,7 +305,6 @@
             const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
             
             if(isSignUp) {
-                // REGISTRO (Fondo naranja, controles gris oscuro #171717)
                 modal.classList.replace('bg-custom-card', 'bg-custom-primary');
                 modal.classList.replace('border-custom-border', 'border-[#d43e20]');
                 title.innerText = "Crear Nueva Cuenta";
@@ -280,7 +319,6 @@
                 closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors";
                 forgotPass.classList.add('hidden');
             } else {
-                // INGRESO (Fondo oscuro, controles naranjas)
                 modal.classList.replace('bg-custom-primary', 'bg-custom-card');
                 modal.classList.replace('border-[#d43e20]', 'border-custom-border');
                 title.innerText = "Bienvenido Atleta";
@@ -326,7 +364,7 @@
         function closeAllModals() {
             document.getElementById('modal-overlay').style.display = 'none';
             document.body.style.overflow = 'auto';
-            window.location.hash = ''; // Limpia el hash
+            window.location.hash = ''; 
         }
 
         function showMessage(text, isError = true) {
@@ -343,7 +381,7 @@
             }
         }
 
-        // --- AUTH & RECUPERACIÓN ---
+        // --- AUTH FORZANDO REDIRECT ---
         async function handleResetPassword() {
             const email = document.getElementById('auth-email').value;
             if(!email) return showMessage("Ingresá tu email arriba y presioná este botón.", true);
@@ -352,9 +390,8 @@
             btn.innerText = "Enviando..."; btn.disabled = true;
 
             try {
-                // redirectTo NO debe terminar en / para el Hash Flow
                 const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-                    redirectTo: 'https://tgiordi.github.io/Hybrid-Athlete-Tracker',
+                    redirectTo: REDIRECT_URL,
                 });
                 if (error) throw error;
                 showMessage("Si el email está registrado, te llegará un link para cambiar la contraseña.", false);
@@ -395,9 +432,12 @@
 
             try {
                 if (isSignUp) {
-                    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+                    // FIX: FORZAR A SUPABASE A USAR EL LINK EXACTO
+                    const { data, error } = await supabaseClient.auth.signUp({ 
+                        email, password, options: { emailRedirectTo: REDIRECT_URL }
+                    });
                     if (error) throw error;
-                    showMessage("¡Cuenta creada! Ya podés iniciar sesión.", false);
+                    showMessage("¡Cuenta creada! Revisá tu mail para confirmar (o logueate si desactivaste confirmación).", false);
                 } else {
                     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
                     if (error) throw error;
