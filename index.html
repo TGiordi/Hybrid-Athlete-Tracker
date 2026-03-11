@@ -44,25 +44,25 @@
         /* EFECTOS VISUALES (Respiración y Reflejo)   */
         /* ========================================== */
         
-        /* Halo de luz que respira en el fondo */
+        /* Halo de luz que respira en el fondo (Más notorio) */
         .bg-pulse {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 80vw;
-            height: 80vw;
-            max-width: 600px;
-            max-height: 600px;
-            background: radial-gradient(circle, rgba(245,73,39,0.12) 0%, rgba(10,10,10,0) 60%);
+            width: 100vw;
+            height: 100vw;
+            max-width: 800px;
+            max-height: 800px;
+            background: radial-gradient(circle, rgba(245,73,39,0.25) 0%, rgba(10,10,10,0) 60%);
             border-radius: 50%;
-            animation: breathe 4s infinite alternate ease-in-out;
+            animation: breathe 3.5s infinite alternate ease-in-out;
             z-index: 0;
             pointer-events: none;
         }
         @keyframes breathe {
-            0% { transform: translate(-50%, -50%) scale(0.9); opacity: 0.6; }
-            100% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.4; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
         }
 
         /* Animación de subida */
@@ -76,34 +76,21 @@
             z-index: 10;
         }
 
-        /* Reflejo clásico y centrado perfecto */
-        .title-wrapper {
-            position: relative;
-            display: inline-block;
-            overflow: hidden;
-            /* El padding simétrico evita que se corte la cursiva sin perder el centro */
-            padding: 10px 20px; 
-            margin: -10px -20px; 
+        /* Reflejo solo por dentro de la letra y centrado */
+        .glow-text {
+            background: linear-gradient(120deg, #F54927 0%, #F54927 40%, #ffffff 50%, #F54927 60%, #F54927 100%);
+            background-size: 200% auto;
+            color: transparent;
+            -webkit-background-clip: text;
+            background-clip: text;
+            animation: textShine 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 15px rgba(245, 73, 39, 0.7));
+            padding-right: 8px; /* Evita que la última letra cursiva se recorte visualmente */
         }
-
-        .title-wrapper::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -150%;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(to right, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
-            transform: skewX(-25deg);
-            animation: lightSweep 2.5s ease-in-out forwards;
-            animation-delay: 0.8s; 
+        @keyframes textShine {
+            0% { background-position: 200% center; }
+            100% { background-position: -200% center; }
         }
-        @keyframes lightSweep {
-            0% { left: -150%; }
-            100% { left: 200%; }
-        }
-
-        .glow-text { text-shadow: 0 0 20px rgba(245, 73, 39, 0.5); }
 
         .typewriter-cursor {
             border-right: 2px solid #F54927;
@@ -137,8 +124,8 @@
 
         <div class="animate-title-entrance flex flex-col items-center w-full" style="opacity: 0;">
             
-            <h1 class="text-5xl md:text-7xl font-black mb-4 italic tracking-tight uppercase leading-none text-center title-wrapper">
-                Entrena <span class="text-custom-primary glow-text">Híbrido</span>
+            <h1 class="text-5xl md:text-7xl font-black mb-4 italic tracking-tight uppercase leading-none text-center">
+                Entrena <span class="glow-text">Híbrido</span>
             </h1>
             
             <div class="bg-custom-primary/10 border border-custom-primary/20 text-custom-primary text-[10px] font-extrabold px-4 py-1.5 rounded-full mb-8 tracking-[0.2em] uppercase inline-block">
@@ -275,7 +262,7 @@
             } catch(e) { console.error("Error", e); }
         });
 
-        // --- HASH CHECK (El escudo contra el 404) ---
+        // --- HASH CHECK ---
         async function checkHashSession() {
             if(window.location.hash) {
                 const { data: { session }, error } = await supabaseClient.auth.getSession();
@@ -381,7 +368,7 @@
             }
         }
 
-        // --- AUTH FORZANDO REDIRECT ---
+        // --- AUTH ---
         async function handleResetPassword() {
             const email = document.getElementById('auth-email').value;
             if(!email) return showMessage("Ingresá tu email arriba y presioná este botón.", true);
@@ -432,7 +419,6 @@
 
             try {
                 if (isSignUp) {
-                    // FIX: FORZAR A SUPABASE A USAR EL LINK EXACTO
                     const { data, error } = await supabaseClient.auth.signUp({ 
                         email, password, options: { emailRedirectTo: REDIRECT_URL }
                     });
@@ -478,7 +464,7 @@
             location.reload();
         }
 
-        // --- DASHBOARD APP (Sin cambios) ---
+        // --- DASHBOARD APP ---
         function changeDay(day, event) {
             if(event) {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
