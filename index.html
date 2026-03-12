@@ -57,8 +57,8 @@
             <div class="absolute inset-0 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
             <svg class="absolute inset-0 m-auto w-8 h-8 text-purple-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
         </div>
-        <h2 class="text-2xl md:text-3xl font-black text-white mb-3 tracking-widest text-center uppercase animate-pulse" id="loading-title">Procesando Biomecánica...</h2>
-        <p class="text-custom-textMuted text-sm text-center max-w-sm" id="loading-desc">El Coach Inteligente está procesando tu solicitud de forma segura. Por favor, no cierres esta ventana.</p>
+        <h2 class="text-2xl md:text-3xl font-black text-white mb-3 tracking-widest text-center uppercase animate-pulse" id="loading-title">Procesando...</h2>
+        <p class="text-custom-textMuted text-sm text-center max-w-sm" id="loading-desc">Por favor, no cierres esta ventana.</p>
     </div>
 
     <nav class="border-b border-custom-border bg-custom-bg/90 backdrop-blur-md sticky top-0 z-40">
@@ -72,6 +72,8 @@
                 <button onclick="openModal('modal-auth')" class="text-sm font-semibold border border-custom-border px-4 py-2 rounded-lg hover:border-custom-primary transition-all relative z-20 bg-[#0a0a0a]">Ingresar</button>
             </div>
             <div id="user-controls" class="hidden flex items-center gap-3 sm:gap-4">
+                <span id="user-display" class="text-xs text-custom-textMuted hidden md:block font-medium"></span>
+                
                 <div id="credit-badge" class="flex items-center justify-center gap-1.5 bg-gradient-to-r from-purple-600/20 to-blue-500/20 border border-purple-500/30 px-3 py-1.5 rounded-full" title="Créditos de IA Restantes">
                     <span class="text-[10px] sm:text-xs leading-none flex items-center mt-0.5">⚡</span>
                     <span id="ai-credit-count" class="text-[10px] sm:text-xs font-bold text-purple-400 flex items-center justify-center min-w-[14px] leading-none mt-0.5">...</span>
@@ -151,13 +153,9 @@
                 <input type="email" id="auth-email" placeholder="Email" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary text-white transition-all">
                 <div class="relative w-full">
                     <input type="password" id="auth-password" placeholder="Contraseña (mín. 6)" class="w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white transition-all">
-                    <button type="button" onclick="togglePasswordVisibility('auth-password', 'eye-icon')" id="eye-btn" class="absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer">
-                        <svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
-                    </button>
+                    <button type="button" onclick="togglePasswordVisibility('auth-password', 'eye-icon')" id="eye-btn" class="absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer"><svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg></button>
                 </div>
-                <div id="forgot-password-container" class="text-right transition-opacity">
-                    <span onclick="handleResetPassword()" class="text-xs text-custom-textMuted hover:text-custom-primary cursor-pointer transition-colors font-medium underline">¿Olvidaste tu contraseña?</span>
-                </div>
+                <div id="forgot-password-container" class="text-right transition-opacity"><span onclick="handleResetPassword()" class="text-xs text-custom-textMuted hover:text-custom-primary cursor-pointer transition-colors font-medium underline">¿Olvidaste tu contraseña?</span></div>
                 <button id="btn-auth-action" onclick="handleAuth()" class="w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg">Iniciar Sesión</button>
                 <p id="auth-toggle-msg" class="text-center text-sm font-medium mt-4 transition-colors text-custom-textMuted">¿No tenés cuenta? <br><span onclick="toggleAuthMode()" class="text-custom-primary cursor-pointer font-bold underline mt-1 inline-block">Registrate gratis acá</span></p>
             </div>
@@ -169,61 +167,46 @@
             <div id="new-pwd-message" class="hidden text-center text-sm font-semibold mb-4 px-3 py-2 rounded-lg bg-[#171717] border border-[#262626] text-red-500"></div>
             <div class="relative w-full mb-6">
                 <input type="password" id="new-password-input" placeholder="Escribí tu nueva contraseña" class="w-full bg-[#171717] border border-[#262626] p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white">
-                <button type="button" onclick="togglePasswordVisibility('new-password-input', 'eye-icon-new')" class="absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer">
-                    <svg id="eye-icon-new" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
-                </button>
+                <button type="button" onclick="togglePasswordVisibility('new-password-input', 'eye-icon-new')" class="absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer"><svg id="eye-icon-new" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg></button>
             </div>
             <button onclick="saveNewPassword()" id="btn-save-pwd" class="w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg">Guardar y Entrar</button>
             <button onclick="closeAllModals()" class="mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cerrar</button>
         </div>
 
-        <div id="modal-exercise" class="modal-content hidden bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-lg relative shadow-2xl">
-            <h2 id="modal-ex-title" class="text-2xl font-bold mb-6 text-center text-white border-b border-custom-border pb-3">Nuevo Ejercicio</h2>
-            <div id="ex-error-msg" class="hidden text-red-500 bg-red-500/10 p-2 rounded mb-4 text-xs font-bold text-center"></div>
-            <div class="space-y-4 max-h-[60vh] overflow-y-auto custom-scroll pr-2">
-                <div>
-                    <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Nombre del Ejercicio</label>
-                    <input type="text" id="new-ex-name" placeholder="Ej: Press Inclinado" class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl outline-none focus:border-custom-primary text-white">
-                </div>
-                <div class="grid grid-cols-2 gap-4">
+        <div id="modal-ai-chat" class="modal-content hidden bg-custom-card border border-purple-500/30 p-1 md:p-6 rounded-3xl w-full max-w-2xl relative shadow-[0_0_30px_rgba(147,51,234,0.15)] flex flex-col h-[85vh]">
+            <div class="flex items-center justify-between border-b border-[#262626] p-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-tr from-purple-600 to-blue-500 rounded-full flex items-center justify-center shadow-lg"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg></div>
                     <div>
-                        <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Series</label>
-                        <input type="number" id="new-ex-sets" value="4" min="1" class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl outline-none focus:border-custom-primary text-white text-center">
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Objetivo (Reps)</label>
-                        <input type="text" id="new-ex-reps" placeholder="Ej: 8-10" class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl outline-none focus:border-custom-primary text-white text-center">
+                        <h2 class="text-lg font-bold text-white leading-tight">Coach Virtual</h2>
+                        <p class="text-[10px] text-green-400 font-bold uppercase tracking-widest">En línea</p>
                     </div>
                 </div>
-                <div class="border-t border-[#262626] pt-4 mt-2">
-                    <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-3">Recursos Visuales (Opcional)</label>
-                    <div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626] mb-2 cursor-pointer" onclick="toggleMediaInput('image')">
-                        <span class="text-sm font-bold text-white">Incluir Imagen / GIF</span>
-                        <input type="checkbox" id="check-image" class="w-5 h-5 accent-custom-primary cursor-pointer pointer-events-none">
-                    </div>
-                    <div id="input-image-container" class="hidden mb-4 pl-4 border-l-2 border-custom-primary">
-                        <input type="text" id="new-ex-image" placeholder="Pegá el link de la imagen acá" class="w-full bg-[#0a0a0a] border border-[#262626] p-2.5 rounded-lg outline-none focus:border-custom-primary text-white text-sm">
-                    </div>
-                    <div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626] mb-2 cursor-pointer" onclick="toggleMediaInput('video')">
-                        <span class="text-sm font-bold text-white">Incluir Video (YouTube)</span>
-                        <input type="checkbox" id="check-video" class="w-5 h-5 accent-custom-primary cursor-pointer pointer-events-none">
-                    </div>
-                    <div id="input-video-container" class="hidden mb-2 pl-4 border-l-2 border-custom-primary">
-                        <input type="text" id="new-ex-video" placeholder="Pegá el link de YouTube acá" class="w-full bg-[#0a0a0a] border border-[#262626] p-2.5 rounded-lg outline-none focus:border-custom-primary text-white text-sm">
-                    </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="promptClearChat()" class="p-2 text-custom-textMuted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title="Borrar Historial"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                    <button onclick="closeAllModals()" class="p-2 text-custom-textMuted hover:text-white bg-[#171717] hover:bg-[#262626] rounded-lg transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                 </div>
             </div>
-            <button id="btn-save-exercise" onclick="saveExercise()" class="w-full bg-custom-primary text-white py-4 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg mt-6 tracking-widest uppercase">Guardar Ejercicio</button>
-            <button onclick="closeAllModals()" class="mt-4 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cancelar</button>
+            <div id="chat-messages" class="flex-grow overflow-y-auto p-4 custom-scroll space-y-4 bg-[#0a0a0a] m-2 rounded-2xl border border-[#262626]">
+                <div class="text-center text-xs font-bold text-custom-textMuted py-4 uppercase tracking-widest">El historial se guarda en tu dispositivo</div>
+                <div class="chat-bubble-ai">¡Hola! Soy tu Coach Inteligente. ¿En qué te ayudo hoy con tu entrenamiento?</div>
+            </div>
+            <div class="p-3 border-t border-[#262626] relative">
+                <div class="text-[10px] text-purple-400 font-bold px-2 pb-2 text-center uppercase tracking-widest">Costo por mensaje: 1 Crédito ⚡</div>
+                <div class="flex items-center gap-2 bg-[#0a0a0a] p-2 rounded-2xl border border-[#262626] focus-within:border-purple-500 transition-colors">
+                    <textarea id="chat-input" rows="1" placeholder="Ej: ¿Cómo mejoro mi sentadilla?" class="w-full bg-transparent text-sm text-white resize-none outline-none custom-scroll py-2 px-3 max-h-32 my-auto" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+                    <button id="btn-send-chat" onclick="sendChatMessage()" class="bg-gradient-to-r from-purple-600 to-blue-500 text-white p-3 rounded-xl hover:opacity-80 transition-opacity flex-shrink-0"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg></button>
+                </div>
+            </div>
         </div>
 
-        <div id="modal-confirm-delete-exercise" class="modal-content hidden bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl text-center">
+        <div id="modal-confirm-clear-chat" class="modal-content hidden bg-custom-card border border-red-500/30 p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl text-center">
             <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></div>
-            <h2 class="text-2xl font-bold text-white mb-2">¿Eliminar Ejercicio?</h2>
-            <p class="text-sm text-custom-textMuted mb-6">Se quitará de tu rutina. Tus registros de cargas pasados se mantendrán a salvo en la base de datos.</p>
+            <h2 class="text-2xl font-bold text-white mb-2">¿Borrar Historial?</h2>
+            <p class="text-sm text-custom-textMuted mb-6">Esta acción eliminará toda tu conversación actual con el Coach Inteligente.</p>
             <div class="flex gap-4">
-                <button onclick="closeAllModals()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl hover:bg-[#262626] font-bold transition-colors">Cancelar</button>
-                <button id="btn-confirm-delete-ex" class="flex-1 bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 font-bold shadow-lg transition-colors">Sí, quitar</button>
+                <button onclick="cancelClearChat()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl font-bold transition-colors hover:bg-[#262626]">Cancelar</button>
+                <button onclick="confirmClearChatHistory()" class="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold shadow-lg transition-colors hover:bg-red-700">Sí, Borrar</button>
             </div>
         </div>
 
@@ -237,63 +220,12 @@
             </div>
         </div>
 
-        <div id="modal-ai-chat" class="modal-content hidden bg-custom-card border border-purple-500/30 p-1 md:p-6 rounded-3xl w-full max-w-2xl relative shadow-[0_0_30px_rgba(147,51,234,0.15)] flex flex-col h-[85vh]">
-            <div class="flex items-center justify-between border-b border-[#262626] p-4">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 bg-gradient-to-tr from-purple-600 to-blue-500 rounded-full flex items-center justify-center shadow-lg">
-                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                    </div>
-                    <div>
-                        <h2 class="text-lg font-bold text-white leading-tight">Coach Virtual</h2>
-                        <p class="text-[10px] text-green-400 font-bold uppercase tracking-widest">En línea</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <button onclick="promptClearChat()" class="p-2 text-custom-textMuted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title="Borrar Historial">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                    </button>
-                    <button onclick="closeAllModals()" class="p-2 text-custom-textMuted hover:text-white bg-[#171717] hover:bg-[#262626] rounded-lg transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                </div>
-            </div>
-            
-            <div id="chat-messages" class="flex-grow overflow-y-auto p-4 custom-scroll space-y-4 bg-[#0a0a0a] m-2 rounded-2xl border border-[#262626]">
-                <div class="text-center text-xs font-bold text-custom-textMuted py-4 uppercase tracking-widest">El historial se guarda en tu dispositivo</div>
-                <div class="chat-bubble-ai">¡Hola! Soy tu Coach Inteligente. ¿En qué te ayudo hoy con tu entrenamiento?</div>
-            </div>
-            
-            <div class="p-3 border-t border-[#262626] relative">
-                <div class="text-[10px] text-purple-400 font-bold px-2 pb-2 text-center uppercase tracking-widest">Costo por mensaje: 1 Crédito ⚡</div>
-                <div class="flex items-center gap-2 bg-[#0a0a0a] p-2 rounded-2xl border border-[#262626] focus-within:border-purple-500 transition-colors">
-                    <textarea id="chat-input" rows="1" placeholder="Ej: ¿Cómo mejoro mi sentadilla?" class="w-full bg-transparent text-sm text-white resize-none outline-none custom-scroll py-2 px-3 max-h-32 my-auto" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
-                    <button id="btn-send-chat" onclick="sendChatMessage()" class="bg-gradient-to-r from-purple-600 to-blue-500 text-white p-3 rounded-xl hover:opacity-80 transition-opacity flex-shrink-0">
-                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div id="modal-confirm-clear-chat" class="modal-content hidden bg-custom-card border border-red-500/30 p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl text-center">
-            <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-            </div>
-            <h2 class="text-2xl font-bold text-white mb-2">¿Borrar Historial?</h2>
-            <p class="text-sm text-custom-textMuted mb-6">Esta acción eliminará toda tu conversación actual con el Coach Inteligente.</p>
-            <div class="flex gap-4">
-                <button onclick="cancelClearChat()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl font-bold transition-colors hover:bg-[#262626]">Cancelar</button>
-                <button onclick="confirmClearChatHistory()" class="flex-1 bg-red-600 text-white py-3 rounded-xl font-bold shadow-lg transition-colors hover:bg-red-700">Sí, Borrar</button>
-            </div>
-        </div>
-
         <div id="modal-ai-coach" class="modal-content hidden bg-custom-card border border-purple-500/30 p-6 md:p-8 rounded-3xl w-full max-w-lg relative shadow-[0_0_30px_rgba(147,51,234,0.15)]">
             <h2 class="text-2xl font-bold mb-2 text-center text-white mt-2">Armar Rutina IA</h2>
             <p class="text-xs text-custom-textMuted text-center mb-6">Describí tu objetivo y el Coach armará tu semana automáticamente. (Costo: 1 Crédito ⚡)</p>
             <div id="ai-error-msg" class="hidden text-red-500 bg-red-500/10 p-3 rounded-lg mb-4 text-xs font-bold text-center border border-red-500/20 shadow-lg break-words"></div>
             <div class="space-y-4">
-                <div>
-                    <textarea id="ai-prompt" placeholder="Ej: Quiero una rutina de 3 días enfocada en ganar fuerza e hipertrofia para las piernas..." class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl h-28 outline-none focus:border-purple-500 text-white resize-none custom-scroll text-sm"></textarea>
-                </div>
+                <div><textarea id="ai-prompt" placeholder="Ej: Quiero una rutina de 3 días enfocada en ganar fuerza e hipertrofia para las piernas..." class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl h-28 outline-none focus:border-purple-500 text-white resize-none custom-scroll text-sm"></textarea></div>
             </div>
             <button onclick="processAIPrompt()" class="w-full bg-gradient-to-r from-purple-600 to-blue-500 text-white py-4 rounded-xl font-bold hover:from-purple-500 hover:to-blue-400 transition-colors shadow-lg mt-6 tracking-widest uppercase">Generar mi Plan</button>
             <button onclick="closeAllModals()" class="mt-4 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cancelar</button>
@@ -304,8 +236,8 @@
             <h2 class="text-2xl font-bold text-white mb-2">¿Sobrescribir Plan?</h2>
             <p class="text-sm text-custom-textMuted mb-6">El Coach reemplazará tus ejercicios actuales. (Tu historial de cargas se mantiene).</p>
             <div class="flex gap-4">
-                <button onclick="closeAllModals()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl font-bold transition-colors">Cancelar</button>
-                <button onclick="proceedWithAIGeneration()" class="flex-1 bg-gradient-to-r from-orange-600 to-red-500 text-white py-3 rounded-xl font-bold shadow-lg transition-colors">Sí, Crear Plan</button>
+                <button onclick="closeAllModals()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl font-bold transition-colors hover:bg-[#262626]">Cancelar</button>
+                <button onclick="proceedWithAIGeneration()" class="flex-1 bg-gradient-to-r from-orange-600 to-red-500 text-white py-3 rounded-xl font-bold shadow-lg transition-colors hover:from-orange-500 hover:to-red-400">Sí, Crear Plan</button>
             </div>
         </div>
 
@@ -314,6 +246,36 @@
             <h2 class="text-2xl font-bold text-white mb-2">¡Plan Listo!</h2>
             <p class="text-sm text-custom-textMuted mb-6">El Coach ha diseñado tu semana a la perfección.</p>
             <button onclick="closeAllModals(); changeDay('lunes');" class="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg transition-colors">Aceptar el Desafío</button>
+        </div>
+
+        <div id="modal-exercise" class="modal-content hidden bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-lg relative shadow-2xl">
+            <h2 id="modal-ex-title" class="text-2xl font-bold mb-6 text-center text-white border-b border-custom-border pb-3">Nuevo Ejercicio</h2>
+            <div id="ex-error-msg" class="hidden text-red-500 bg-red-500/10 p-2 rounded mb-4 text-xs font-bold text-center"></div>
+            <div class="space-y-4 max-h-[60vh] overflow-y-auto custom-scroll pr-2">
+                <div><label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Nombre del Ejercicio</label><input type="text" id="new-ex-name" placeholder="Ej: Press Inclinado" class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl outline-none focus:border-custom-primary text-white"></div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Series</label><input type="number" id="new-ex-sets" value="4" min="1" class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl outline-none focus:border-custom-primary text-white text-center"></div>
+                    <div><label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Objetivo (Reps)</label><input type="text" id="new-ex-reps" placeholder="Ej: 8-10" class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl outline-none focus:border-custom-primary text-white text-center"></div>
+                </div>
+                <div class="border-t border-[#262626] pt-4 mt-2">
+                    <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-3">Recursos Visuales (Opcional)</label>
+                    <div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626] mb-2 cursor-pointer" onclick="toggleMediaInput('image')"><span class="text-sm font-bold text-white">Incluir Imagen / GIF</span><input type="checkbox" id="check-image" class="w-5 h-5 accent-custom-primary cursor-pointer pointer-events-none"></div>
+                    <div id="input-image-container" class="hidden mb-4 pl-4 border-l-2 border-custom-primary"><input type="text" id="new-ex-image" placeholder="Pegá el link de la imagen acá" class="w-full bg-[#0a0a0a] border border-[#262626] p-2.5 rounded-lg outline-none focus:border-custom-primary text-white text-sm"></div>
+                    <div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626] mb-2 cursor-pointer" onclick="toggleMediaInput('video')"><span class="text-sm font-bold text-white">Incluir Video (YouTube)</span><input type="checkbox" id="check-video" class="w-5 h-5 accent-custom-primary cursor-pointer pointer-events-none"></div>
+                    <div id="input-video-container" class="hidden mb-2 pl-4 border-l-2 border-custom-primary"><input type="text" id="new-ex-video" placeholder="Pegá el link de YouTube acá" class="w-full bg-[#0a0a0a] border border-[#262626] p-2.5 rounded-lg outline-none focus:border-custom-primary text-white text-sm"></div>
+                </div>
+            </div>
+            <button id="btn-save-exercise" onclick="saveExercise()" class="w-full bg-custom-primary text-white py-4 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg mt-6 tracking-widest uppercase">Guardar Ejercicio</button>
+            <button onclick="closeAllModals()" class="mt-4 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cancelar</button>
+        </div>
+
+        <div id="modal-confirm-delete-exercise" class="modal-content hidden bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl text-center">
+            <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></div>
+            <h2 class="text-2xl font-bold text-white mb-2">¿Eliminar Ejercicio?</h2>
+            <div class="flex gap-4 mt-6">
+                <button onclick="closeAllModals()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl hover:bg-[#262626] font-bold transition-colors">Cancelar</button>
+                <button id="btn-confirm-delete-ex" class="flex-1 bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 font-bold shadow-lg transition-colors">Sí, quitar</button>
+            </div>
         </div>
 
         <div id="modal-edit-log" class="modal-content hidden bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl">
@@ -337,12 +299,12 @@
 
         <div id="modal-terms" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scroll shadow-2xl">
             <h2 class="text-2xl font-bold mb-6 text-custom-primary border-b border-custom-border pb-3">Términos y Condiciones</h2>
-            <div class="text-sm text-custom-textMuted space-y-5 leading-relaxed text-justify"><p>Bienvenido a <strong class="text-white">HAT</strong>.</p></div>
+            <div class="text-sm text-custom-textMuted space-y-5 leading-relaxed text-justify"><p>Bienvenido a <strong class="text-white">HAT</strong>. Al utilizar nuestra plataforma, aceptas estos términos.</p></div>
             <button onclick="closeAllModals()" class="mt-8 bg-custom-border hover:bg-custom-primary transition-colors px-8 py-3 rounded-xl text-xs font-bold w-full md:w-auto text-white">Cerrar</button>
         </div>
         <div id="modal-privacy" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scroll shadow-2xl">
             <h2 class="text-2xl font-bold mb-6 text-custom-primary border-b border-custom-border pb-3">Privacidad</h2>
-            <div class="text-sm text-custom-textMuted space-y-5 leading-relaxed text-justify"><p>Tus datos están protegidos.</p></div>
+            <div class="text-sm text-custom-textMuted space-y-5 leading-relaxed text-justify"><p>Tus datos son procesados bajo estándares de seguridad en Supabase.</p></div>
             <button onclick="closeAllModals()" class="mt-8 bg-custom-border hover:bg-custom-primary transition-colors px-8 py-3 rounded-xl text-xs font-bold w-full md:w-auto text-white">Cerrar</button>
         </div>
         <div id="modal-support" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm shadow-2xl">
@@ -378,7 +340,6 @@
                 if (window.supabase) {
                     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
                     
-                    // FIX ARRANQUE: Verificación fuerte al cargar la página
                     const { data: { session } } = await supabaseClient.auth.getSession();
                     if(session) {
                         currentUserId = session.user.id;
@@ -402,7 +363,6 @@
             } catch(e) { console.error("Error", e); }
         });
 
-        // --- SISTEMA DE MODALES ---
         function openModal(modalId) {
             const overlay = document.getElementById('modal-overlay'); overlay.classList.remove('hidden'); overlay.classList.add('flex');
             document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); document.getElementById(modalId).classList.remove('hidden'); document.body.style.overflow = 'hidden';
@@ -416,7 +376,6 @@
             document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); document.body.style.overflow = 'auto'; window.location.hash = ''; 
         }
 
-        // --- AUTH & USER ---
         function updateAuthUI() {
             const modal = document.getElementById('modal-auth'); const title = document.getElementById('auth-title'); const btn = document.getElementById('btn-auth-action'); const toggleMsg = document.getElementById('auth-toggle-msg'); const closeBtn = document.getElementById('close-auth-btn'); const eyeBtn = document.getElementById('eye-btn'); const forgotPass = document.getElementById('forgot-password-container'); const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
             if(isSignUp) { modal.classList.replace('bg-custom-card', 'bg-custom-primary'); modal.classList.replace('border-custom-border', 'border-[#d43e20]'); title.innerText = "Crear Nueva Cuenta"; inputs.forEach(inp => { inp.className = "w-full bg-[#171717] border border-[#262626] p-3 pr-12 rounded-xl outline-none focus:border-white text-white placeholder-white/50 transition-all"; }); eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-white/50 hover:text-white transition-colors cursor-pointer"; btn.innerText = "Registrarme"; btn.className = "w-full bg-[#171717] text-white py-3 rounded-xl font-bold hover:bg-black border border-black/50 transition-colors shadow-lg"; toggleMsg.innerHTML = "O <span onclick='toggleAuthMode()' class='cursor-pointer font-extrabold underline hover:text-black transition-colors'>ingresá a tu cuenta acá</span>"; toggleMsg.className = "text-center text-sm text-white mt-4 transition-colors font-medium"; closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors"; forgotPass.classList.add('hidden'); } else { modal.classList.replace('bg-custom-primary', 'bg-custom-card'); modal.classList.replace('border-[#d43e20]', 'border-custom-border'); title.innerText = "Bienvenido Atleta"; inputs.forEach(inp => { inp.className = "w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white transition-all"; }); eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer"; btn.innerText = "Iniciar Sesión"; btn.className = "w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg"; toggleMsg.innerHTML = "¿No tenés cuenta? <br><span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold underline inline-block mt-1'>Registrate gratis acá</span>"; toggleMsg.className = "text-center text-sm text-custom-textMuted mt-4 transition-colors font-medium"; closeBtn.className = "mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors"; forgotPass.classList.remove('hidden'); } document.getElementById('auth-message').classList.add('hidden');
@@ -429,10 +388,8 @@
             const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-password').value; const btn = document.getElementById('btn-auth-action');
             if(!email || !password) return showMessage("Completá tu email y contraseña."); btn.innerText = "Procesando..."; btn.disabled = true;
             try {
-                if (isSignUp) { 
-                    const { error } = await supabaseClient.auth.signUp({ email, password }); 
-                    if (error) throw error; showMessage("¡Cuenta creada! Ya podés iniciar sesión.", false); 
-                } else { 
+                if (isSignUp) { const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: REDIRECT_URL } }); if (error) throw error; showMessage("¡Cuenta creada! Revisá tu mail o iniciá sesión.", false); } 
+                else { 
                     const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password }); 
                     if (error) throw error; 
                     currentUserId = data.user.id;
@@ -441,8 +398,8 @@
             } catch (err) { let errorTxt = err.message; if (errorTxt.includes("Invalid login credentials")) errorTxt = "Email o contraseña incorrectos."; if (errorTxt.includes("already registered")) errorTxt = "Este email ya tiene cuenta."; showMessage(errorTxt, true); } 
             finally { btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión"; btn.disabled = false; }
         }
-        async function handleResetPassword() { /* Oculto */ }
-        async function saveNewPassword() { /* Oculto */ }
+        async function handleResetPassword() { /* Oculto en vista */ }
+        async function saveNewPassword() { /* Oculto en vista */ }
 
         function loadDashboardView(email) {
             document.getElementById('view-landing').classList.add('hidden'); document.getElementById('view-app').classList.remove('hidden');
@@ -450,17 +407,19 @@
             document.getElementById('user-controls').classList.add('flex'); document.getElementById('user-display').innerText = email;
             closeAllModals(); 
             updateCreditsDisplay();
-            // FIX DE CARGA: Directamente forzamos el render de lunes
-            changeDay('lunes'); 
+            setTimeout(() => { changeDay('lunes'); }, 100);
         }
         async function handleSignOut() { if (supabaseClient) await supabaseClient.auth.signOut(); location.reload(); }
 
-        // --- SISTEMA DE CRÉDITOS ---
         async function updateCreditsDisplay() {
             try {
                 const { data, error } = await supabaseClient.from('profiles').select('ai_credits, has_infinite_credits').eq('id', currentUserId).single();
                 if(data) {
-                    document.getElementById('ai-credit-count').innerHTML = data.has_infinite_credits ? '<span class="text-lg leading-none flex items-center justify-center translate-y-[1px]">&infin;</span>' : data.ai_credits;
+                    if(data.has_infinite_credits) {
+                        document.getElementById('ai-credit-count').innerHTML = '<span style="font-size: 1.15rem; line-height: 0;">&infin;</span>';
+                    } else {
+                        document.getElementById('ai-credit-count').innerText = data.ai_credits;
+                    }
                 } else {
                     document.getElementById('ai-credit-count').innerText = "10";
                 }
@@ -475,9 +434,6 @@
             return formatted;
         }
 
-        // =========================================================================
-        // FASE 5/6: CHAT Y GENERADOR CON IA
-        // =========================================================================
         function handleAIGenerationRequest() { document.getElementById('ai-prompt').value = ""; openModal('modal-ai-coach'); }
 
         async function processAIPrompt() {
@@ -532,7 +488,6 @@
             }
         }
 
-        // --- SISTEMA DE CHAT CON IA ---
         function openChatModal() {
             const savedChat = localStorage.getItem(`hat_chat_${currentUserId}`);
             if(savedChat) { window.chatHistory = JSON.parse(savedChat); } else { window.chatHistory = []; }
@@ -594,9 +549,6 @@
             finally { renderChat(); btn.disabled = false; btn.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>'; }
         }
 
-        // =========================================================================
-        // FASE 4 Y 7: CREADOR Y BORRADO DE RUTINAS
-        // =========================================================================
         function promptDeleteEntireRoutine() { openModal('modal-confirm-delete-all'); }
 
         async function confirmDeleteEntireRoutine() {
@@ -663,8 +615,8 @@
 
         async function changeDay(day, event) {
             currentActiveDay = day;
-            if(event) { document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }); event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white'); } 
-            else { document.querySelectorAll('.tab-btn').forEach(b => { if(b.innerText.toLowerCase() === day.toLowerCase()) { b.classList.add('active'); b.classList.remove('text-custom-textMuted'); b.classList.add('text-white'); } else { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); } }); }
+            if(event) { document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }); event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white'); event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } 
+            else { document.querySelectorAll('.tab-btn').forEach(b => { if(b.innerText.toLowerCase() === day.toLowerCase()) { b.classList.add('active'); b.classList.remove('text-custom-textMuted'); b.classList.add('text-white'); b.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } else { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); } }); }
             const container = document.getElementById('exercise-container'); container.innerHTML = '<div class="col-span-1 md:col-span-2 text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando tu rutina...</div>';
 
             try {
