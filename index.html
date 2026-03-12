@@ -65,8 +65,8 @@
             <div class="absolute inset-0 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
             <svg class="absolute inset-0 m-auto w-8 h-8 text-purple-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
         </div>
-        <h2 class="text-2xl md:text-3xl font-black text-white mb-3 tracking-widest text-center uppercase animate-pulse">Procesando Biomecánica...</h2>
-        <p class="text-custom-textMuted text-sm text-center max-w-sm">El Coach Inteligente está analizando tu pedido y diseñando tu semana de entrenamiento. Por favor, no cierres esta ventana.</p>
+        <h2 class="text-2xl md:text-3xl font-black text-white mb-3 tracking-widest text-center uppercase animate-pulse">Analizando Biomecánica...</h2>
+        <p class="text-custom-textMuted text-sm text-center max-w-sm">El Coach Inteligente está procesando tu solicitud y diseñando tu semana de entrenamiento ideal. Por favor, no cierres esta ventana.</p>
     </div>
 
     <nav class="border-b border-custom-border bg-custom-bg/90 backdrop-blur-md sticky top-0 z-40">
@@ -121,7 +121,7 @@
             
             <button onclick="handleAIGenerationRequest()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-500 hover:to-blue-400 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-95 uppercase tracking-widest text-sm shadow-[0_0_15px_rgba(147,51,234,0.4)]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                Generar con IA
+                Consultar al Coach
             </button>
         </div>
     </main>
@@ -147,7 +147,7 @@
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             </div>
             <h2 class="text-2xl font-bold mb-2 text-center text-white mt-4">Coach Inteligente</h2>
-            <p class="text-xs text-custom-textMuted text-center mb-6">Describí tu objetivo y el Coach Inteligente armará tu semana de entrenamiento automáticamente.</p>
+            <p class="text-xs text-custom-textMuted text-center mb-6">Contame tus metas y voy a diseñar tu semana de entrenamiento ideal, optimizada para tus objetivos.</p>
             
             <div id="ai-error-msg" class="hidden text-red-500 bg-red-500/10 p-3 rounded-lg mb-4 text-xs font-bold text-center border border-red-500/20 shadow-lg break-words"></div>
             
@@ -158,7 +158,7 @@
                 </div>
             </div>
 
-            <button onclick="processAIPrompt()" class="w-full bg-gradient-to-r from-purple-600 to-blue-500 text-white py-4 rounded-xl font-bold hover:from-purple-500 hover:to-blue-400 transition-colors shadow-lg mt-6 tracking-widest uppercase">Generar Rutina</button>
+            <button onclick="processAIPrompt()" class="w-full bg-gradient-to-r from-purple-600 to-blue-500 text-white py-4 rounded-xl font-bold hover:from-purple-500 hover:to-blue-400 transition-colors shadow-lg mt-6 tracking-widest uppercase">Generar mi Plan</button>
             <button onclick="closeAllModals()" class="mt-4 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cancelar</button>
         </div>
 
@@ -166,11 +166,11 @@
             <div class="w-16 h-16 bg-orange-500/10 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
             </div>
-            <h2 class="text-2xl font-bold text-white mb-2">¿Sobrescribir Rutina?</h2>
-            <p class="text-sm text-custom-textMuted mb-6">Ya tenés una rutina configurada. El Coach Inteligente borrará los ejercicios actuales para inyectar los nuevos. (Tu historial de cargas guardado quedará intacto).</p>
+            <h2 class="text-2xl font-bold text-white mb-2">¿Sobrescribir Plan Actual?</h2>
+            <p class="text-sm text-custom-textMuted mb-6">El Coach Inteligente reemplazará tus ejercicios actuales por unos nuevos. (¡Tranquilo! Tu historial de pesos guardados quedará intacto).</p>
             <div class="flex gap-4">
                 <button onclick="closeAllModals()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl hover:bg-[#262626] font-bold transition-colors">Cancelar</button>
-                <button onclick="proceedWithAIGeneration()" class="flex-1 bg-gradient-to-r from-orange-600 to-red-500 text-white py-3 rounded-xl hover:from-orange-500 hover:to-red-400 font-bold shadow-lg transition-colors">Sí, Reemplazar</button>
+                <button onclick="proceedWithAIGeneration()" class="flex-1 bg-gradient-to-r from-orange-600 to-red-500 text-white py-3 rounded-xl hover:from-orange-500 hover:to-red-400 font-bold shadow-lg transition-colors">Sí, Crear Plan</button>
             </div>
         </div>
 
@@ -178,9 +178,9 @@
             <div class="w-16 h-16 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
-            <h2 class="text-2xl font-bold text-white mb-2">¡Rutina Lista!</h2>
-            <p class="text-sm text-custom-textMuted mb-6">El Coach Inteligente ha analizado tu pedido y ha inyectado tu nueva semana de entrenamiento.</p>
-            <button onclick="closeAllModals(); changeDay('lunes');" class="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg transition-colors">Ver mi Rutina</button>
+            <h2 class="text-2xl font-bold text-white mb-2">¡Plan Terminado!</h2>
+            <p class="text-sm text-custom-textMuted mb-6">El Coach Inteligente ha diseñado tu nueva semana de entrenamiento a la perfección.</p>
+            <button onclick="closeAllModals(); changeDay('lunes');" class="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg transition-colors">Aceptar el Desafío</button>
         </div>
 
         <div id="modal-exercise" class="modal-content hidden bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-lg relative shadow-2xl">
@@ -491,7 +491,7 @@
         async function handleSignOut() { if (supabaseClient) await supabaseClient.auth.signOut(); location.reload(); }
 
         // =========================================================================
-        // FASE 5: API CALL A EDGE FUNCTION PARA IA CON DETECTOR DE ERRORES
+        // FASE 5: API CALL A EDGE FUNCTION (COACH IA) CON DETECTOR TRANSPARENTE
         // =========================================================================
         function handleAIGenerationRequest() {
             document.getElementById('ai-prompt').value = ""; 
@@ -543,13 +543,18 @@
             `;
 
             try {
+                // LLAMADA AL SERVIDOR MEJORADO
                 const { data, error } = await supabaseClient.functions.invoke('coach', {
                     body: { prompt: systemPrompt }
                 });
                 
-                if(error) throw new Error("Fallo de conexión: " + error.message);
+                // Con el nuevo servidor, Supabase no debería tirar error de red (porque forzamos status 200). 
+                if(error) throw new Error("Error de conexión con Supabase: " + error.message);
+                
+                // El error real ahora viene adentro de la "data"
                 if(data && data.error) throw new Error(data.error);
-                if(!data || !data.candidates) throw new Error("La respuesta de la IA fue inválida o vacía.");
+                
+                if(!data || !data.candidates) throw new Error("La respuesta del Coach fue inválida o vacía.");
                 
                 let rawJson = data.candidates[0].content.parts[0].text;
                 rawJson = rawJson.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -567,7 +572,7 @@
                 }));
                 
                 const { error: dbError } = await supabaseClient.from('user_routines').insert(exercisesToInsert);
-                if(dbError) throw new Error("Error en Base de Datos: " + dbError.message);
+                if(dbError) throw new Error("Error guardando en tu perfil: " + dbError.message);
                 
                 document.getElementById('ai-loading-overlay').classList.add('hidden');
                 document.getElementById('ai-loading-overlay').classList.remove('flex');
@@ -575,6 +580,7 @@
                 openModal('modal-ai-success');
                 
             } catch(e) {
+                // AHORA EL CARTEL MOSTRARÁ EL ERROR REAL Y TRANSPARENTE
                 document.getElementById('ai-loading-overlay').classList.add('hidden');
                 document.getElementById('ai-loading-overlay').classList.remove('flex');
                 
@@ -583,6 +589,7 @@
                 document.getElementById('ai-error-msg').classList.remove('hidden');
             }
         }
+
 
         // =========================================================================
         // FASE 4: CREADOR Y GESTOR DE RUTINAS DINÁMICO
