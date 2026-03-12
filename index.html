@@ -66,7 +66,7 @@
             <svg class="absolute inset-0 m-auto w-8 h-8 text-purple-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
         </div>
         <h2 class="text-2xl md:text-3xl font-black text-white mb-3 tracking-widest text-center uppercase animate-pulse">Procesando Biomecánica...</h2>
-        <p class="text-custom-textMuted text-sm text-center max-w-sm">Tu Backend seguro está analizando tu pedido y diseñando tu semana de entrenamiento. Por favor, no cierres esta ventana.</p>
+        <p class="text-custom-textMuted text-sm text-center max-w-sm">El Coach Inteligente está analizando tu pedido y diseñando tu semana de entrenamiento. Por favor, no cierres esta ventana.</p>
     </div>
 
     <nav class="border-b border-custom-border bg-custom-bg/90 backdrop-blur-md sticky top-0 z-40">
@@ -147,7 +147,7 @@
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             </div>
             <h2 class="text-2xl font-bold mb-2 text-center text-white mt-4">Coach Inteligente</h2>
-            <p class="text-xs text-custom-textMuted text-center mb-6">Describí tu objetivo y tu Backend armará tu semana de entrenamiento automáticamente de forma segura.</p>
+            <p class="text-xs text-custom-textMuted text-center mb-6">Describí tu objetivo y el Coach Inteligente armará tu semana de entrenamiento automáticamente.</p>
             
             <div id="ai-error-msg" class="hidden text-red-500 bg-red-500/10 p-3 rounded-lg mb-4 text-xs font-bold text-center border border-red-500/20 shadow-lg break-words"></div>
             
@@ -167,7 +167,7 @@
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
             </div>
             <h2 class="text-2xl font-bold text-white mb-2">¿Sobrescribir Rutina?</h2>
-            <p class="text-sm text-custom-textMuted mb-6">Ya tenés una rutina configurada. La IA borrará los ejercicios actuales para inyectar los nuevos. (Tu historial de cargas guardado quedará intacto).</p>
+            <p class="text-sm text-custom-textMuted mb-6">Ya tenés una rutina configurada. El Coach Inteligente borrará los ejercicios actuales para inyectar los nuevos. (Tu historial de cargas guardado quedará intacto).</p>
             <div class="flex gap-4">
                 <button onclick="closeAllModals()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl hover:bg-[#262626] font-bold transition-colors">Cancelar</button>
                 <button onclick="proceedWithAIGeneration()" class="flex-1 bg-gradient-to-r from-orange-600 to-red-500 text-white py-3 rounded-xl hover:from-orange-500 hover:to-red-400 font-bold shadow-lg transition-colors">Sí, Reemplazar</button>
@@ -179,7 +179,7 @@
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             </div>
             <h2 class="text-2xl font-bold text-white mb-2">¡Rutina Lista!</h2>
-            <p class="text-sm text-custom-textMuted mb-6">El Coach de IA ha analizado tu pedido y ha inyectado tu nueva semana de entrenamiento.</p>
+            <p class="text-sm text-custom-textMuted mb-6">El Coach Inteligente ha analizado tu pedido y ha inyectado tu nueva semana de entrenamiento.</p>
             <button onclick="closeAllModals(); changeDay('lunes');" class="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg transition-colors">Ver mi Rutina</button>
         </div>
 
@@ -502,7 +502,7 @@
             const userPrompt = document.getElementById('ai-prompt').value;
             const msgBox = document.getElementById('ai-error-msg');
             
-            if(!userPrompt) { msgBox.innerText = "Escribí tu objetivo para que la IA arme la rutina."; msgBox.classList.remove('hidden'); return; }
+            if(!userPrompt) { msgBox.innerText = "Escribí tu objetivo para que el Coach Inteligente arme la rutina."; msgBox.classList.remove('hidden'); return; }
             
             try {
                 const { count, error } = await supabaseClient.from('user_routines').select('*', { count: 'exact', head: true }).eq('user_id', currentUserId);
@@ -547,9 +547,8 @@
                     body: { prompt: systemPrompt }
                 });
                 
-                // DETECTOR DE ERRORES TRANSPARENTE
-                if(error) throw new Error("Error del Servidor (Supabase): " + error.message);
-                if(data && data.error) throw new Error("Error de la IA (Gemini): " + data.error.message);
+                if(error) throw new Error("Fallo de conexión: " + error.message);
+                if(data && data.error) throw new Error(data.error);
                 if(!data || !data.candidates) throw new Error("La respuesta de la IA fue inválida o vacía.");
                 
                 let rawJson = data.candidates[0].content.parts[0].text;
@@ -576,14 +575,12 @@
                 openModal('modal-ai-success');
                 
             } catch(e) {
-                // AQUÍ ATRAPAMOS EL ERROR REAL Y LO MOSTRAMOS
                 document.getElementById('ai-loading-overlay').classList.add('hidden');
                 document.getElementById('ai-loading-overlay').classList.remove('flex');
                 
                 openModal('modal-ai-coach');
                 document.getElementById('ai-error-msg').innerText = "Detalle técnico: " + e.message;
                 document.getElementById('ai-error-msg').classList.remove('hidden');
-                console.error("Error Completo:", e);
             }
         }
 
