@@ -33,7 +33,6 @@
         .custom-scroll::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: #F54927; }
 
-        /* EFECTOS VISUALES */
         .bg-pulse {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 100vw; height: 100vw; max-width: 800px; max-height: 800px;
@@ -45,7 +44,6 @@
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         .animate-title-entrance { animation: fadeInUp 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; position: relative; z-index: 10; }
 
-        /* REFLEJO SOLO EN LETRAS */
         .title-wrapper { position: relative; display: inline-block; padding: 10px 20px; margin: -10px -20px; }
         .glow-text {
             background: linear-gradient(120deg, #F54927 0%, #F54927 40%, #ffffff 50%, #F54927 60%, #F54927 100%);
@@ -60,6 +58,16 @@
     </style>
 </head>
 <body class="font-sans relative">
+
+    <div id="ai-loading-overlay" class="fixed inset-0 bg-[#0a0a0a]/95 backdrop-blur-xl z-[100] hidden flex-col items-center justify-center p-4">
+        <div class="relative w-24 h-24 mb-8">
+            <div class="absolute inset-0 border-4 border-purple-500/30 rounded-full"></div>
+            <div class="absolute inset-0 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+            <svg class="absolute inset-0 m-auto w-8 h-8 text-purple-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+        </div>
+        <h2 class="text-2xl md:text-3xl font-black text-white mb-3 tracking-widest text-center uppercase animate-pulse">Procesando Biomecánica...</h2>
+        <p class="text-custom-textMuted text-sm text-center max-w-sm">Tu Backend seguro está analizando tu pedido y diseñando tu semana de entrenamiento. Por favor, no cierres esta ventana.</p>
+    </div>
 
     <nav class="border-b border-custom-border bg-custom-bg/90 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
@@ -103,8 +111,7 @@
             <button class="tab-btn px-4 pb-2 text-base md:text-lg bg-[#0a0a0a] whitespace-nowrap text-custom-textMuted" onclick="changeDay('domingo', event)">Domingo</button>
         </div>
         
-        <div id="exercise-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-20 mb-8">
-            </div>
+        <div id="exercise-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-20 mb-8"></div>
 
         <div class="flex flex-col sm:flex-row justify-center gap-4 border-t border-custom-border pt-8 relative z-20">
             <button onclick="openAddExerciseModal()" class="flex items-center justify-center gap-2 border-2 border-custom-border text-custom-textMuted hover:text-custom-primary hover:border-custom-primary px-6 py-3 rounded-xl font-bold transition-all active:scale-95 uppercase tracking-widest text-sm bg-[#0a0a0a]">
@@ -112,7 +119,7 @@
                 Agregar Ejercicio
             </button>
             
-            <button onclick="openModal('modal-ai-coach')" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-500 hover:to-blue-400 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-95 uppercase tracking-widest text-sm shadow-[0_0_15px_rgba(147,51,234,0.4)]">
+            <button onclick="handleAIGenerationRequest()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-500 hover:to-blue-400 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-95 uppercase tracking-widest text-sm shadow-[0_0_15px_rgba(147,51,234,0.4)]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 Generar con IA
             </button>
@@ -140,7 +147,7 @@
                 <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             </div>
             <h2 class="text-2xl font-bold mb-2 text-center text-white mt-4">Coach Inteligente</h2>
-            <p class="text-xs text-custom-textMuted text-center mb-6">Describí tu objetivo y la IA armará tu semana de entrenamiento automáticamente.</p>
+            <p class="text-xs text-custom-textMuted text-center mb-6">Describí tu objetivo y tu Backend armará tu semana de entrenamiento automáticamente de forma segura.</p>
             
             <div id="ai-error-msg" class="hidden text-red-500 bg-red-500/10 p-2 rounded mb-4 text-xs font-bold text-center"></div>
             
@@ -151,8 +158,29 @@
                 </div>
             </div>
 
-            <button id="btn-generate-ai" onclick="generateRoutineWithAI()" class="w-full bg-gradient-to-r from-purple-600 to-blue-500 text-white py-4 rounded-xl font-bold hover:from-purple-500 hover:to-blue-400 transition-colors shadow-lg mt-6 tracking-widest uppercase">Generar Rutina Mágica</button>
+            <button onclick="processAIPrompt()" class="w-full bg-gradient-to-r from-purple-600 to-blue-500 text-white py-4 rounded-xl font-bold hover:from-purple-500 hover:to-blue-400 transition-colors shadow-lg mt-6 tracking-widest uppercase">Generar Rutina</button>
             <button onclick="closeAllModals()" class="mt-4 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cancelar</button>
+        </div>
+
+        <div id="modal-confirm-ai-overwrite" class="modal-content hidden bg-custom-card border border-orange-500/30 p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl text-center">
+            <div class="w-16 h-16 bg-orange-500/10 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2">¿Sobrescribir Rutina?</h2>
+            <p class="text-sm text-custom-textMuted mb-6">Ya tenés una rutina configurada. La IA borrará los ejercicios actuales para inyectar los nuevos. (Tu historial de cargas guardado quedará intacto).</p>
+            <div class="flex gap-4">
+                <button onclick="closeAllModals()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl hover:bg-[#262626] font-bold transition-colors">Cancelar</button>
+                <button onclick="proceedWithAIGeneration()" class="flex-1 bg-gradient-to-r from-orange-600 to-red-500 text-white py-3 rounded-xl hover:from-orange-500 hover:to-red-400 font-bold shadow-lg transition-colors">Sí, Reemplazar</button>
+            </div>
+        </div>
+
+        <div id="modal-ai-success" class="modal-content hidden bg-custom-card border border-green-500/30 p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl text-center">
+            <div class="w-16 h-16 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2">¡Rutina Lista!</h2>
+            <p class="text-sm text-custom-textMuted mb-6">El Coach de IA ha analizado tu pedido y ha inyectado tu nueva semana de entrenamiento.</p>
+            <button onclick="closeAllModals(); changeDay('lunes');" class="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg transition-colors">Ver mi Rutina</button>
         </div>
 
         <div id="modal-exercise" class="modal-content hidden bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-lg relative shadow-2xl">
@@ -295,16 +323,12 @@
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbWtzZWl3Z2R6d3ptdHFkY3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzQ0NTMsImV4cCI6MjA4ODgxMDQ1M30.b3kQ8JSYaMCrRdgxoyek6xXF4Hhv_9H8edEN4c7oF8U";
         const REDIRECT_URL = "https://tgiordi.github.io/Hybrid-Athlete-Tracker/";
         
-        // ==========================================
-        // API KEY DE GEMINI (PEGALA ACÁ)
-        // ==========================================
-        const GEMINI_API_KEY = "AIzaSyDynMfgzggFbVtE7R3Hu-tCQVUZMEGWIWk"; 
-        
         let supabaseClient = null;
         let currentUserId = null;
         let isSignUp = false;
         let currentActiveDay = 'lunes'; 
         let currentEditExerciseId = null; 
+        let currentAIPrompt = "";
         
         window.myCharts = {};
         window.currentHistory = {};
@@ -471,6 +495,100 @@
         async function handleSignOut() { if (supabaseClient) await supabaseClient.auth.signOut(); location.reload(); }
 
         // =========================================================================
+        // FASE 5: API CALL A EDGE FUNCTION PARA IA
+        // =========================================================================
+        function handleAIGenerationRequest() {
+            document.getElementById('ai-prompt').value = ""; 
+            openModal('modal-ai-coach');
+        }
+
+        async function processAIPrompt() {
+            const userPrompt = document.getElementById('ai-prompt').value;
+            const msgBox = document.getElementById('ai-error-msg');
+            
+            if(!userPrompt) { msgBox.innerText = "Escribí tu objetivo para que la IA arme la rutina."; msgBox.classList.remove('hidden'); return; }
+            
+            try {
+                const { count, error } = await supabaseClient.from('user_routines').select('*', { count: 'exact', head: true }).eq('user_id', currentUserId);
+                if (error) throw error;
+                
+                currentAIPrompt = userPrompt;
+
+                if (count > 0) {
+                    openModal('modal-confirm-ai-overwrite');
+                } else {
+                    proceedWithAIGeneration();
+                }
+            } catch(e) {
+                msgBox.innerText = "Error al verificar rutinas: " + e.message; msgBox.classList.remove('hidden');
+            }
+        }
+
+        async function proceedWithAIGeneration() {
+            closeAllModals(); 
+            document.getElementById('ai-loading-overlay').classList.remove('hidden');
+            document.getElementById('ai-loading-overlay').classList.add('flex');
+
+            const systemPrompt = `
+                Actúa como un entrenador de élite y arma una rutina semanal para este pedido: "${currentAIPrompt}".
+                Devuelve ÚNICAMENTE un array JSON válido, sin texto extra, sin formato markdown.
+                Estructura obligatoria de cada objeto:
+                {
+                    "day_of_week": "lunes" (Día en minúscula y sin tildes: lunes, martes, miercoles, jueves, viernes, sabado, domingo),
+                    "exercise_name": "Nombre del Ejercicio",
+                    "sets": 4 (entero),
+                    "target_reps": "8-12" (string),
+                    "has_video": false, 
+                    "youtube_url": "", 
+                    "has_image": false,
+                    "image_url": ""
+                }
+                REGLA VITAL: Las IAs no pueden generar links reales de YouTube. Deja 'has_video', 'youtube_url', 'has_image' e 'image_url' SIEMPRE vacíos o en false.
+            `;
+
+            try {
+                // LLAMADA SEGURA A TU BACKEND EN LA NUBE (NO EXPONE API KEY EN EL NAVEGADOR)
+                const { data, error } = await supabaseClient.functions.invoke('coach', {
+                    body: { prompt: systemPrompt }
+                });
+                
+                if(error) throw new Error(error.message);
+                
+                let rawJson = data.candidates[0].content.parts[0].text;
+                rawJson = rawJson.replace(/```json/g, '').replace(/```/g, '').trim();
+                const routineData = JSON.parse(rawJson);
+                
+                await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
+                
+                const exercisesToInsert = routineData.map(ex => ({
+                    user_id: currentUserId,
+                    day_of_week: ex.day_of_week,
+                    exercise_name: ex.exercise_name,
+                    sets: ex.sets,
+                    target_reps: ex.target_reps,
+                    has_video: false, youtube_url: "", has_image: false, image_url: ""
+                }));
+                
+                const { error: dbError } = await supabaseClient.from('user_routines').insert(exercisesToInsert);
+                if(dbError) throw dbError;
+                
+                document.getElementById('ai-loading-overlay').classList.add('hidden');
+                document.getElementById('ai-loading-overlay').classList.remove('flex');
+                
+                openModal('modal-ai-success');
+                
+            } catch(e) {
+                document.getElementById('ai-loading-overlay').classList.add('hidden');
+                document.getElementById('ai-loading-overlay').classList.remove('flex');
+                
+                openModal('modal-ai-coach');
+                document.getElementById('ai-error-msg').innerText = "Hubo un error al generar la rutina. Verifica que hayas completado el Paso 3 (GitHub Codespaces) correctamente.";
+                document.getElementById('ai-error-msg').classList.remove('hidden');
+            }
+        }
+
+
+        // =========================================================================
         // FASE 4: CREADOR Y GESTOR DE RUTINAS DINÁMICO
         // =========================================================================
         
@@ -550,7 +668,6 @@
             const hasImage = document.getElementById('check-image').checked; 
             const imgUrl = document.getElementById('new-ex-image').value;
 
-            // VALIDACIONES DE SEGURIDAD
             if(!name || !sets || !targetReps) { msgBox.innerText = "Completá el nombre, series y objetivo."; msgBox.classList.remove('hidden'); return; }
             if(hasVideo && !ytId) { msgBox.innerText = "El link de YouTube no es válido."; msgBox.classList.remove('hidden'); return; }
             if(hasImage && (!imgUrl || !imgUrl.startsWith('http'))) { msgBox.innerText = "Pegá un link de imagen válido (que empiece con http)."; msgBox.classList.remove('hidden'); return; }
@@ -609,7 +726,7 @@
                         <div class="col-span-1 md:col-span-2 flex flex-col items-center justify-center p-10 bg-custom-card border border-dashed border-custom-border rounded-3xl text-center">
                             <div class="w-16 h-16 bg-[#171717] rounded-full flex items-center justify-center mb-4"><svg class="w-8 h-8 text-custom-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg></div>
                             <h3 class="text-xl font-bold text-white mb-2">Día libre o sin configurar</h3>
-                            <p class="text-custom-textMuted text-sm">Aún no agregaste ejercicios para el día seleccionado.</p>
+                            <p class="text-custom-textMuted text-sm mb-4">Aún no agregaste ejercicios para el día seleccionado.</p>
                         </div>`;
                     return;
                 }
@@ -628,10 +745,18 @@
                             </div>`;
                     }
 
-                    // UX MEDIA: Imagen primero (con ajuste dinámico w-full h-auto), Video después
+                    // UX MEDIA: Imagen primero (con ajuste dinámico w-full h-auto), Video después, Fallback de búsqueda para IA
                     let mediaHtml = '';
-                    if(ex.has_image && ex.image_url) { mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden border border-custom-border w-full"><img src="${ex.image_url}" class="w-full h-auto block" onerror="this.parentElement.style.display='none';"></div>`; }
-                    if(ex.has_video && ex.youtube_url) { mediaHtml += `<div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${ex.youtube_url}" frameborder="0" allowfullscreen></iframe></div>`; }
+                    if(ex.has_image && ex.image_url) { 
+                        mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden border border-custom-border w-full"><img src="${ex.image_url}" class="w-full h-auto block" onerror="this.parentElement.style.display='none';"></div>`; 
+                    }
+                    
+                    if(ex.has_video && ex.youtube_url && ex.youtube_url.length === 11) { 
+                        mediaHtml += `<div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${ex.youtube_url}" frameborder="0" allowfullscreen></iframe></div>`; 
+                    } else if (!ex.has_video && !ex.has_image) {
+                        const searchQuery = encodeURIComponent(ex.exercise_name + " ejercicio tutorial tecnica");
+                        mediaHtml += `<a href="https://www.youtube.com/results?search_query=${searchQuery}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-[#171717] border border-[#262626] text-custom-textMuted hover:text-white hover:border-custom-primary py-3 rounded-xl mb-6 font-bold text-xs uppercase tracking-widest transition-colors"><svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg> Buscar Tutorial en YouTube</a>`;
+                    }
 
                     container.innerHTML += `
                         <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative">
@@ -651,78 +776,6 @@
                         </div>`;
                 });
             } catch(e) { container.innerHTML = `<div class="col-span-1 md:col-span-2 text-center text-red-500 py-10 font-bold">Error al cargar rutinas: ${e.message}</div>`; }
-        }
-
-        // --- FASE 5: GENERADOR DE RUTINAS CON IA GEMINI ---
-        async function generateRoutineWithAI() {
-            const userPrompt = document.getElementById('ai-prompt').value;
-            const btn = document.getElementById('btn-generate-ai');
-            const msgBox = document.getElementById('ai-error-msg');
-            
-            if(!userPrompt) { msgBox.innerText = "Escribí tu objetivo para que la IA arme la rutina."; msgBox.classList.remove('hidden'); return; }
-            if(!GEMINI_API_KEY) { msgBox.innerText = "Falta poner la API Key de Gemini en el código (arriba de todo)."; msgBox.classList.remove('hidden'); return; }
-            
-            btn.innerText = "PENSANDO Y ARMANDO..."; btn.disabled = true; msgBox.classList.add('hidden');
-            
-            // Le damos instrucciones muy precisas a la IA
-            const systemPrompt = `
-                Actúa como un entrenador de élite y arma una rutina semanal basada en este pedido del usuario: "${userPrompt}".
-                Devuelve ÚNICAMENTE un array JSON válido, sin texto adicional, sin formato markdown, listo para ser parseado por JSON.parse().
-                La estructura exacta de cada objeto en el array debe ser:
-                {
-                    "day_of_week": "lunes" (debe ser el día de la semana en minúscula y sin tildes: lunes, martes, miercoles, jueves, viernes, sabado, domingo),
-                    "exercise_name": "Nombre del Ejercicio",
-                    "sets": 4 (un número entero),
-                    "target_reps": "8-12" (un string),
-                    "has_video": true,
-                    "youtube_url": "ID_DEL_VIDEO" (Intenta dar un ID real de youtube de 11 caracteres si conoces un tutorial de athlean-x, squat university o similar, sino inventa una búsqueda),
-                    "has_image": false,
-                    "image_url": ""
-                }
-            `;
-
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: systemPrompt }] }] })
-                });
-                
-                const data = await response.json();
-                if(!response.ok) throw new Error(data.error?.message || "Error al conectar con la IA de Google.");
-                
-                let rawJson = data.candidates[0].content.parts[0].text;
-                // Limpieza de markdown en caso de que la IA decida ponerlo
-                rawJson = rawJson.replace(/```json/g, '').replace(/```/g, '').trim();
-                
-                const routineData = JSON.parse(rawJson);
-                
-                const exercisesToInsert = routineData.map(ex => ({
-                    user_id: currentUserId,
-                    day_of_week: ex.day_of_week,
-                    exercise_name: ex.exercise_name,
-                    sets: ex.sets,
-                    target_reps: ex.target_reps,
-                    has_video: ex.has_video,
-                    youtube_url: ex.youtube_url,
-                    has_image: ex.has_image,
-                    image_url: ex.image_url
-                }));
-                
-                const { error } = await supabaseClient.from('user_routines').insert(exercisesToInsert);
-                if(error) throw error;
-                
-                closeAllModals();
-                changeDay(currentActiveDay); // Recargamos el día actual
-                alert("¡Rutina mágica generada exitosamente! Revisa las pestañas de los días.");
-                
-            } catch(e) {
-                console.error(e);
-                msgBox.innerText = "Error: " + e.message;
-                msgBox.classList.remove('hidden');
-            } finally {
-                btn.innerText = "GENERAR RUTINA"; btn.disabled = false;
-            }
         }
 
         // --- FASE 3 GUARDADO DE LOGS ---
@@ -813,4 +866,3 @@
     </script>
 </body>
 </html>
-
