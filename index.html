@@ -44,8 +44,10 @@
         @keyframes blink { 50% { border-color: transparent; } }
         
         /* CHAT BUBBLES CSS */
-        .chat-bubble-user { background-color: #262626; border-radius: 16px 16px 0 16px; padding: 12px 16px; font-size: 14px; margin-left: auto; max-width: 85%; color: white; margin-bottom: 12px; border: 1px solid #333;}
-        .chat-bubble-ai { background: linear-gradient(to right, #7e22ce, #3b82f6); border-radius: 16px 16px 16px 0; padding: 12px 16px; font-size: 14px; margin-right: auto; max-width: 90%; color: white; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(147, 51, 234, 0.2);}
+        .chat-bubble-user { background-color: #262626; border-radius: 16px 16px 0 16px; padding: 12px 16px; font-size: 14px; margin-left: auto; max-width: 85%; color: white; margin-bottom: 12px; border: 1px solid #333; line-height: 1.5;}
+        .chat-bubble-ai { background: linear-gradient(to right, #7e22ce, #3b82f6); border-radius: 16px 16px 16px 0; padding: 12px 16px; font-size: 14px; margin-right: auto; max-width: 90%; color: white; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(147, 51, 234, 0.2); line-height: 1.6;}
+        .chat-bubble-ai strong { color: #f8fafc; font-weight: 800; }
+        .chat-bubble-ai em { font-style: italic; opacity: 0.9; }
     </style>
 </head>
 <body class="font-sans relative">
@@ -56,8 +58,8 @@
             <div class="absolute inset-0 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
             <svg class="absolute inset-0 m-auto w-8 h-8 text-purple-500 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
         </div>
-        <h2 class="text-2xl md:text-3xl font-black text-white mb-3 tracking-widest text-center uppercase animate-pulse">Procesando Biomecánica...</h2>
-        <p class="text-custom-textMuted text-sm text-center max-w-sm">El Coach Inteligente está procesando tu solicitud de forma segura. Por favor, no cierres esta ventana.</p>
+        <h2 class="text-2xl md:text-3xl font-black text-white mb-3 tracking-widest text-center uppercase animate-pulse" id="loading-title">Procesando Biomecánica...</h2>
+        <p class="text-custom-textMuted text-sm text-center max-w-sm" id="loading-desc">El Coach Inteligente está procesando tu solicitud de forma segura. Por favor, no cierres esta ventana.</p>
     </div>
 
     <nav class="border-b border-custom-border bg-custom-bg/90 backdrop-blur-md sticky top-0 z-40">
@@ -107,10 +109,10 @@
         
         <div id="exercise-container" class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-20 mb-8"></div>
 
-        <div class="flex flex-col sm:flex-row justify-center gap-4 border-t border-custom-border pt-8 relative z-20">
+        <div class="flex flex-col sm:flex-row flex-wrap justify-center gap-4 border-t border-custom-border pt-8 relative z-20">
             <button onclick="openAddExerciseModal()" class="flex items-center justify-center gap-2 border-2 border-custom-border text-custom-textMuted hover:text-custom-primary hover:border-custom-primary px-6 py-3 rounded-xl font-bold transition-all active:scale-95 uppercase tracking-widest text-sm bg-[#0a0a0a]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                Agregar Manual
+                Agregar Ejercicio
             </button>
             <button onclick="handleAIGenerationRequest()" class="flex items-center justify-center gap-2 border-2 border-purple-500/30 text-purple-400 hover:text-white hover:bg-purple-500/10 px-6 py-3 rounded-xl font-bold transition-all active:scale-95 uppercase tracking-widest text-sm bg-[#0a0a0a]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
@@ -119,6 +121,10 @@
             <button onclick="openChatModal()" class="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-500 hover:to-blue-400 text-white px-6 py-3 rounded-xl font-bold transition-all active:scale-95 uppercase tracking-widest text-sm shadow-[0_0_15px_rgba(147,51,234,0.4)]">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
                 Chat con Coach
+            </button>
+            <button onclick="promptDeleteEntireRoutine()" class="flex items-center justify-center gap-2 border-2 border-red-500/30 text-red-500 hover:text-white hover:bg-red-500/10 px-6 py-3 rounded-xl font-bold transition-all active:scale-95 uppercase tracking-widest text-sm bg-[#0a0a0a]">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                Borrar Semana
             </button>
         </div>
     </main>
@@ -140,7 +146,6 @@
     <div id="modal-overlay" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex-col items-center justify-center p-4">
         
         <div id="modal-ai-chat" class="modal-content hidden bg-custom-card border border-purple-500/30 p-1 md:p-6 rounded-3xl w-full max-w-2xl relative shadow-[0_0_30px_rgba(147,51,234,0.15)] flex flex-col h-[85vh]">
-            
             <div class="flex items-center justify-between border-b border-[#262626] p-4">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-gradient-to-tr from-purple-600 to-blue-500 rounded-full flex items-center justify-center shadow-lg">
@@ -160,12 +165,10 @@
                     </button>
                 </div>
             </div>
-
             <div id="chat-messages" class="flex-grow overflow-y-auto p-4 custom-scroll space-y-4 bg-[#0a0a0a] m-2 rounded-2xl border border-[#262626]">
                 <div class="text-center text-xs font-bold text-custom-textMuted py-4 uppercase tracking-widest">El historial se guarda en tu dispositivo</div>
                 <div class="chat-bubble-ai">¡Hola! Soy tu Coach Inteligente. ¿En qué te ayudo hoy con tu entrenamiento?</div>
-                </div>
-
+            </div>
             <div class="p-3 border-t border-[#262626]">
                 <div class="flex items-end gap-2 bg-[#0a0a0a] p-2 rounded-2xl border border-[#262626] focus-within:border-purple-500 transition-colors">
                     <textarea id="chat-input" rows="1" placeholder="Ej: ¿Cómo mejoro mi sentadilla?" class="w-full bg-transparent text-sm text-white resize-none outline-none custom-scroll py-2 px-2 max-h-32" oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
@@ -173,6 +176,16 @@
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <div id="modal-confirm-delete-all" class="modal-content hidden bg-custom-card border border-red-500/30 p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl text-center">
+            <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></div>
+            <h2 class="text-2xl font-bold text-white mb-2">¿Borrar Todo?</h2>
+            <p class="text-sm text-custom-textMuted mb-6">Esta acción borrará TODOS los ejercicios de tu semana. (Tus cargas guardadas en la base de datos no se borrarán).</p>
+            <div class="flex gap-4">
+                <button onclick="closeAllModals()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl hover:bg-[#262626] font-bold transition-colors">Cancelar</button>
+                <button onclick="confirmDeleteEntireRoutine()" class="flex-1 bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 font-bold shadow-lg transition-colors">Sí, Borrar Todo</button>
             </div>
         </div>
 
@@ -209,13 +222,11 @@
         <div id="modal-exercise" class="modal-content hidden bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-lg relative shadow-2xl">
             <h2 id="modal-ex-title" class="text-2xl font-bold mb-6 text-center text-white border-b border-custom-border pb-3">Nuevo Ejercicio</h2>
             <div id="ex-error-msg" class="hidden text-red-500 bg-red-500/10 p-2 rounded mb-4 text-xs font-bold text-center"></div>
-            
             <div class="space-y-4 max-h-[60vh] overflow-y-auto custom-scroll pr-2">
                 <div>
                     <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Nombre del Ejercicio</label>
                     <input type="text" id="new-ex-name" placeholder="Ej: Press Inclinado" class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl outline-none focus:border-custom-primary text-white">
                 </div>
-                
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Series</label>
@@ -226,10 +237,8 @@
                         <input type="text" id="new-ex-reps" placeholder="Ej: 8-10" class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl outline-none focus:border-custom-primary text-white text-center">
                     </div>
                 </div>
-
                 <div class="border-t border-[#262626] pt-4 mt-2">
                     <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-3">Recursos Visuales (Opcional)</label>
-                    
                     <div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626] mb-2 cursor-pointer" onclick="toggleMediaInput('image')">
                         <span class="text-sm font-bold text-white">Incluir Imagen / GIF</span>
                         <input type="checkbox" id="check-image" class="w-5 h-5 accent-custom-primary cursor-pointer pointer-events-none">
@@ -237,7 +246,6 @@
                     <div id="input-image-container" class="hidden mb-4 pl-4 border-l-2 border-custom-primary">
                         <input type="text" id="new-ex-image" placeholder="Pegá el link de la imagen acá" class="w-full bg-[#0a0a0a] border border-[#262626] p-2.5 rounded-lg outline-none focus:border-custom-primary text-white text-sm">
                     </div>
-
                     <div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626] mb-2 cursor-pointer" onclick="toggleMediaInput('video')">
                         <span class="text-sm font-bold text-white">Incluir Video (YouTube)</span>
                         <input type="checkbox" id="check-video" class="w-5 h-5 accent-custom-primary cursor-pointer pointer-events-none">
@@ -247,7 +255,6 @@
                     </div>
                 </div>
             </div>
-
             <button id="btn-save-exercise" onclick="saveExercise()" class="w-full bg-custom-primary text-white py-4 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg mt-6 tracking-widest uppercase">Guardar Ejercicio</button>
             <button onclick="closeAllModals()" class="mt-4 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cancelar</button>
         </div>
@@ -268,17 +275,13 @@
                 <input type="email" id="auth-email" placeholder="Email" class="w-full bg-custom-bg border border-custom-border p-3 rounded-xl outline-none focus:border-custom-primary text-white transition-all">
                 <div class="relative w-full">
                     <input type="password" id="auth-password" placeholder="Contraseña (mín. 6)" class="w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white transition-all">
-                    <button type="button" onclick="togglePasswordVisibility('auth-password', 'eye-icon')" class="absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer">
-                        <svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
-                    </button>
+                    <button type="button" onclick="togglePasswordVisibility('auth-password', 'eye-icon')" id="eye-btn" class="absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer"><svg id="eye-icon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg></button>
                 </div>
-                <div id="forgot-password-container" class="text-right transition-opacity">
-                    <span onclick="handleResetPassword()" class="text-xs text-custom-textMuted hover:text-custom-primary cursor-pointer transition-colors font-medium underline">¿Olvidaste tu contraseña?</span>
-                </div>
+                <div id="forgot-password-container" class="text-right transition-opacity"><span onclick="handleResetPassword()" class="text-xs text-custom-textMuted hover:text-custom-primary cursor-pointer transition-colors font-medium underline">¿Olvidaste tu contraseña?</span></div>
                 <button id="btn-auth-action" onclick="handleAuth()" class="w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg">Iniciar Sesión</button>
                 <p id="auth-toggle-msg" class="text-center text-sm font-medium mt-4 transition-colors text-custom-textMuted">¿No tenés cuenta? <br><span onclick="toggleAuthMode()" class="text-custom-primary cursor-pointer font-bold underline mt-1 inline-block">Registrate gratis acá</span></p>
             </div>
-            <button onclick="closeAllModals()" class="mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cerrar</button>
+            <button onclick="closeAllModals()" id="close-auth-btn" class="mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cerrar</button>
         </div>
 
         <div id="modal-new-pwd" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm relative shadow-2xl">
@@ -286,9 +289,7 @@
             <div id="new-pwd-message" class="hidden text-center text-sm font-semibold mb-4 px-3 py-2 rounded-lg bg-[#171717] border border-[#262626] text-red-500"></div>
             <div class="relative w-full mb-6">
                 <input type="password" id="new-password-input" placeholder="Escribí tu nueva contraseña" class="w-full bg-[#171717] border border-[#262626] p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white">
-                <button type="button" onclick="togglePasswordVisibility('new-password-input', 'eye-icon-new')" class="absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer">
-                    <svg id="eye-icon-new" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg>
-                </button>
+                <button type="button" onclick="togglePasswordVisibility('new-password-input', 'eye-icon-new')" class="absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer"><svg id="eye-icon-new" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path></svg></button>
             </div>
             <button onclick="saveNewPassword()" id="btn-save-pwd" class="w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg">Guardar y Entrar</button>
             <button onclick="closeAllModals()" class="mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors">Cerrar</button>
@@ -305,8 +306,9 @@
         <div id="modal-confirm-delete" class="modal-content hidden bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl text-center">
             <div class="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></div>
             <h2 class="text-2xl font-bold text-white mb-2">¿Eliminar Registro?</h2>
+            <p class="text-sm text-custom-textMuted mb-6">Esta acción borrará todas las cargas de este día.</p>
             <div id="delete-error-msg" class="hidden text-red-500 bg-red-500/10 p-2 rounded mb-4 text-xs font-bold"></div>
-            <div class="flex gap-4 mt-6">
+            <div class="flex gap-4">
                 <button onclick="closeAllModals()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl hover:bg-[#262626] font-bold transition-colors">Cancelar</button>
                 <button id="btn-confirm-delete" class="flex-1 bg-red-600 text-white py-3 rounded-xl hover:bg-red-700 font-bold shadow-lg transition-colors">Borrar</button>
             </div>
@@ -314,12 +316,12 @@
 
         <div id="modal-terms" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scroll shadow-2xl">
             <h2 class="text-2xl font-bold mb-6 text-custom-primary border-b border-custom-border pb-3">Términos y Condiciones</h2>
-            <div class="text-sm text-custom-textMuted space-y-5 leading-relaxed text-justify"><p>Bienvenido a <strong class="text-white">HAT</strong>.</p></div>
+            <div class="text-sm text-custom-textMuted space-y-5 leading-relaxed text-justify"><p>Bienvenido a <strong class="text-white">HAT</strong>. Al utilizar nuestra plataforma, aceptas estos términos.</p></div>
             <button onclick="closeAllModals()" class="mt-8 bg-custom-border hover:bg-custom-primary transition-colors px-8 py-3 rounded-xl text-xs font-bold w-full md:w-auto text-white">Cerrar</button>
         </div>
         <div id="modal-privacy" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-2xl max-h-[80vh] overflow-y-auto custom-scroll shadow-2xl">
             <h2 class="text-2xl font-bold mb-6 text-custom-primary border-b border-custom-border pb-3">Privacidad</h2>
-            <div class="text-sm text-custom-textMuted space-y-5 leading-relaxed text-justify"><p>Tus datos están protegidos.</p></div>
+            <div class="text-sm text-custom-textMuted space-y-5 leading-relaxed text-justify"><p>Tus datos son procesados bajo estándares de seguridad en Supabase.</p></div>
             <button onclick="closeAllModals()" class="mt-8 bg-custom-border hover:bg-custom-primary transition-colors px-8 py-3 rounded-xl text-xs font-bold w-full md:w-auto text-white">Cerrar</button>
         </div>
         <div id="modal-support" class="modal-content hidden bg-custom-card border border-custom-border p-8 rounded-3xl w-full max-w-sm shadow-2xl">
@@ -333,27 +335,16 @@
         const subtitleText = "La plataforma de alto rendimiento para quienes dominan el gimnasio y el campo de juego.";
         let typeIndex = 0;
         function typeWriter() {
-            if (typeIndex < subtitleText.length) {
-                document.getElementById("typewriter-text").innerHTML += subtitleText.charAt(typeIndex);
-                typeIndex++; setTimeout(typeWriter, 20); 
-            } else { document.getElementById("typewriter-text").classList.remove('typewriter-cursor'); }
+            if (typeIndex < subtitleText.length) { document.getElementById("typewriter-text").innerHTML += subtitleText.charAt(typeIndex); typeIndex++; setTimeout(typeWriter, 20); } 
+            else { document.getElementById("typewriter-text").classList.remove('typewriter-cursor'); }
         }
 
         const SUPABASE_URL = "https://kqmkseiwgdzwzmtqdcxk.supabase.co";
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbWtzZWl3Z2R6d3ptdHFkY3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzQ0NTMsImV4cCI6MjA4ODgxMDQ1M30.b3kQ8JSYaMCrRdgxoyek6xXF4Hhv_9H8edEN4c7oF8U";
         const REDIRECT_URL = "https://tgiordi.github.io/Hybrid-Athlete-Tracker/";
         
-        let supabaseClient = null;
-        let currentUserId = null;
-        let isSignUp = false;
-        let currentActiveDay = 'lunes'; 
-        let currentEditExerciseId = null; 
-        let currentAIPrompt = "";
-        
-        window.myCharts = {};
-        window.currentHistory = {};
-        window.currentDayExercises = [];
-        window.chatHistory = []; // Guardamos la charla actual
+        let supabaseClient = null; let currentUserId = null; let isSignUp = false; let currentActiveDay = 'lunes'; let currentEditExerciseId = null; let currentAIPrompt = "";
+        window.myCharts = {}; window.currentHistory = {}; window.currentDayExercises = []; window.chatHistory = [];
 
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(typeWriter, 500); 
@@ -376,11 +367,8 @@
         });
 
         function openModal(modalId) {
-            const overlay = document.getElementById('modal-overlay');
-            overlay.classList.remove('hidden'); overlay.classList.add('flex');
-            document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden'));
-            document.getElementById(modalId).classList.remove('hidden');
-            document.body.style.overflow = 'hidden';
+            const overlay = document.getElementById('modal-overlay'); overlay.classList.remove('hidden'); overlay.classList.add('flex');
+            document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); document.getElementById(modalId).classList.remove('hidden'); document.body.style.overflow = 'hidden';
             if(modalId === 'modal-auth') { isSignUp = false; updateAuthUI(); document.getElementById('auth-password').type = 'password'; }
             if(modalId === 'modal-edit-log') document.getElementById('edit-error-msg').classList.add('hidden');
             if(modalId === 'modal-exercise') document.getElementById('ex-error-msg').classList.add('hidden');
@@ -388,72 +376,26 @@
         }
         function closeAllModals() {
             document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');
-            document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden'));
-            document.body.style.overflow = 'auto'; window.location.hash = ''; 
+            document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); document.body.style.overflow = 'auto'; window.location.hash = ''; 
         }
 
-        // --- UI AUTH Y USUARIO ---
-        function updateAuthUI() {
-            const modal = document.getElementById('modal-auth'); const title = document.getElementById('auth-title');
-            const btn = document.getElementById('btn-auth-action'); const toggleMsg = document.getElementById('auth-toggle-msg');
-            const closeBtn = document.getElementById('close-auth-btn'); const eyeBtn = document.getElementById('eye-btn');
-            const forgotPass = document.getElementById('forgot-password-container'); const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
-            if(isSignUp) {
-                modal.classList.replace('bg-custom-card', 'bg-custom-primary'); modal.classList.replace('border-custom-border', 'border-[#d43e20]');
-                title.innerText = "Crear Nueva Cuenta";
-                inputs.forEach(inp => { inp.className = "w-full bg-[#171717] border border-[#262626] p-3 pr-12 rounded-xl outline-none focus:border-white text-white placeholder-white/50 transition-all"; });
-                eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-white/50 hover:text-white transition-colors cursor-pointer";
-                btn.innerText = "Registrarme"; btn.className = "w-full bg-[#171717] text-white py-3 rounded-xl font-bold hover:bg-black border border-black/50 transition-colors shadow-lg";
-                toggleMsg.innerHTML = "O <span onclick='toggleAuthMode()' class='cursor-pointer font-extrabold underline hover:text-black transition-colors'>ingresá a tu cuenta acá</span>";
-                toggleMsg.className = "text-center text-sm text-white mt-4 transition-colors font-medium";
-                closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors";
-                forgotPass.classList.add('hidden');
-            } else {
-                modal.classList.replace('bg-custom-primary', 'bg-custom-card'); modal.classList.replace('border-[#d43e20]', 'border-custom-border');
-                title.innerText = "Bienvenido Atleta";
-                inputs.forEach(inp => { inp.className = "w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white transition-all"; });
-                eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer";
-                btn.innerText = "Iniciar Sesión"; btn.className = "w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg";
-                toggleMsg.innerHTML = "¿No tenés cuenta? <br><span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold underline inline-block mt-1'>Registrate gratis acá</span>";
-                toggleMsg.className = "text-center text-sm text-custom-textMuted mt-4 transition-colors font-medium";
-                closeBtn.className = "mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors";
-                forgotPass.classList.remove('hidden');
-            }
-            document.getElementById('auth-message').classList.add('hidden');
+        // --- AUTH & USER ---
+        function updateAuthUI() { /* igual */
+            const modal = document.getElementById('modal-auth'); const title = document.getElementById('auth-title'); const btn = document.getElementById('btn-auth-action'); const toggleMsg = document.getElementById('auth-toggle-msg'); const closeBtn = document.getElementById('close-auth-btn'); const eyeBtn = document.getElementById('eye-btn'); const forgotPass = document.getElementById('forgot-password-container'); const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
+            if(isSignUp) { modal.classList.replace('bg-custom-card', 'bg-custom-primary'); modal.classList.replace('border-custom-border', 'border-[#d43e20]'); title.innerText = "Crear Nueva Cuenta"; inputs.forEach(inp => { inp.className = "w-full bg-[#171717] border border-[#262626] p-3 pr-12 rounded-xl outline-none focus:border-white text-white placeholder-white/50 transition-all"; }); eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-white/50 hover:text-white transition-colors cursor-pointer"; btn.innerText = "Registrarme"; btn.className = "w-full bg-[#171717] text-white py-3 rounded-xl font-bold hover:bg-black border border-black/50 transition-colors shadow-lg"; toggleMsg.innerHTML = "O <span onclick='toggleAuthMode()' class='cursor-pointer font-extrabold underline hover:text-black transition-colors'>ingresá a tu cuenta acá</span>"; toggleMsg.className = "text-center text-sm text-white mt-4 transition-colors font-medium"; closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors"; forgotPass.classList.add('hidden'); } else { modal.classList.replace('bg-custom-primary', 'bg-custom-card'); modal.classList.replace('border-[#d43e20]', 'border-custom-border'); title.innerText = "Bienvenido Atleta"; inputs.forEach(inp => { inp.className = "w-full bg-custom-bg border border-custom-border p-3 pr-12 rounded-xl outline-none focus:border-custom-primary text-white transition-all"; }); eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-custom-textMuted hover:text-custom-primary transition-colors cursor-pointer"; btn.innerText = "Iniciar Sesión"; btn.className = "w-full bg-custom-primary text-white py-3 rounded-xl font-bold hover:bg-custom-hover transition-colors shadow-lg"; toggleMsg.innerHTML = "¿No tenés cuenta? <br><span onclick='toggleAuthMode()' class='text-custom-primary cursor-pointer font-bold underline inline-block mt-1'>Registrate gratis acá</span>"; toggleMsg.className = "text-center text-sm text-custom-textMuted mt-4 transition-colors font-medium"; closeBtn.className = "mt-8 w-full text-[10px] text-custom-textMuted uppercase tracking-[0.3em] font-bold hover:text-white transition-colors"; forgotPass.classList.remove('hidden'); } document.getElementById('auth-message').classList.add('hidden');
         }
         function toggleAuthMode() { isSignUp = !isSignUp; updateAuthUI(); }
-        function togglePasswordVisibility(inputId, iconId) {
-            const pwdInput = document.getElementById(inputId); const eyeIcon = document.getElementById(iconId);
-            if(pwdInput.type === 'password') { pwdInput.type = 'text'; eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>`; } 
-            else { pwdInput.type = 'password'; eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>`; }
-        }
-        function showMessage(text, isError = true) {
-            const msgBox = document.getElementById('auth-message'); msgBox.innerText = text;
-            msgBox.classList.remove('hidden', 'bg-red-500/10', 'text-red-500', 'text-red-400', 'bg-green-500/10', 'text-green-500', 'text-green-400', 'bg-[#171717]', 'border-[#262626]');
-            if(isError) {
-                if(isSignUp) msgBox.classList.add('bg-[#171717]', 'text-red-400', 'border-[#262626]');
-                else msgBox.classList.add('bg-red-500/10', 'text-red-500', 'border-red-500/20');
-            } else {
-                if(isSignUp) msgBox.classList.add('bg-[#171717]', 'text-green-400', 'border-[#262626]');
-                else msgBox.classList.add('bg-green-500/10', 'text-green-500', 'border-green-500/20');
-            }
-        }
+        function togglePasswordVisibility(inputId, iconId) { const pwdInput = document.getElementById(inputId); const eyeIcon = document.getElementById(iconId); if(pwdInput.type === 'password') { pwdInput.type = 'text'; eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>`; } else { pwdInput.type = 'password'; eyeIcon.innerHTML = `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>`; } }
+        function showMessage(text, isError = true) { const msgBox = document.getElementById('auth-message'); msgBox.innerText = text; msgBox.classList.remove('hidden', 'bg-red-500/10', 'text-red-500', 'text-red-400', 'bg-green-500/10', 'text-green-500', 'text-green-400', 'bg-[#171717]', 'border-[#262626]'); if(isError) { if(isSignUp) msgBox.classList.add('bg-[#171717]', 'text-red-400', 'border-[#262626]'); else msgBox.classList.add('bg-red-500/10', 'text-red-500', 'border-red-500/20'); } else { if(isSignUp) msgBox.classList.add('bg-[#171717]', 'text-green-400', 'border-[#262626]'); else msgBox.classList.add('bg-green-500/10', 'text-green-500', 'border-green-500/20'); } }
 
         async function handleAuth() {
-            const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-password').value;
-            const btn = document.getElementById('btn-auth-action');
-            if(!email || !password) return showMessage("Completá tu email y contraseña.");
-            btn.innerText = "Procesando..."; btn.disabled = true;
+            const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-password').value; const btn = document.getElementById('btn-auth-action');
+            if(!email || !password) return showMessage("Completá tu email y contraseña."); btn.innerText = "Procesando..."; btn.disabled = true;
             try {
-                if (isSignUp) {
-                    const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: REDIRECT_URL } });
-                    if (error) throw error;
-                    showMessage("¡Cuenta creada! Revisá tu mail o iniciá sesión si está activado el login directo.", false);
-                } else {
-                    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-                    if (error) throw error;
-                }
-            } catch (err) { showMessage(err.message, true); } finally { btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión"; btn.disabled = false; }
+                if (isSignUp) { const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: REDIRECT_URL } }); if (error) throw error; showMessage("¡Cuenta creada! Revisá tu mail o iniciá sesión.", false); } 
+                else { const { error } = await supabaseClient.auth.signInWithPassword({ email, password }); if (error) throw error; }
+            } catch (err) { let errorTxt = err.message; if (errorTxt.includes("Invalid login credentials")) errorTxt = "Email o contraseña incorrectos."; if (errorTxt.includes("already registered")) errorTxt = "Este email ya tiene cuenta."; showMessage(errorTxt, true); } 
+            finally { btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión"; btn.disabled = false; }
         }
         async function handleResetPassword() { /* ... */ }
         async function saveNewPassword() { /* ... */ }
@@ -469,9 +411,25 @@
         // --- SISTEMA DE CRÉDITOS ---
         async function updateCreditsDisplay() {
             try {
-                const { data, error } = await supabaseClient.from('profiles').select('ai_credits').eq('id', currentUserId).single();
-                if(data) document.getElementById('ai-credit-count').innerText = data.ai_credits;
-            } catch(e) {}
+                const { data, error } = await supabaseClient.from('profiles').select('ai_credits, has_infinite_credits').eq('id', currentUserId).single();
+                if(data) {
+                    document.getElementById('ai-credit-count').innerText = data.has_infinite_credits ? '∞' : data.ai_credits;
+                } else {
+                    // FIX: Si el usuario es viejo y no tiene perfil, se lo creamos ahora mismo para que vea sus "10"
+                    await supabaseClient.from('profiles').insert([{ id: currentUserId, ai_credits: 10 }]);
+                    document.getElementById('ai-credit-count').innerText = "10";
+                }
+            } catch(e) { document.getElementById('ai-credit-count').innerText = "10"; }
+        }
+
+        // --- FORMATO MARKDOWN PARA IA ---
+        function formatMarkdown(text) {
+            if (!text) return '';
+            // Convertimos negritas y saltos de linea
+            let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>');
+            formatted = formatted.replace(/\n/g, '<br>');
+            return formatted;
         }
 
         // =========================================================================
@@ -484,19 +442,18 @@
         }
 
         async function processAIPrompt() {
-            const userPrompt = document.getElementById('ai-prompt').value;
-            const msgBox = document.getElementById('ai-error-msg');
+            const userPrompt = document.getElementById('ai-prompt').value; const msgBox = document.getElementById('ai-error-msg');
             if(!userPrompt) { msgBox.innerText = "Escribí tu objetivo para que el Coach Inteligente arme la rutina."; msgBox.classList.remove('hidden'); return; }
             try {
                 const { count, error } = await supabaseClient.from('user_routines').select('*', { count: 'exact', head: true }).eq('user_id', currentUserId);
-                if (error) throw error;
-                currentAIPrompt = userPrompt;
+                if (error) throw error; currentAIPrompt = userPrompt;
                 if (count > 0) openModal('modal-confirm-ai-overwrite'); else proceedWithAIGeneration();
             } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); }
         }
 
         async function proceedWithAIGeneration() {
             closeAllModals(); 
+            document.getElementById('loading-title').innerText = "Diseñando Rutina...";
             document.getElementById('ai-loading-overlay').classList.remove('hidden'); document.getElementById('ai-loading-overlay').classList.add('flex');
             try {
                 const { data: { session } } = await supabaseClient.auth.getSession();
@@ -532,10 +489,8 @@
         // --- SISTEMA DE CHAT CON IA ---
         function openChatModal() {
             const savedChat = localStorage.getItem(`hat_chat_${currentUserId}`);
-            if(savedChat) { window.chatHistory = JSON.parse(savedChat); } 
-            else { window.chatHistory = []; }
-            renderChat();
-            openModal('modal-ai-chat');
+            if(savedChat) { window.chatHistory = JSON.parse(savedChat); } else { window.chatHistory = []; }
+            renderChat(); openModal('modal-ai-chat');
         }
 
         function clearChatHistory() {
@@ -552,15 +507,15 @@
             
             window.chatHistory.forEach(msg => {
                 const isUser = msg.role === 'user';
-                const html = `<div class="${isUser ? 'chat-bubble-user' : 'chat-bubble-ai'}">${msg.parts[0].text}</div>`;
+                // FIX: Formato Markdown inyectado
+                const html = `<div class="${isUser ? 'chat-bubble-user' : 'chat-bubble-ai'}">${formatMarkdown(msg.parts[0].text)}</div>`;
                 container.innerHTML += html;
             });
             container.scrollTop = container.scrollHeight;
         }
 
         async function sendChatMessage() {
-            const input = document.getElementById('chat-input');
-            const text = input.value.trim();
+            const input = document.getElementById('chat-input'); const text = input.value.trim();
             if(!text) return;
             
             window.chatHistory.push({ role: 'user', parts: [{ text: text }] });
@@ -585,17 +540,32 @@
                 
                 if(data.remaining_credits !== undefined) document.getElementById('ai-credit-count').innerText = data.remaining_credits;
                 
-            } catch(e) {
-                window.chatHistory.push({ role: 'model', parts: [{ text: `❌ Error de red o sin créditos: ${e.message}` }] });
-            } finally {
-                renderChat();
-                btn.disabled = false; btn.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>';
-            }
+            } catch(e) { window.chatHistory.push({ role: 'model', parts: [{ text: `❌ Error: ${e.message}` }] }); } 
+            finally { renderChat(); btn.disabled = false; btn.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>'; }
         }
 
         // =========================================================================
-        // FASE 4: CREADOR Y GESTOR DE RUTINAS DINÁMICO
+        // FASE 4 Y 7: CREADOR Y BORRADO DE RUTINAS
         // =========================================================================
+        
+        function promptDeleteEntireRoutine() {
+            openModal('modal-confirm-delete-all');
+        }
+
+        async function confirmDeleteEntireRoutine() {
+            closeAllModals();
+            document.getElementById('loading-title').innerText = "Borrando Semana...";
+            document.getElementById('loading-desc').innerText = "Limpiando todos los ejercicios de tu plan...";
+            document.getElementById('ai-loading-overlay').classList.remove('hidden'); document.getElementById('ai-loading-overlay').classList.add('flex');
+            
+            try {
+                const { error } = await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
+                if(error) throw error;
+                changeDay('lunes');
+            } catch(e) { alert("Error al borrar rutina: " + e.message); }
+            finally { document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); }
+        }
+
         function toggleMediaInput(type) {
             const checkbox = document.getElementById(`check-${type}`); const container = document.getElementById(`input-${type}-container`);
             checkbox.checked = !checkbox.checked;
@@ -619,11 +589,7 @@
 
         function promptDeleteExercise(exId, exName) {
             openModal('modal-confirm-delete-exercise'); const btn = document.getElementById('btn-confirm-delete-ex');
-            btn.onclick = async () => {
-                btn.innerText = "Quitando..."; btn.disabled = true;
-                try { const {error} = await supabaseClient.from('user_routines').delete().eq('id', exId); if(error) throw error; closeAllModals(); changeDay(currentActiveDay); } 
-                catch(e) { alert("Error: " + e.message); } finally { btn.innerText = "Sí, quitar"; btn.disabled = false; }
-            };
+            btn.onclick = async () => { btn.innerText = "Quitando..."; btn.disabled = true; try { const {error} = await supabaseClient.from('user_routines').delete().eq('id', exId); if(error) throw error; closeAllModals(); changeDay(currentActiveDay); } catch(e) { alert("Error: " + e.message); } finally { btn.innerText = "Sí, quitar"; btn.disabled = false; } };
         }
 
         function extractYoutubeId(url) { if(!url) return null; const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/; const match = url.match(regExp); return (match && match[2].length === 11) ? match[2] : null; }
@@ -650,16 +616,8 @@
 
         async function changeDay(day, event) {
             currentActiveDay = day;
-            if(event) {
-                document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); });
-                event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white');
-                event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-            } else {
-                document.querySelectorAll('.tab-btn').forEach(b => { 
-                    if(b.innerText.toLowerCase() === day.toLowerCase()) { b.classList.add('active'); b.classList.remove('text-custom-textMuted'); b.classList.add('text-white'); b.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } 
-                    else { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }
-                });
-            }
+            if(event) { document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }); event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white'); event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } 
+            else { document.querySelectorAll('.tab-btn').forEach(b => { if(b.innerText.toLowerCase() === day.toLowerCase()) { b.classList.add('active'); b.classList.remove('text-custom-textMuted'); b.classList.add('text-white'); b.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } else { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); } }); }
             const container = document.getElementById('exercise-container'); container.innerHTML = '<div class="col-span-1 md:col-span-2 text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando tu rutina...</div>';
 
             try {
@@ -667,8 +625,7 @@
                 if (error) throw error; window.currentDayExercises = exercises;
 
                 if (exercises.length === 0) {
-                    container.innerHTML = `<div class="col-span-1 md:col-span-2 flex flex-col items-center justify-center p-10 bg-custom-card border border-dashed border-custom-border rounded-3xl text-center"><div class="w-16 h-16 bg-[#171717] rounded-full flex items-center justify-center mb-4"><svg class="w-8 h-8 text-custom-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg></div><h3 class="text-xl font-bold text-white mb-2">Día libre o sin configurar</h3><p class="text-custom-textMuted text-sm mb-4">Aún no agregaste ejercicios para el día seleccionado.</p></div>`;
-                    return;
+                    container.innerHTML = `<div class="col-span-1 md:col-span-2 flex flex-col items-center justify-center p-10 bg-custom-card border border-dashed border-custom-border rounded-3xl text-center"><div class="w-16 h-16 bg-[#171717] rounded-full flex items-center justify-center mb-4"><svg class="w-8 h-8 text-custom-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg></div><h3 class="text-xl font-bold text-white mb-2">Día libre o sin configurar</h3><p class="text-custom-textMuted text-sm mb-4">Aún no agregaste ejercicios para el día seleccionado.</p></div>`; return;
                 }
                 container.innerHTML = '';
                 exercises.forEach(ex => {
@@ -685,16 +642,14 @@
             } catch(e) { container.innerHTML = `<div class="col-span-1 md:col-span-2 text-center text-red-500 py-10 font-bold">Error al cargar rutinas: ${e.message}</div>`; }
         }
 
-        // --- FASE 3 GUARDADO DE LOGS ---
-        async function saveToCloud(exId, totalSets, exName, btnEvent) { /* Oculto en vista para ahorrar espacio, ya funciona 100% */
+        async function saveToCloud(exId, totalSets, exName, btnEvent) { /* Oculto en vista para ahorrar espacio */
             const btn = btnEvent.currentTarget; const btnText = btn.querySelector('.btn-text'); let logs = []; const today = new Date(); const dateString = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
             for(let i=1; i<=totalSets; i++) { const checked = document.getElementById(`check-${exId}-${i}`).checked; const weight = document.getElementById(`peso-${exId}-${i}`).value; const reps = document.getElementById(`reps-${exId}-${i}`).value; if(checked && weight && reps) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: parseFloat(weight), reps: parseInt(reps), set_number: i, log_date: dateString }); } }
-            if(logs.length === 0) { const originalText = btnText.innerText; btn.classList.add('bg-red-600'); btnText.innerText = "MARCÁ 1 SERIE MÍNIMO"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = originalText; }, 2000); return; }
-            btnText.innerText = "GUARDANDO...";
+            if(logs.length === 0) { const originalText = btnText.innerText; btn.classList.add('bg-red-600'); btnText.innerText = "MARCÁ 1 SERIE MÍNIMO"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = originalText; }, 2000); return; } btnText.innerText = "GUARDANDO...";
             try { await supabaseClient.from('workout_logs').delete().eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', dateString); await supabaseClient.from('workout_logs').insert(logs); btn.classList.replace('bg-custom-primary', 'bg-green-600'); btnText.innerText = "¡GUARDADO!"; const evoContainer = document.getElementById(`evo-container-${exId}`); if(!evoContainer.classList.contains('hidden')) loadEvolucion(exId, exName, true); setTimeout(() => { btn.classList.replace('bg-green-600', 'bg-custom-primary'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); } catch (e) { btn.classList.add('bg-red-600'); btnText.innerText = "ERROR"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); }
         }
 
-        async function loadEvolucion(exId, exName, forceReload = false) { /* Oculto en vista para ahorrar espacio, ya funciona 100% */
+        async function loadEvolucion(exId, exName, forceReload = false) { /* Oculto en vista para ahorrar espacio */
             const container = document.getElementById(`evo-container-${exId}`); const btn = document.getElementById(`btn-evo-${exId}`); if (!container.classList.contains('hidden') && !forceReload) { container.classList.add('hidden'); btn.innerText = "VER PROGRESO"; btn.classList.replace('border-custom-primary', 'border-custom-border'); btn.classList.replace('text-white', 'text-custom-textMuted'); return; } btn.innerText = "CARGANDO...";
             try { const { data, error } = await supabaseClient.from('workout_logs').select('id, weight, reps, set_number, log_date').eq('user_id', currentUserId).eq('exercise_name', exName).order('log_date', { ascending: true }); if (error) throw error; if (data.length === 0) { container.innerHTML = `<div class="text-center p-4 bg-[#171717] rounded-xl border border-custom-border"><p class="text-sm text-custom-textMuted font-medium">Aún no hay datos.</p></div>`; container.classList.remove('hidden'); btn.innerText = "OCULTAR PROGRESO"; return; } const groupedData = {}; data.forEach(log => { const [year, month, day] = log.log_date.split('-'); const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }); if (!groupedData[dateStr]) groupedData[dateStr] = { maxWeight: 0, sets: [], rawDate: log.log_date }; if (log.weight > groupedData[dateStr].maxWeight) groupedData[dateStr].maxWeight = log.weight; groupedData[dateStr].sets.push({ id: log.id, set: log.set_number, weight: log.weight, reps: log.reps }); }); window.currentHistory[exId] = groupedData; const dates = Object.keys(groupedData); const weightsForChart = dates.map(d => groupedData[d].maxWeight); let tableRows = ''; const reversedDates = [...dates].reverse(); reversedDates.forEach(date => { const dayData = groupedData[date]; dayData.sets.sort((a,b) => a.set - b.set); const badges = dayData.sets.map(s => `<span class="inline-block bg-[#262626] border border-[#333] text-xs px-2 py-1 rounded text-custom-textMuted whitespace-nowrap mb-1 mr-1"><strong class="text-white">${s.weight}kg</strong> x ${s.reps}</span>`).join(''); tableRows += `<tr class="border-b border-custom-border hover:bg-[#171717] transition-colors"><td class="py-3 px-3 text-sm font-bold text-custom-primary whitespace-nowrap align-middle">${date}</td><td class="py-3 px-2 align-middle w-full">${badges}</td><td class="py-3 px-3 align-middle text-right space-x-1 whitespace-nowrap"><button type="button" onclick="promptEditLog('${exId}', '${exName}', '${date}')" class="p-1.5 bg-[#262626] rounded text-custom-textMuted hover:text-white transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button><button type="button" onclick="promptDeleteLog('${exName}', '${dayData.rawDate}', '${exId}')" class="p-1.5 bg-red-500/10 rounded text-red-500 hover:bg-red-500 hover:text-white transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></td></tr>`; }); container.innerHTML = `<div class="mb-6"><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">Carga Máxima (Progreso)</h4><div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart-${exId}"></canvas></div></div><div><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">Historial de Cargas</h4><div class="overflow-x-auto rounded-xl border border-custom-border bg-[#0a0a0a]"><table class="w-full text-left border-collapse"><thead class="bg-[#171717]"><tr class="border-b border-custom-border text-custom-textMuted text-[10px] uppercase tracking-widest"><th class="py-3 px-3 font-bold">Día</th><th class="py-3 px-2 font-bold">Series</th><th class="py-3 px-3 font-bold text-right">Acción</th></tr></thead><tbody>${tableRows}</tbody></table></div></div>`; container.classList.remove('hidden'); if (window.myCharts[exId]) window.myCharts[exId].destroy(); const ctx = document.getElementById(`chart-${exId}`).getContext('2d'); window.myCharts[exId] = new Chart(ctx, { type: 'line', data: { labels: dates, datasets: [{ label: 'Carga Máxima', data: weightsForChart, borderColor: '#F54927', backgroundColor: 'rgba(245, 73, 39, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#F54927', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); btn.innerText = "OCULTAR PROGRESO"; btn.classList.replace('border-custom-border', 'border-custom-primary'); btn.classList.replace('text-custom-textMuted', 'text-white'); } catch(err) { btn.innerText = "ERROR"; setTimeout(() => { btn.innerText = "VER PROGRESO"; }, 2000); }
         }
