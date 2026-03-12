@@ -149,7 +149,7 @@
             <h2 class="text-2xl font-bold mb-2 text-center text-white mt-4">Coach Inteligente</h2>
             <p class="text-xs text-custom-textMuted text-center mb-6">Describí tu objetivo y tu Backend armará tu semana de entrenamiento automáticamente de forma segura.</p>
             
-            <div id="ai-error-msg" class="hidden text-red-500 bg-red-500/10 p-2 rounded mb-4 text-xs font-bold text-center"></div>
+            <div id="ai-error-msg" class="hidden text-red-500 bg-red-500/10 p-3 rounded-lg mb-4 text-xs font-bold text-center border border-red-500/20 shadow-lg break-words"></div>
             
             <div class="space-y-4">
                 <div>
@@ -338,7 +338,6 @@
             setTimeout(typeWriter, 500); 
             if (typeof Chart !== 'undefined') { Chart.defaults.font.family = "'Montserrat', sans-serif"; Chart.defaults.color = '#94A3B8'; }
             
-            // Event Listeners para la tecla Enter
             document.getElementById('auth-password').addEventListener('keypress', function (e) {
                 if (e.key === 'Enter') handleAuth();
             });
@@ -364,7 +363,6 @@
             } catch(e) { console.error("Error", e); }
         });
 
-        // --- SISTEMA DE MODALES ---
         function openModal(modalId) {
             const overlay = document.getElementById('modal-overlay');
             overlay.classList.remove('hidden'); overlay.classList.add('flex');
@@ -382,7 +380,6 @@
             document.body.style.overflow = 'auto'; window.location.hash = ''; 
         }
 
-        // --- UI AUTH ---
         function updateAuthUI() {
             const modal = document.getElementById('modal-auth'); const title = document.getElementById('auth-title');
             const btn = document.getElementById('btn-auth-action'); const toggleMsg = document.getElementById('auth-toggle-msg');
@@ -434,7 +431,6 @@
             }
         }
 
-        // --- AUTH API ---
         async function handleAuth() {
             const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-password').value;
             const btn = document.getElementById('btn-auth-action');
@@ -495,7 +491,7 @@
         async function handleSignOut() { if (supabaseClient) await supabaseClient.auth.signOut(); location.reload(); }
 
         // =========================================================================
-        // FASE 5: API CALL A EDGE FUNCTION PARA IA
+        // FASE 5: API CALL A EDGE FUNCTION PARA IA CON DETECTOR DE ERRORES
         // =========================================================================
         function handleAIGenerationRequest() {
             document.getElementById('ai-prompt').value = ""; 
@@ -547,12 +543,14 @@
             `;
 
             try {
-                // LLAMADA SEGURA A TU BACKEND EN LA NUBE (NO EXPONE API KEY EN EL NAVEGADOR)
                 const { data, error } = await supabaseClient.functions.invoke('coach', {
                     body: { prompt: systemPrompt }
                 });
                 
-                if(error) throw new Error(error.message);
+                // DETECTOR DE ERRORES TRANSPARENTE
+                if(error) throw new Error("Error del Servidor (Supabase): " + error.message);
+                if(data && data.error) throw new Error("Error de la IA (Gemini): " + data.error.message);
+                if(!data || !data.candidates) throw new Error("La respuesta de la IA fue inválida o vacía.");
                 
                 let rawJson = data.candidates[0].content.parts[0].text;
                 rawJson = rawJson.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -570,7 +568,7 @@
                 }));
                 
                 const { error: dbError } = await supabaseClient.from('user_routines').insert(exercisesToInsert);
-                if(dbError) throw dbError;
+                if(dbError) throw new Error("Error en Base de Datos: " + dbError.message);
                 
                 document.getElementById('ai-loading-overlay').classList.add('hidden');
                 document.getElementById('ai-loading-overlay').classList.remove('flex');
@@ -578,20 +576,20 @@
                 openModal('modal-ai-success');
                 
             } catch(e) {
+                // AQUÍ ATRAPAMOS EL ERROR REAL Y LO MOSTRAMOS
                 document.getElementById('ai-loading-overlay').classList.add('hidden');
                 document.getElementById('ai-loading-overlay').classList.remove('flex');
                 
                 openModal('modal-ai-coach');
-                document.getElementById('ai-error-msg').innerText = "Hubo un error al generar la rutina. Verifica que hayas completado el Paso 3 (GitHub Codespaces) correctamente.";
+                document.getElementById('ai-error-msg').innerText = "Detalle técnico: " + e.message;
                 document.getElementById('ai-error-msg').classList.remove('hidden');
+                console.error("Error Completo:", e);
             }
         }
-
 
         // =========================================================================
         // FASE 4: CREADOR Y GESTOR DE RUTINAS DINÁMICO
         // =========================================================================
-        
         function toggleMediaInput(type) {
             const checkbox = document.getElementById(`check-${type}`);
             const container = document.getElementById(`input-${type}-container`);
@@ -745,7 +743,6 @@
                             </div>`;
                     }
 
-                    // UX MEDIA: Imagen primero (con ajuste dinámico w-full h-auto), Video después, Fallback de búsqueda para IA
                     let mediaHtml = '';
                     if(ex.has_image && ex.image_url) { 
                         mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden border border-custom-border w-full"><img src="${ex.image_url}" class="w-full h-auto block" onerror="this.parentElement.style.display='none';"></div>`; 
