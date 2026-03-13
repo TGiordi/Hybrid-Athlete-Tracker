@@ -21,7 +21,7 @@ window.currentHistory = {};
 window.currentDayExercises = []; 
 window.chatHistory = [];
 
-// --- NUEVO: FUNCIÓN ESCUDO CONTRA COMILLAS (Evita que el HTML se rompa) ---
+// --- FUNCIÓN ESCUDO CONTRA COMILLAS (Evita que el HTML se rompa) ---
 function escapeHTML(str) {
     if (!str) return '';
     return String(str)
@@ -134,9 +134,19 @@ async function handleResetPassword() {
 }
 
 async function saveNewPassword() {
-    const newPwd = document.getElementById('new-password-input').value; const msgBox = document.getElementById('new-pwd-message'); const btn = document.getElementById('btn-save-pwd');
-    if(newPwd.length < 6) { msgBox.innerText = "Mínimo 6 caracteres."; msgBox.classList.remove('hidden'); return; }
-    btn.innerText = "Guardando..."; btn.disabled = true;
+    const newPwd = document.getElementById('new-password-input').value; 
+    const msgBox = document.getElementById('new-pwd-message'); 
+    const btn = document.getElementById('btn-save-pwd');
+    
+    if(newPwd.length < 6) { 
+        msgBox.innerText = "Mínimo 6 caracteres."; 
+        msgBox.classList.remove('hidden'); 
+        return; 
+    }
+    
+    btn.innerText = "Guardando..."; 
+    btn.disabled = true;
+    
     try {
         const { error } = await supabaseClient.auth.updateUser({ password: newPwd });
         if (error) throw error;
@@ -146,8 +156,24 @@ async function saveNewPassword() {
         
         closeAllModals(); 
         const { data: { session } } = await supabaseClient.auth.getSession();
-        if(session) { currentUserId = session.user.id; loadDashboardView(session.user.email); }
-    } catch(e) { msgBox.innerText = "El link ha caducado o hubo un error: " + e.message; msgBox.classList.remove('hidden'); btn.innerText = "Guardar y Entrar"; btn.disabled = false; }
+        if(session) { 
+            currentUserId = session.user.id; 
+            loadDashboardView(session.user.email); 
+        }
+    } catch(e) {
+        // FIX: Identifica si el usuario está poniendo la misma contraseña de antes
+        const errStr = String(e.message || "").toLowerCase();
+        
+        if (errStr.includes("different from the old password") || errStr.includes("different from the original")) {
+            msgBox.innerText = "❌ La nueva contraseña no puede ser igual a la anterior.";
+        } else {
+            msgBox.innerText = "El link ha caducado. Volvé a pedir el correo."; 
+        }
+        
+        msgBox.classList.remove('hidden'); 
+        btn.innerText = "Guardar y Entrar"; 
+        btn.disabled = false; 
+    }
 }
 
 // --- 5. ENTORNO DE USUARIO (DASHBOARD) ---
@@ -249,7 +275,6 @@ async function changeDay(day, event) {
         
         container.innerHTML = '';
         exercises.forEach(ex => {
-            // FIX COMILLAS: Pasamos el nombre por escapeHTML antes de inyectarlo
             const safeExName = escapeHTML(ex.exercise_name);
             const safeId = escapeHTML(ex.id);
 
