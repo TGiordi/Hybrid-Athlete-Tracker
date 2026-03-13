@@ -16,20 +16,17 @@ let isSignUp = false;
 let currentActiveDay = 'lunes'; 
 let currentEditExerciseId = null; 
 let currentAIPrompt = "";
+let exerciseToCopy = null; // Usada para guardar el ejercicio que queremos copiar
+
 window.myCharts = {}; 
 window.currentHistory = {}; 
 window.currentDayExercises = []; 
 window.chatHistory = [];
 
-// --- FUNCIÓN ESCUDO CONTRA COMILLAS (Evita que el HTML se rompa) ---
+// Función para "desinfectar" textos con comillas para que no rompan el HTML
 function escapeHTML(str) {
     if (!str) return '';
-    return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 // --- 2. INICIALIZACIÓN (AL CARGAR LA PÁGINA) ---
@@ -44,18 +41,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
         if (window.supabase) {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-            
-            // Verificamos si la URL contiene una petición de recuperación
-            let isRecovering = false;
+            let isRecovering = window.location.hash.includes('type=recovery');
+
+            if (isRecovering) {
+                openModal('modal-new-pwd');
+            } else {
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if(session) {
+                    currentUserId = session.user.id;
+                    loadDashboardView(session.user.email);
+                }
+            }
 
             supabaseClient.auth.onAuthStateChange((event, session) => {
                 if (event === 'PASSWORD_RECOVERY') { 
-                    isRecovering = true; 
-                    openModal('modal-new-pwd'); 
+                    isRecovering = true; openModal('modal-new-pwd'); 
                 } 
                 else if (event === 'SIGNED_IN' && session) { 
-                    // Delay de medio segundo: Soluciona el problema en celulares donde SIGNED_IN 
-                    // pisa al evento de PASSWORD_RECOVERY
                     setTimeout(() => {
                         if(!isRecovering && !currentUserId) {
                             currentUserId = session.user.id; 
@@ -64,8 +66,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }, 500);
                 }
                 else if (event === 'SIGNED_OUT') {
-                    currentUserId = null;
-                    location.reload();
+                    currentUserId = null; location.reload();
                 }
             });
         }
@@ -77,7 +78,7 @@ function typeWriter() {
     else { document.getElementById("typewriter-text").classList.remove('typewriter-cursor'); }
 }
 
-// --- 3. MANEJO DE VENTANAS (MODALES Y MENÚ FLOTANTE) ---
+// --- 3. MANEJO DE VENTANAS Y BOTÓN FLOTANTE ---
 function openModal(modalId) {
     const overlay = document.getElementById('modal-overlay'); overlay.classList.remove('hidden'); overlay.classList.add('flex');
     document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); document.getElementById(modalId).classList.remove('hidden'); document.body.style.overflow = 'hidden';
@@ -86,21 +87,18 @@ function openModal(modalId) {
     if(modalId === 'modal-exercise') document.getElementById('ex-error-msg').classList.add('hidden');
     if(modalId === 'modal-ai-coach') document.getElementById('ai-error-msg').classList.add('hidden');
 }
-
 function closeAllModals() {
     document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');
     document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); document.body.style.overflow = 'auto'; window.location.hash = ''; 
 }
-
 function toggleFabMenu() {
     const options = document.getElementById('fab-options'); const icon = document.getElementById('fab-icon');
     if (options.classList.contains('opacity-0')) { options.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none'); icon.style.transform = 'rotate(45deg)'; } 
     else { options.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none'); icon.style.transform = 'rotate(0deg)'; }
 }
-
 function closeFabAndRun(callback) { toggleFabMenu(); callback(); }
 
-// --- 4. AUTENTICACIÓN Y SEGURIDAD ---
+// --- 4. AUTENTICACIÓN ---
 function updateAuthUI() { 
     const modal = document.getElementById('modal-auth'); const title = document.getElementById('auth-title'); const btn = document.getElementById('btn-auth-action'); const toggleMsg = document.getElementById('auth-toggle-msg'); const closeBtn = document.getElementById('close-auth-btn'); const eyeBtn = document.getElementById('eye-btn'); const forgotPass = document.getElementById('forgot-password-container'); const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
     if(isSignUp) { modal.classList.replace('bg-custom-card', 'bg-custom-primary'); modal.classList.replace('border-custom-border', 'border-[#d43e20]'); title.innerText = "Crear Nueva Cuenta"; inputs.forEach(inp => { inp.className = "w-full bg-[#171717] border border-[#262626] p-3 pr-12 rounded-xl outline-none focus:border-white text-white placeholder-white/50 transition-all"; }); eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-white/50 hover:text-white transition-colors cursor-pointer"; btn.innerText = "Registrarme"; btn.className = "w-full bg-[#171717] text-white py-3 rounded-xl font-bold hover:bg-black border border-black/50 transition-colors shadow-lg"; toggleMsg.innerHTML = "O <span onclick='toggleAuthMode()' class='cursor-pointer font-extrabold underline hover:text-black transition-colors'>ingresá a tu cuenta acá</span>"; toggleMsg.className = "text-center text-sm text-white mt-4 transition-colors font-medium"; closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors"; forgotPass.classList.add('hidden'); } 
@@ -115,13 +113,8 @@ async function handleAuth() {
     const email = document.getElementById('auth-email').value; const password = document.getElementById('auth-password').value; const btn = document.getElementById('btn-auth-action');
     if(!email || !password) return showMessage("Completá tu email y contraseña."); btn.innerText = "Procesando..."; btn.disabled = true;
     try {
-        if (isSignUp) { 
-            const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: REDIRECT_URL } }); 
-            if (error) throw error; showMessage("¡Cuenta creada! Ya podés iniciar sesión.", false); 
-        } else { 
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password }); 
-            if (error) throw error; currentUserId = data.user.id; loadDashboardView(data.user.email);
-        }
+        if (isSignUp) { const { error } = await supabaseClient.auth.signUp({ email, password, options: { emailRedirectTo: REDIRECT_URL } }); if (error) throw error; showMessage("¡Cuenta creada! Ya podés iniciar sesión.", false); } 
+        else { const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password }); if (error) throw error; currentUserId = data.user.id; loadDashboardView(data.user.email); }
     } catch (err) { let errorTxt = err.message; if (errorTxt.includes("Invalid login credentials")) errorTxt = "Email o contraseña incorrectos."; if (errorTxt.includes("already registered")) errorTxt = "Este email ya tiene cuenta."; showMessage(errorTxt, true); } 
     finally { btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión"; btn.disabled = false; }
 }
@@ -134,49 +127,25 @@ async function handleResetPassword() {
 }
 
 async function saveNewPassword() {
-    const newPwd = document.getElementById('new-password-input').value; 
-    const msgBox = document.getElementById('new-pwd-message'); 
-    const btn = document.getElementById('btn-save-pwd');
-    
-    if(newPwd.length < 6) { 
-        msgBox.innerText = "Mínimo 6 caracteres."; 
-        msgBox.classList.remove('hidden'); 
-        return; 
-    }
-    
-    btn.innerText = "Guardando..."; 
-    btn.disabled = true;
-    
+    const newPwd = document.getElementById('new-password-input').value; const msgBox = document.getElementById('new-pwd-message'); const btn = document.getElementById('btn-save-pwd');
+    if(newPwd.length < 6) { msgBox.innerText = "Mínimo 6 caracteres."; msgBox.classList.remove('hidden'); return; }
+    btn.innerText = "Guardando..."; btn.disabled = true;
     try {
         const { error } = await supabaseClient.auth.updateUser({ password: newPwd });
         if (error) throw error;
-        
-        // Limpia el hash de la URL *solo después* de haber usado el token exitosamente
         window.location.hash = '';
-        
         closeAllModals(); 
         const { data: { session } } = await supabaseClient.auth.getSession();
-        if(session) { 
-            currentUserId = session.user.id; 
-            loadDashboardView(session.user.email); 
-        }
+        if(session) { currentUserId = session.user.id; loadDashboardView(session.user.email); }
     } catch(e) {
-        // FIX: Identifica si el usuario está poniendo la misma contraseña de antes
         const errStr = String(e.message || "").toLowerCase();
-        
-        if (errStr.includes("different from the old password") || errStr.includes("different from the original")) {
-            msgBox.innerText = "❌ La nueva contraseña no puede ser igual a la anterior.";
-        } else {
-            msgBox.innerText = "El link ha caducado. Volvé a pedir el correo."; 
-        }
-        
-        msgBox.classList.remove('hidden'); 
-        btn.innerText = "Guardar y Entrar"; 
-        btn.disabled = false; 
+        if (errStr.includes("different from the old password") || errStr.includes("different from the original")) { msgBox.innerText = "❌ La nueva contraseña no puede ser igual a la anterior."; } 
+        else { msgBox.innerText = "El link ha caducado o hubo un error. Volvé a pedir el correo."; }
+        msgBox.classList.remove('hidden'); btn.innerText = "Guardar y Entrar"; btn.disabled = false; 
     }
 }
 
-// --- 5. ENTORNO DE USUARIO (DASHBOARD) ---
+// --- 5. DASHBOARD ---
 function loadDashboardView(email) {
     document.getElementById('view-landing').classList.add('hidden'); document.getElementById('view-app').classList.remove('hidden');
     document.getElementById('auth-controls').classList.add('hidden'); document.getElementById('user-controls').classList.remove('hidden');
@@ -193,7 +162,7 @@ async function updateCreditsDisplay() {
     } catch(e) { document.getElementById('ai-credit-count').innerText = "10"; }
 }
 
-// --- 6. INTELIGENCIA ARTIFICIAL (GEMINI) ---
+// --- 6. INTELIGENCIA ARTIFICIAL ---
 function formatMarkdown(text) { if (!text) return ''; let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>'); formatted = formatted.replace(/\n/g, '<br>'); return formatted; }
 function handleAIGenerationRequest() { document.getElementById('ai-prompt').value = ""; openModal('modal-ai-coach'); }
 
@@ -213,7 +182,7 @@ async function proceedWithAIGeneration() {
         if(error) throw new Error(error.message); if(data && data.error) throw new Error(data.error);
         let rawJson = data.response.candidates[0].content.parts[0].text; rawJson = rawJson.replace(/```json/g, '').replace(/```/g, '').trim(); const routineData = JSON.parse(rawJson);
         await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
-        const exercisesToInsert = routineData.map(ex => { const cleanDay = ex.day_of_week.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); return { user_id: currentUserId, day_of_week: cleanDay, exercise_name: ex.exercise_name, sets: ex.sets, target_reps: ex.target_reps, has_video: false, youtube_url: "", has_image: false, image_url: "" }; });
+        const exercisesToInsert = routineData.map((ex, index) => { const cleanDay = ex.day_of_week.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); return { user_id: currentUserId, day_of_week: cleanDay, exercise_name: ex.exercise_name, sets: ex.sets, target_reps: ex.target_reps, has_video: false, youtube_url: "", has_image: false, image_url: "", order_index: index }; });
         const { error: dbError } = await supabaseClient.from('user_routines').insert(exercisesToInsert); if(dbError) throw new Error(dbError.message);
         if(data.remaining_credits !== undefined) { const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); if(!hasInf) document.getElementById('ai-credit-count').innerText = data.remaining_credits; }
         document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); openModal('modal-ai-success');
@@ -247,6 +216,7 @@ async function sendChatMessage() {
 function promptDeleteEntireRoutine() { openModal('modal-confirm-delete-all'); }
 async function confirmDeleteEntireRoutine() { closeAllModals(); document.getElementById('loading-title').innerText = "Borrando Semana..."; document.getElementById('loading-desc').innerText = "Limpiando todos los ejercicios de tu plan..."; document.getElementById('ai-loading-overlay').classList.remove('hidden'); document.getElementById('ai-loading-overlay').classList.add('flex'); try { const { error } = await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId); if(error) throw error; changeDay('lunes'); } catch(e) { alert("Error al borrar rutina: " + e.message); } finally { document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); } }
 function toggleMediaInput(type) { const checkbox = document.getElementById(`check-${type}`); const container = document.getElementById(`input-${type}-container`); checkbox.checked = !checkbox.checked; if(checkbox.checked) { container.classList.remove('hidden'); } else { container.classList.add('hidden'); document.getElementById(`new-ex-${type}`).value = ''; } }
+
 function openAddExerciseModal() { currentEditExerciseId = null; document.getElementById('modal-ex-title').innerText = "Nuevo Ejercicio"; document.getElementById('new-ex-name').value = ''; document.getElementById('new-ex-sets').value = '4'; document.getElementById('new-ex-reps').value = ''; document.getElementById('check-video').checked = false; document.getElementById('input-video-container').classList.add('hidden'); document.getElementById('new-ex-video').value = ''; document.getElementById('check-image').checked = false; document.getElementById('input-image-container').classList.add('hidden'); document.getElementById('new-ex-image').value = ''; document.getElementById('btn-save-exercise').innerText = "GUARDAR EJERCICIO"; openModal('modal-exercise'); }
 function openEditExerciseModal(exId) { currentEditExerciseId = exId; const ex = window.currentDayExercises.find(e => e.id === exId); document.getElementById('modal-ex-title').innerText = "Editar Ejercicio"; document.getElementById('new-ex-name').value = ex.exercise_name; document.getElementById('new-ex-sets').value = ex.sets; document.getElementById('new-ex-reps').value = ex.target_reps; document.getElementById('check-video').checked = ex.has_video; document.getElementById('input-video-container').className = ex.has_video ? "mb-2 pl-4 border-l-2 border-custom-primary" : "hidden mb-2 pl-4 border-l-2 border-custom-primary"; document.getElementById('new-ex-video').value = ex.has_video ? `https://youtu.be/${ex.youtube_url}` : ''; document.getElementById('check-image').checked = ex.has_image; document.getElementById('input-image-container').className = ex.has_image ? "mb-4 pl-4 border-l-2 border-custom-primary" : "hidden mb-4 pl-4 border-l-2 border-custom-primary"; document.getElementById('new-ex-image').value = ex.image_url || ''; document.getElementById('btn-save-exercise').innerText = "ACTUALIZAR EJERCICIO"; openModal('modal-exercise'); }
 function promptDeleteExercise(exId, exName) { openModal('modal-confirm-delete-exercise'); const btn = document.getElementById('btn-confirm-delete-ex'); btn.onclick = async () => { btn.innerText = "Quitando..."; btn.disabled = true; try { const {error} = await supabaseClient.from('user_routines').delete().eq('id', exId); if(error) throw error; closeAllModals(); changeDay(currentActiveDay); } catch(e) { alert("Error: " + e.message); } finally { btn.innerText = "Sí, quitar"; btn.disabled = false; } }; }
@@ -258,35 +228,108 @@ async function saveExercise() {
     if(hasVideo && !ytId) { msgBox.innerText = "El link de YouTube no es válido."; msgBox.classList.remove('hidden'); return; }
     if(hasImage && (!imgUrl || !imgUrl.startsWith('http'))) { msgBox.innerText = "Pegá un link de imagen válido (que empiece con http)."; msgBox.classList.remove('hidden'); return; }
     const btn = document.getElementById('btn-save-exercise'); btn.innerText = "GUARDANDO..."; btn.disabled = true; msgBox.classList.add('hidden');
-    const exData = { user_id: currentUserId, day_of_week: currentActiveDay, exercise_name: name, sets: parseInt(sets), target_reps: targetReps, has_video: hasVideo, youtube_url: ytId, has_image: hasImage, image_url: imgUrl };
+    
+    // Obtenemos cuántos ejercicios hay en este día para poner este al final
+    const currentExercisesInDay = window.currentDayExercises.length;
+    const exData = { user_id: currentUserId, day_of_week: currentActiveDay, exercise_name: name, sets: parseInt(sets), target_reps: targetReps, has_video: hasVideo, youtube_url: ytId, has_image: hasImage, image_url: imgUrl, order_index: currentExercisesInDay };
+    
     try { if(currentEditExerciseId) { const { error } = await supabaseClient.from('user_routines').update(exData).eq('id', currentEditExerciseId); if (error) throw error; } else { const { error } = await supabaseClient.from('user_routines').insert([exData]); if (error) throw error; } closeAllModals(); changeDay(currentActiveDay); } catch (err) { msgBox.innerText = "Error: " + err.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = currentEditExerciseId ? "ACTUALIZAR EJERCICIO" : "GUARDAR EJERCICIO"; btn.disabled = false; }
 }
 
-// --- 8. CARGA DE EJERCICIOS Y GRÁFICOS ---
+// NUEVO: Funciones para Copiar un Ejercicio
+function promptCopyExercise(exId) {
+    exerciseToCopy = window.currentDayExercises.find(e => e.id === exId);
+    document.getElementById('copy-target-day').value = currentActiveDay;
+    openModal('modal-copy-exercise');
+}
+
+async function confirmCopyExercise() {
+    const targetDay = document.getElementById('copy-target-day').value;
+    const btn = document.getElementById('btn-confirm-copy');
+    btn.innerText = "Copiando..."; btn.disabled = true;
+
+    // Buscamos cuántos ejercicios tiene el día de destino para ponerlo al final
+    const { data: destExercises } = await supabaseClient.from('user_routines').select('id').eq('user_id', currentUserId).eq('day_of_week', targetDay);
+    const newOrderIndex = destExercises ? destExercises.length : 0;
+
+    const newEx = { user_id: currentUserId, day_of_week: targetDay, exercise_name: exerciseToCopy.exercise_name, sets: exerciseToCopy.sets, target_reps: exerciseToCopy.target_reps, has_video: exerciseToCopy.has_video, youtube_url: exerciseToCopy.youtube_url, has_image: exerciseToCopy.has_image, image_url: exerciseToCopy.image_url, order_index: newOrderIndex };
+
+    try {
+        const {error} = await supabaseClient.from('user_routines').insert([newEx]);
+        if(error) throw error;
+        closeAllModals();
+        if(targetDay === currentActiveDay) { changeDay(currentActiveDay); } 
+    } catch(e) { alert("Error al copiar: " + e.message);
+    } finally { btn.innerText = "Copiar"; btn.disabled = false; }
+}
+
+
+// --- 8. CARGA DE EJERCICIOS, GRÁFICOS Y ORDENAMIENTO (DRAG & DROP) ---
 async function changeDay(day, event) {
     currentActiveDay = day;
     if(event) { document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }); event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white'); event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } 
     else { document.querySelectorAll('.tab-btn').forEach(b => { if(b.innerText.toLowerCase() === day.toLowerCase()) { b.classList.add('active'); b.classList.remove('text-custom-textMuted'); b.classList.add('text-white'); b.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } else { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); } }); }
     const container = document.getElementById('exercise-container'); container.innerHTML = '<div class="col-span-1 md:col-span-2 text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando tu rutina...</div>';
+    
     try {
-        const { data: exercises, error } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).eq('day_of_week', day).order('created_at', { ascending: true });
+        // Obtenemos los ejercicios ORDENADOS por su columna "order_index"
+        const { data: exercises, error } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).eq('day_of_week', day).order('order_index', { ascending: true }).order('created_at', { ascending: true });
         if (error) throw error; window.currentDayExercises = exercises;
+        
         if (exercises.length === 0) { container.innerHTML = `<div class="col-span-1 md:col-span-2 flex flex-col items-center justify-center p-10 bg-custom-card border border-dashed border-custom-border rounded-3xl text-center"><div class="w-16 h-16 bg-[#171717] rounded-full flex items-center justify-center mb-4"><svg class="w-8 h-8 text-custom-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg></div><h3 class="text-xl font-bold text-white mb-2">Día libre o sin configurar</h3><p class="text-custom-textMuted text-sm mb-4">Aún no agregaste ejercicios para el día seleccionado.</p></div>`; return; }
         
         container.innerHTML = '';
         exercises.forEach(ex => {
-            const safeExName = escapeHTML(ex.exercise_name);
-            const safeId = escapeHTML(ex.id);
+            const safeExName = escapeHTML(ex.exercise_name); const safeId = escapeHTML(ex.id);
+            let setsHtml = ''; for(let i=1; i<=ex.sets; i++) { setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm"><span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span><input type="number" id="peso-${safeId}-${i}" placeholder="Kg" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"><input type="number" id="reps-${safeId}-${i}" placeholder="Rep" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"><input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer"></div>`; }
+            let mediaHtml = ''; if(ex.has_image && ex.image_url) { mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden border border-custom-border w-full"><img src="${escapeHTML(ex.image_url)}" class="w-full h-auto block" onerror="this.parentElement.style.display='none';"></div>`; } if(ex.has_video && ex.youtube_url && ex.youtube_url.length === 11) { mediaHtml += `<div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${escapeHTML(ex.youtube_url)}" frameborder="0" allowfullscreen></iframe></div>`; } else if (!ex.has_video && !ex.has_image) { const searchQuery = encodeURIComponent(ex.exercise_name + " ejercicio tutorial tecnica"); mediaHtml += `<a href="https://www.youtube.com/results?search_query=${searchQuery}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-[#171717] border border-[#262626] text-custom-textMuted hover:text-white hover:border-custom-primary py-3 rounded-xl mb-6 font-bold text-xs uppercase tracking-widest transition-colors"><svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg> Buscar Tutorial en YouTube</a>`; }
 
-            let setsHtml = '';
-            for(let i=1; i<=ex.sets; i++) { setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm"><span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span><input type="number" id="peso-${safeId}-${i}" placeholder="Kg" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"><input type="number" id="reps-${safeId}-${i}" placeholder="Rep" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"><input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer"></div>`; }
-            let mediaHtml = '';
-            if(ex.has_image && ex.image_url) { mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden border border-custom-border w-full"><img src="${escapeHTML(ex.image_url)}" class="w-full h-auto block" onerror="this.parentElement.style.display='none';"></div>`; }
-            if(ex.has_video && ex.youtube_url && ex.youtube_url.length === 11) { mediaHtml += `<div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${escapeHTML(ex.youtube_url)}" frameborder="0" allowfullscreen></iframe></div>`; } 
-            else if (!ex.has_video && !ex.has_image) { const searchQuery = encodeURIComponent(ex.exercise_name + " ejercicio tutorial tecnica"); mediaHtml += `<a href="https://www.youtube.com/results?search_query=${searchQuery}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-[#171717] border border-[#262626] text-custom-textMuted hover:text-white hover:border-custom-primary py-3 rounded-xl mb-6 font-bold text-xs uppercase tracking-widest transition-colors"><svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg> Buscar Tutorial en YouTube</a>`; }
-
-            container.innerHTML += `<div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative"><div class="absolute top-4 right-4 flex gap-2 z-30"><button onclick="openEditExerciseModal('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Editar Ejercicio"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button><button onclick="promptDeleteExercise('${safeId}', '${safeExName}')" class="p-2 bg-red-500/10 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-colors shadow-lg" title="Eliminar Ejercicio"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></div><h3 class="text-xl font-bold mb-1 text-white uppercase italic tracking-tighter pr-20">${safeExName}</h3><p class="text-xs text-custom-primary font-bold tracking-widest mb-4 uppercase">Objetivo: ${escapeHTML(ex.target_reps)}</p>${mediaHtml}${setsHtml}<div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4"><button onclick="saveToCloud('${safeId}', ${ex.sets}, '${safeExName}', event)" class="w-full bg-custom-primary py-4 rounded-xl font-extrabold text-white tracking-widest hover:bg-custom-hover transition-all active:scale-95 shadow-lg relative overflow-hidden text-sm"><span class="relative z-10 btn-text">GUARDAR SESIÓN</span></button><button onclick="loadEvolucion('${safeId}', '${safeExName}')" id="btn-evo-${safeId}" class="w-full bg-transparent border-2 border-custom-border text-custom-textMuted py-4 rounded-xl font-bold hover:border-custom-primary hover:text-white transition-all active:scale-95 text-sm uppercase tracking-widest">VER PROGRESO</button></div><div id="evo-container-${safeId}" class="hidden mt-6 pt-6 border-t border-custom-border"></div></div>`;
+            // NUEVO: Agregamos Botón Drag (☰) y Botón Copiar, además del atributo 'data-ex-id' a la tarjeta para identificarla al arrastrarla
+            container.innerHTML += `
+            <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative group" data-ex-id="${safeId}">
+                <div class="absolute top-4 right-4 flex gap-2 z-30">
+                    <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors" title="Mantener presionado para ordenar">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 8h16M4 16h16"></path></svg>
+                    </div>
+                    <button onclick="promptCopyExercise('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-custom-primary transition-colors shadow-lg" title="Copiar Ejercicio">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </button>
+                    <button onclick="openEditExerciseModal('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Editar Ejercicio">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                    </button>
+                    <button onclick="promptDeleteExercise('${safeId}', '${safeExName}')" class="p-2 bg-red-500/10 rounded-lg text-red-500 hover:bg-red-500 hover:text-white transition-colors shadow-lg" title="Eliminar Ejercicio">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+                <h3 class="text-xl font-bold mb-1 text-white uppercase italic tracking-tighter pr-32">${safeExName}</h3>
+                <p class="text-xs text-custom-primary font-bold tracking-widest mb-4 uppercase">Objetivo: ${escapeHTML(ex.target_reps)}</p>
+                ${mediaHtml}${setsHtml}
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                    <button onclick="saveToCloud('${safeId}', ${ex.sets}, '${safeExName}', event)" class="w-full bg-custom-primary py-4 rounded-xl font-extrabold text-white tracking-widest hover:bg-custom-hover transition-all active:scale-95 shadow-lg relative overflow-hidden text-sm"><span class="relative z-10 btn-text">GUARDAR SESIÓN</span></button>
+                    <button onclick="loadEvolucion('${safeId}', '${safeExName}')" id="btn-evo-${safeId}" class="w-full bg-transparent border-2 border-custom-border text-custom-textMuted py-4 rounded-xl font-bold hover:border-custom-primary hover:text-white transition-all active:scale-95 text-sm uppercase tracking-widest">VER PROGRESO</button>
+                </div>
+                <div id="evo-container-${safeId}" class="hidden mt-6 pt-6 border-t border-custom-border"></div>
+            </div>`;
         });
+
+        // NUEVO: Encendemos el motor de arrastrar y soltar (SortableJS)
+        Sortable.create(document.getElementById('exercise-container'), {
+            handle: '.drag-handle', // Solo se mueve si agarran el ícono ☰
+            animation: 150, // Animación fluida de 150ms
+            ghostClass: 'sortable-ghost', // El CSS que hicimos
+            onEnd: async function () {
+                // Cuando el usuario suelta la tarjeta, leemos el nuevo orden de la pantalla
+                const items = Array.from(document.getElementById('exercise-container').children);
+                const promises = items.map((item, index) => {
+                    const id = item.getAttribute('data-ex-id');
+                    // Mandamos la actualización silenciosa a Supabase
+                    return supabaseClient.from('user_routines').update({ order_index: index }).eq('id', id);
+                });
+                // Ejecutamos todos los guardados a la vez sin trabar la pantalla
+                await Promise.all(promises);
+            }
+        });
+
     } catch(e) { container.innerHTML = `<div class="col-span-1 md:col-span-2 text-center text-red-500 py-10 font-bold">Error al cargar rutinas: ${e.message}</div>`; }
 }
 
