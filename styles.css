@@ -37,3 +37,19 @@ input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #171717 inset !important
 .chat-bubble-ai { background: linear-gradient(to right, #7e22ce, #3b82f6); border-radius: 16px 16px 16px 0; padding: 12px 16px; font-size: 14px; margin-right: auto; max-width: 90%; color: white; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(147, 51, 234, 0.2); line-height: 1.6;}
 .chat-bubble-ai strong { color: #f8fafc; font-weight: 800; }
 .chat-bubble-ai em { font-style: italic; opacity: 0.9; }
+
+/* ========================================== */
+/* 🖱️ ESTILOS PARA ARRASTRAR Y SOLTAR (DRAG)  */
+/* ========================================== */
+
+/* Cursor de manito para PC */
+.drag-handle { cursor: grab; touch-action: none; }
+.drag-handle:active { cursor: grabbing; }
+
+/* El efecto "Fantasma" cuando estás moviendo una tarjeta */
+.sortable-ghost { 
+    opacity: 0.3; 
+    background-color: #262626 !important; 
+    border: 2px dashed #F54927 !important; 
+    transform: scale(0.98);
+}
