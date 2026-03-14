@@ -17,7 +17,6 @@ function escapeHTML(str) {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-// Hace subir el cartel de notificación por 2 segundos y medio
 function showToast(message) {
     const toast = document.getElementById('toast-notification');
     document.getElementById('toast-msg').innerText = message;
@@ -29,7 +28,6 @@ function showToast(message) {
     }, 2500);
 }
 
-// Cierra el menú de los 3 puntitos si hacés clic afuera
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.ex-menu-container')) {
         document.querySelectorAll('.ex-dropdown').forEach(el => el.classList.add('hidden'));
@@ -209,6 +207,7 @@ async function sendChatMessage() {
 function promptDeleteEntireRoutine() { openModal('modal-confirm-delete-all'); }
 async function confirmDeleteEntireRoutine() { closeAllModals(); document.getElementById('loading-title').innerText = "Borrando Semana..."; document.getElementById('loading-desc').innerText = "Limpiando todos los ejercicios de tu plan..."; document.getElementById('ai-loading-overlay').classList.remove('hidden'); document.getElementById('ai-loading-overlay').classList.add('flex'); try { const { error } = await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId); if(error) throw error; changeDay('lunes'); } catch(e) { alert("Error al borrar rutina: " + e.message); } finally { document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); } }
 function toggleMediaInput(type) { const checkbox = document.getElementById(`check-${type}`); const container = document.getElementById(`input-${type}-container`); checkbox.checked = !checkbox.checked; if(checkbox.checked) { container.classList.remove('hidden'); } else { container.classList.add('hidden'); document.getElementById(`new-ex-${type}`).value = ''; } }
+
 function openAddExerciseModal() { currentEditExerciseId = null; document.getElementById('modal-ex-title').innerText = "Nuevo Ejercicio"; document.getElementById('new-ex-name').value = ''; document.getElementById('new-ex-sets').value = '4'; document.getElementById('new-ex-reps').value = ''; document.getElementById('check-video').checked = false; document.getElementById('input-video-container').classList.add('hidden'); document.getElementById('new-ex-video').value = ''; document.getElementById('check-image').checked = false; document.getElementById('input-image-container').classList.add('hidden'); document.getElementById('new-ex-image').value = ''; document.getElementById('btn-save-exercise').innerText = "GUARDAR EJERCICIO"; openModal('modal-exercise'); }
 function openEditExerciseModal(exId) { currentEditExerciseId = exId; const ex = window.currentDayExercises.find(e => e.id === exId); document.getElementById('modal-ex-title').innerText = "Editar Ejercicio"; document.getElementById('new-ex-name').value = ex.exercise_name; document.getElementById('new-ex-sets').value = ex.sets; document.getElementById('new-ex-reps').value = ex.target_reps; document.getElementById('check-video').checked = ex.has_video; document.getElementById('input-video-container').className = ex.has_video ? "mb-2 pl-4 border-l-2 border-custom-primary" : "hidden mb-2 pl-4 border-l-2 border-custom-primary"; document.getElementById('new-ex-video').value = ex.has_video ? `https://youtu.be/${ex.youtube_url}` : ''; document.getElementById('check-image').checked = ex.has_image; document.getElementById('input-image-container').className = ex.has_image ? "mb-4 pl-4 border-l-2 border-custom-primary" : "hidden mb-4 pl-4 border-l-2 border-custom-primary"; document.getElementById('new-ex-image').value = ex.image_url || ''; document.getElementById('btn-save-exercise').innerText = "ACTUALIZAR EJERCICIO"; openModal('modal-exercise'); }
 function promptDeleteExercise(exId, exName) { openModal('modal-confirm-delete-exercise'); const btn = document.getElementById('btn-confirm-delete-ex'); btn.onclick = async () => { btn.innerText = "Quitando..."; btn.disabled = true; try { const {error} = await supabaseClient.from('user_routines').delete().eq('id', exId); if(error) throw error; closeAllModals(); changeDay(currentActiveDay); } catch(e) { alert("Error: " + e.message); } finally { btn.innerText = "Sí, quitar"; btn.disabled = false; } }; }
@@ -225,7 +224,6 @@ async function saveExercise() {
     try { if(currentEditExerciseId) { const { error } = await supabaseClient.from('user_routines').update(exData).eq('id', currentEditExerciseId); if (error) throw error; } else { const { error } = await supabaseClient.from('user_routines').insert([exData]); if (error) throw error; } closeAllModals(); changeDay(currentActiveDay); } catch (err) { msgBox.innerText = "Error: " + err.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = currentEditExerciseId ? "ACTUALIZAR EJERCICIO" : "GUARDAR EJERCICIO"; btn.disabled = false; }
 }
 
-// Función que abre y cierra el menú de 3 puntitos de una tarjeta
 window.toggleExMenu = function(id) {
     const menu = document.getElementById(`ex-menu-${id}`);
     document.querySelectorAll('.ex-dropdown').forEach(el => {
@@ -274,16 +272,14 @@ async function changeDay(day, event) {
             let setsHtml = ''; for(let i=1; i<=ex.sets; i++) { setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm"><span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span><input type="number" id="peso-${safeId}-${i}" placeholder="Kg" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"><input type="number" id="reps-${safeId}-${i}" placeholder="Rep" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"><input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer"></div>`; }
             let mediaHtml = ''; if(ex.has_image && ex.image_url) { mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden border border-custom-border w-full"><img src="${escapeHTML(ex.image_url)}" class="w-full h-auto block" onerror="this.parentElement.style.display='none';"></div>`; } if(ex.has_video && ex.youtube_url && ex.youtube_url.length === 11) { mediaHtml += `<div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${escapeHTML(ex.youtube_url)}" frameborder="0" allowfullscreen></iframe></div>`; } else if (!ex.has_video && !ex.has_image) { const searchQuery = encodeURIComponent(ex.exercise_name + " ejercicio tutorial tecnica"); mediaHtml += `<a href="https://www.youtube.com/results?search_query=${searchQuery}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-[#171717] border border-[#262626] text-custom-textMuted hover:text-white hover:border-custom-primary py-3 rounded-xl mb-6 font-bold text-xs uppercase tracking-widest transition-colors"><svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg> Buscar Tutorial en YouTube</a>`; }
 
+            // FIX DEL ÍCONO DE FLECHAS ROTAS: Implementé el SVG estándar de Lucide
             container.innerHTML += `
             <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative group" data-ex-id="${safeId}">
-                
                 <div class="absolute top-4 right-4 flex items-center gap-2 z-30 ex-menu-container">
-                    
                     <div class="relative">
                         <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
                         </button>
-                        
                         <div id="ex-menu-${safeId}" class="ex-dropdown hidden absolute right-0 mt-2 w-48 bg-[#171717] border border-[#262626] rounded-xl shadow-2xl py-2 flex flex-col z-50">
                             <button onclick="promptCopyExercise('${safeId}')" class="flex items-center gap-3 px-4 py-3 text-sm text-custom-textMuted hover:text-white hover:bg-[#262626] transition-colors text-left w-full">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
@@ -300,9 +296,16 @@ async function changeDay(day, event) {
                             </button>
                         </div>
                     </div>
-
+                    
                     <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8V4m0 0L10 6m2-2l2 2m0 14v-4m0 4l-2-2m2 2l2-2M8 12H4m0 0l2-2m-2 2l2 2m14 0h-4m4 0l-2-2m2 2l-2 2"></path></svg>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                            <polyline points="5 9 2 12 5 15"></polyline>
+                            <polyline points="9 5 12 2 15 5"></polyline>
+                            <polyline points="19 9 22 12 19 15"></polyline>
+                            <polyline points="9 19 12 22 15 19"></polyline>
+                            <line x1="2" y1="12" x2="22" y2="12"></line>
+                            <line x1="12" y1="2" x2="12" y2="22"></line>
+                        </svg>
                     </div>
                 </div>
                 
@@ -317,7 +320,6 @@ async function changeDay(day, event) {
             </div>`;
         });
 
-        // Motor de Arrastrar y Soltar (SortableJS)
         Sortable.create(document.getElementById('exercise-container'), {
             handle: '.drag-handle', 
             animation: 150, 
