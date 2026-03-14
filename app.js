@@ -1,5 +1,5 @@
 /* =========================================================================
-   HAT (Hybrid Athlete Tracker) - MOTOR PRINCIPAL JAVASCRIPT
+   HAT (Hybrid Athlete Tracker) - MOTOR PRINCIPAL JAVASCRIPT (FASE 8.1)
    ========================================================================= */
 
 const subtitleText = "La plataforma de alto rendimiento para quienes dominan el gimnasio y el campo de juego.";
@@ -31,7 +31,7 @@ function showToast(message) {
 function formatTime(totalSeconds) {
     if(!totalSeconds) return "0s";
     let m = Math.floor(totalSeconds / 60);
-    let s = totalSeconds % 60;
+    let s = Math.round(totalSeconds % 60);
     if(m > 0 && s > 0) return `${m}m ${s}s`;
     if(m > 0) return `${m}m`;
     return `${s}s`;
@@ -208,6 +208,37 @@ window.askCoachAbout = function(exName) {
     input.focus();
 };
 
+// NUEVA FUNCIÓN: Envía automáticamente un análisis de IA leyendo los datos históricos de un ejercicio
+window.analyzeProgress = function(exId, exName, exType) {
+    const history = window.currentHistory[exId];
+    if(!history) return;
+    const dates = Object.keys(history); 
+    
+    if (dates.length < 3) {
+        showToast("⚠️ Entrená al menos 3 veces para activar el análisis IA.");
+        return;
+    }
+    
+    let dataStr = "";
+    dates.forEach(d => {
+        const max = history[d].maxStat;
+        const avg = history[d].totalStat / history[d].totalSets;
+        if(exType === 'tiempo') {
+            dataStr += `Fecha: ${d} | Max: ${formatTime(max)} | Promedio: ${formatTime(avg)}\n`;
+        } else {
+            dataStr += `Fecha: ${d} | Peso Max: ${max}kg | Promedio Reps: ${avg.toFixed(1)}\n`;
+        }
+    });
+
+    const prompt = `Actúa como mi Coach Deportivo. Analiza mi evolución en el ejercicio "${exName}". Aquí están mis datos ordenados por fecha:\n\n${dataStr}\nDame una devolución técnica y motivadora de 1 o 2 párrafos cortos. Dime si vengo mejorando o si estoy estancado. No saludes al principio.`;
+    
+    closeAllModals();
+    openChatModal();
+    const input = document.getElementById('chat-input');
+    input.value = prompt;
+    sendChatMessage(); 
+};
+
 async function sendChatMessage() {
     const input = document.getElementById('chat-input'); const text = input.value.trim(); if(!text) return;
     window.chatHistory.push({ role: 'user', parts: [{ text: text }] }); input.value = ''; input.style.height = ''; renderChat();
@@ -293,7 +324,6 @@ async function changeDay(day, event) {
             let setsHtml = ''; 
             for(let i=1; i<=ex.sets; i++) { 
                 if (exType === 'tiempo') {
-                    // TIPO TEXT: Para que los celulares tomen el cero y el salto funcione impecable
                     setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm">
                         <span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span>
                         <div class="flex items-center bg-[#0a0a0a] border border-[#262626] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[40px] px-2">
@@ -314,6 +344,15 @@ async function changeDay(day, event) {
             <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative group" data-ex-id="${safeId}">
                 
                 <div class="absolute top-4 right-4 flex items-center gap-2 z-30 ex-menu-container">
+                    <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3v6" /><path d="M9 6l3-3 3 3" />
+                            <path d="M12 21v-6" /><path d="M9 18l3 3 3-3" />
+                            <path d="M3 12h6" /><path d="M6 9l-3 3 3 3" />
+                            <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
+                        </svg>
+                    </div>
+
                     <div class="relative">
                         <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
@@ -340,15 +379,6 @@ async function changeDay(day, event) {
                                 Eliminar
                             </button>
                         </div>
-                    </div>
-
-                    <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 3v6" /><path d="M9 6l3-3 3 3" />
-                            <path d="M12 21v-6" /><path d="M9 18l3 3 3-3" />
-                            <path d="M3 12h6" /><path d="M6 9l-3 3 3 3" />
-                            <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
-                        </svg>
                     </div>
                 </div>
                 
@@ -413,14 +443,26 @@ async function loadEvolucion(exId, exName, exType, forceReload = false) {
         const groupedData = {}; 
         data.forEach(log => { 
             const [year, month, day] = log.log_date.split('-'); const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }); 
-            if (!groupedData[dateStr]) groupedData[dateStr] = { maxStat: 0, sets: [], rawDate: log.log_date }; 
+            if (!groupedData[dateStr]) groupedData[dateStr] = { maxStat: 0, totalStat: 0, totalSets: 0, sets: [], rawDate: log.log_date }; 
             
-            if (exType === 'tiempo') { if (log.time_seconds > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.time_seconds; } 
-            else { if (log.weight > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.weight; }
+            if (exType === 'tiempo') { 
+                if (log.time_seconds > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.time_seconds; 
+                groupedData[dateStr].totalStat += log.time_seconds;
+            } else { 
+                if (log.weight > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.weight; 
+                groupedData[dateStr].totalStat += log.reps;
+            }
             
+            groupedData[dateStr].totalSets += 1;
             groupedData[dateStr].sets.push(log); 
         }); 
-        window.currentHistory[safeExId] = groupedData; const dates = Object.keys(groupedData); const chartData = dates.map(d => groupedData[d].maxStat); let tableRows = ''; const reversedDates = [...dates].reverse(); 
+        
+        window.currentHistory[safeExId] = groupedData; 
+        const dates = Object.keys(groupedData); 
+        const chartDataMax = dates.map(d => groupedData[d].maxStat); 
+        const chartDataAvg = dates.map(d => Math.round((groupedData[d].totalStat / groupedData[d].totalSets) * 10) / 10); 
+        
+        let tableRows = ''; const reversedDates = [...dates].reverse(); 
         
         reversedDates.forEach(date => { 
             const dayData = groupedData[date]; dayData.sets.sort((a,b) => a.set_number - b.set_number); 
@@ -432,12 +474,45 @@ async function loadEvolucion(exId, exName, exType, forceReload = false) {
             tableRows += `<tr class="border-b border-custom-border hover:bg-[#171717] transition-colors"><td class="py-3 px-3 text-sm font-bold text-custom-primary whitespace-nowrap align-middle">${date}</td><td class="py-3 px-2 align-middle w-full">${badges}</td><td class="py-3 px-3 align-middle text-right space-x-1 whitespace-nowrap"><button type="button" onclick="promptEditLog('${safeExId}', '${safeExName}', '${date}', '${exType}')" class="p-1.5 bg-[#262626] rounded text-custom-textMuted hover:text-white transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button><button type="button" onclick="promptDeleteLog('${safeExName}', '${dayData.rawDate}', '${safeExId}', '${exType}')" class="p-1.5 bg-red-500/10 rounded text-red-500 hover:bg-red-500 hover:text-white transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></td></tr>`; 
         }); 
         
-        const chartTitle = exType === 'tiempo' ? 'Tiempo Máximo (Segundos)' : 'Carga Máxima (Kilos)';
-        container.innerHTML = `<div class="mb-6"><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle}</h4><div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart-${safeExId}"></canvas></div></div><div><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">Historial</h4><div class="overflow-x-auto rounded-xl border border-custom-border bg-[#0a0a0a]"><table class="w-full text-left border-collapse"><thead class="bg-[#171717]"><tr class="border-b border-custom-border text-custom-textMuted text-[10px] uppercase tracking-widest"><th class="py-3 px-3 font-bold">Día</th><th class="py-3 px-2 font-bold">Series</th><th class="py-3 px-3 font-bold text-right">Acción</th></tr></thead><tbody>${tableRows}</tbody></table></div></div>`; 
+        const chartTitle1 = exType === 'tiempo' ? 'Tiempo Máximo (Segundos)' : 'Carga Máxima (Kilos)';
+        const chartTitle2 = exType === 'tiempo' ? 'Promedio de Tiempo' : 'Promedio de Repeticiones';
+
+        // Estructura de Carrusel (Scroll-Snap)
+        container.innerHTML = `
+        <div class="mb-6 relative">
+            <div class="flex overflow-x-auto snap-x-mandatory hide-scrollbar gap-4 pb-4" id="carousel-${safeExId}">
+                <div class="min-w-full snap-center">
+                    <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle1} <span class="text-[8px] font-normal lowercase">(Deslizá ->)</span></h4>
+                    <div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart1-${safeExId}"></canvas></div>
+                </div>
+                <div class="min-w-full snap-center">
+                    <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle2}</h4>
+                    <div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart2-${safeExId}"></canvas></div>
+                </div>
+            </div>
+            <button onclick="analyzeProgress('${safeExId}', '${safeExName}', '${exType}')" class="w-full mt-2 bg-gradient-to-r from-purple-600/20 to-blue-500/20 border border-purple-500/30 text-purple-400 hover:text-white hover:bg-purple-500/40 py-3 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 text-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Analizar Progreso con IA
+            </button>
+        </div>
+        <div>
+            <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">Historial</h4>
+            <div class="overflow-x-auto rounded-xl border border-custom-border bg-[#0a0a0a]"><table class="w-full text-left border-collapse"><thead class="bg-[#171717]"><tr class="border-b border-custom-border text-custom-textMuted text-[10px] uppercase tracking-widest"><th class="py-3 px-3 font-bold">Día</th><th class="py-3 px-2 font-bold">Series</th><th class="py-3 px-3 font-bold text-right">Acción</th></tr></thead><tbody>${tableRows}</tbody></table></div>
+        </div>`; 
         container.classList.remove('hidden'); 
         
-        if (window.myCharts[safeExId]) window.myCharts[safeExId].destroy(); const ctx = document.getElementById(`chart-${safeExId}`).getContext('2d'); window.myCharts[safeExId] = new Chart(ctx, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle, data: chartData, borderColor: '#F54927', backgroundColor: 'rgba(245, 73, 39, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#F54927', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
+        // Destruir gráficos anteriores si existen
+        if (window.myCharts[safeExId + '-1']) window.myCharts[safeExId + '-1'].destroy(); 
+        if (window.myCharts[safeExId + '-2']) window.myCharts[safeExId + '-2'].destroy(); 
         
+        // Gráfico 1 (Máximos)
+        const ctx1 = document.getElementById(`chart1-${safeExId}`).getContext('2d'); 
+        window.myCharts[safeExId + '-1'] = new Chart(ctx1, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle1, data: chartDataMax, borderColor: '#F54927', backgroundColor: 'rgba(245, 73, 39, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#F54927', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
+        
+        // Gráfico 2 (Promedios)
+        const ctx2 = document.getElementById(`chart2-${safeExId}`).getContext('2d'); 
+        window.myCharts[safeExId + '-2'] = new Chart(ctx2, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle2, data: chartDataAvg, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#3b82f6', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
+
         btn.innerText = "OCULTAR PROGRESO"; btn.classList.replace('border-custom-border', 'border-custom-primary'); btn.classList.replace('text-custom-textMuted', 'text-white'); 
     } catch(err) { btn.innerText = "ERROR"; setTimeout(() => { btn.innerText = "VER PROGRESO"; }, 2000); }
 }
