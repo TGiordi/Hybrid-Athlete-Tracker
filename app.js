@@ -25,7 +25,31 @@ function showToast(message) {
     setTimeout(() => {
         toast.classList.add('bottom-[-100px]', 'opacity-0');
         toast.classList.remove('bottom-10', 'opacity-100');
-    }, 3500); // Le di 1 segundo más para que se lea bien el mensaje de la IA
+    }, 3500);
+}
+
+// NUEVO: Efecto visual al gastar un crédito IA
+function animateTokenLoss() {
+    const badge = document.getElementById('ai-credit-count');
+    if(!badge || badge.innerText.includes('infin')) return; // No animar si tiene infinito
+
+    const rect = badge.getBoundingClientRect();
+    const animEl = document.createElement('div');
+    animEl.className = 'fixed text-red-500 font-black text-lg z-[9999] pointer-events-none drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] token-anim';
+    animEl.innerText = '-1 ⚡';
+    animEl.style.left = `${rect.left - 10}px`;
+    animEl.style.top = `${rect.top}px`;
+    document.body.appendChild(animEl);
+
+    const badgeContainer = document.getElementById('credit-badge');
+    badgeContainer.style.borderColor = '#ef4444';
+    badgeContainer.style.backgroundColor = 'rgba(239,68,68,0.2)';
+    
+    setTimeout(() => {
+        badgeContainer.style.borderColor = '';
+        badgeContainer.style.backgroundColor = '';
+        animEl.remove();
+    }, 1500);
 }
 
 function formatTime(totalSeconds) {
@@ -185,7 +209,13 @@ async function proceedWithAIGeneration() {
         await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
         const exercisesToInsert = routineData.map((ex, index) => { const cleanDay = ex.day_of_week.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); return { user_id: currentUserId, day_of_week: cleanDay, exercise_name: ex.exercise_name, sets: ex.sets, target_reps: ex.target_reps, has_video: false, youtube_url: "", has_image: false, image_url: "", order_index: index }; });
         const { error: dbError } = await supabaseClient.from('user_routines').insert(exercisesToInsert); if(dbError) throw new Error(dbError.message);
-        if(data.remaining_credits !== undefined) { const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); if(!hasInf) document.getElementById('ai-credit-count').innerText = data.remaining_credits; }
+        if(data.remaining_credits !== undefined) { 
+            const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); 
+            if(!hasInf) {
+                document.getElementById('ai-credit-count').innerText = data.remaining_credits; 
+                animateTokenLoss(); // Lanza animación visual de -1 token
+            }
+        }
         document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); openModal('modal-ai-success');
     } catch(e) { document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); openModal('modal-ai-coach'); document.getElementById('ai-error-msg').innerText = "Detalle: " + e.message; document.getElementById('ai-error-msg').classList.remove('hidden'); }
 }
@@ -213,9 +243,8 @@ window.analyzeProgress = function(exId, exName, exType) {
     if(!history) return;
     const dates = Object.keys(history); 
     
-    // 🔥 MODO PRUEBA: Cambiamos temporalmente a 1 solo día para que puedas testearlo.
-    // (ACORDATE de cambiar este "< 1" a "< 3" cuando pongas la app en producción)
-    if (dates.length < 1) {
+    // RESTAURADO a 3 veces mínimo.
+    if (dates.length < 3) {
         showToast("⚠️ Entrená al menos 3 veces para activar el análisis IA.");
         return;
     }
@@ -249,7 +278,14 @@ async function sendChatMessage() {
         const { data, error } = await supabaseClient.functions.invoke('coach', { headers: { Authorization: `Bearer ${session.access_token}` }, body: { action: 'chat', history: window.chatHistory } });
         if(error) throw new Error(error.message); if(data && data.error) throw new Error(data.error);
         const aiReply = data.response.candidates[0].content.parts[0].text; window.chatHistory.push({ role: 'model', parts: [{ text: aiReply }] }); localStorage.setItem(`hat_chat_${currentUserId}`, JSON.stringify(window.chatHistory));
-        if(data.remaining_credits !== undefined) { const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); if(!hasInf) document.getElementById('ai-credit-count').innerText = data.remaining_credits; }
+        
+        if(data.remaining_credits !== undefined) { 
+            const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); 
+            if(!hasInf) {
+                document.getElementById('ai-credit-count').innerText = data.remaining_credits; 
+                animateTokenLoss(); // Animación de pérdida de token en el Chat / Análisis
+            }
+        }
     } catch(e) { window.chatHistory.push({ role: 'model', parts: [{ text: `❌ Error: ${e.message}` }] }); } finally { renderChat(); btn.disabled = false; btn.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>'; }
 }
 
@@ -480,7 +516,6 @@ async function loadEvolucion(exId, exName, exType, forceReload = false) {
         const chartTitle1 = exType === 'tiempo' ? 'Tiempo Máximo (Segundos)' : 'Carga Máxima (Kilos)';
         const chartTitle2 = exType === 'tiempo' ? 'Promedio de Tiempo (Seg)' : 'Promedio de Repeticiones';
 
-        // Estructura de Carrusel con custom-scroll para PC
         container.innerHTML = `
         <div class="mb-6 relative">
             <div class="flex overflow-x-auto snap-x-mandatory custom-scroll gap-4 pb-2" id="carousel-${safeExId}">
@@ -516,37 +551,6 @@ async function loadEvolucion(exId, exName, exType, forceReload = false) {
         btn.innerText = "OCULTAR PROGRESO"; btn.classList.replace('border-custom-border', 'border-custom-primary'); btn.classList.replace('text-custom-textMuted', 'text-white'); 
     } catch(err) { btn.innerText = "ERROR"; setTimeout(() => { btn.innerText = "VER PROGRESO"; }, 2000); }
 }
-
-window.analyzeProgress = function(exId, exName, exType) {
-    const history = window.currentHistory[exId];
-    if(!history) return;
-    const dates = Object.keys(history); 
-    
-    // MODO PRUEBA: Cambiado a "< 1" para que lo pruebes ahora mismo.
-    if (dates.length < 1) {
-        showToast("⚠️ Entrená al menos 3 veces para activar el análisis IA.");
-        return;
-    }
-    
-    let dataStr = "";
-    dates.forEach(d => {
-        const max = history[d].maxStat;
-        const avg = history[d].totalStat / history[d].totalSets;
-        if(exType === 'tiempo') {
-            dataStr += `Fecha: ${d} | Max: ${formatTime(max)} | Promedio: ${formatTime(avg)}\n`;
-        } else {
-            dataStr += `Fecha: ${d} | Peso Max: ${max}kg | Promedio Reps: ${avg.toFixed(1)}\n`;
-        }
-    });
-
-    const prompt = `Actúa como mi Coach Deportivo. Analiza mi evolución en el ejercicio "${exName}". Aquí están mis datos ordenados por fecha:\n\n${dataStr}\nDame una devolución técnica y motivadora de 1 o 2 párrafos cortos. Dime si vengo mejorando o si estoy estancado. No saludes al principio.`;
-    
-    closeAllModals();
-    openChatModal();
-    const input = document.getElementById('chat-input');
-    input.value = prompt;
-    sendChatMessage(); 
-};
 
 function promptDeleteLog(exName, rawDate, exId, exType) {
     const safeExName = escapeHTML(exName); const safeExId = escapeHTML(exId);
