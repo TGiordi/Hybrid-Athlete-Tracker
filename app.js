@@ -293,13 +293,13 @@ async function changeDay(day, event) {
             let setsHtml = ''; 
             for(let i=1; i<=ex.sets; i++) { 
                 if (exType === 'tiempo') {
-                    // UX MEJORADA: oninput restringe a 2 dígitos y salta automático al siguiente input
+                    // TIPO TEXT: Para que los celulares tomen el cero y el salto funcione impecable
                     setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm">
                         <span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span>
                         <div class="flex items-center bg-[#0a0a0a] border border-[#262626] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[40px] px-2">
-                            <input type="number" id="min-${safeId}-${i}" placeholder="00" min="0" max="99" oninput="if(this.value.length >= 2) { this.value = this.value.slice(0,2); document.getElementById('seg-${safeId}-${i}').focus(); }" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" id="min-${safeId}-${i}" placeholder="00" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=2){ let n=document.getElementById('seg-${safeId}-${i}'); n.focus(); if(this.value.length>2){ n.value=this.value.slice(2,4); } this.value=this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
                             <span class="text-custom-textMuted font-bold mx-1 pb-1">:</span>
-                            <input type="number" id="seg-${safeId}-${i}" placeholder="00" min="0" max="59" oninput="if(this.value.length >= 2) { this.value = this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" id="seg-${safeId}-${i}" placeholder="00" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>2) this.value=this.value.slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
                         </div>
                         <input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer">
                     </div>`;
@@ -314,16 +314,6 @@ async function changeDay(day, event) {
             <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative group" data-ex-id="${safeId}">
                 
                 <div class="absolute top-4 right-4 flex items-center gap-2 z-30 ex-menu-container">
-                    
-                    <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 3v6" /><path d="M9 6l3-3 3 3" />
-                            <path d="M12 21v-6" /><path d="M9 18l3 3 3-3" />
-                            <path d="M3 12h6" /><path d="M6 9l-3 3 3 3" />
-                            <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
-                        </svg>
-                    </div>
-
                     <div class="relative">
                         <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
@@ -350,6 +340,15 @@ async function changeDay(day, event) {
                                 Eliminar
                             </button>
                         </div>
+                    </div>
+
+                    <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3v6" /><path d="M9 6l3-3 3 3" />
+                            <path d="M12 21v-6" /><path d="M9 18l3 3 3-3" />
+                            <path d="M3 12h6" /><path d="M6 9l-3 3 3 3" />
+                            <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
+                        </svg>
                     </div>
                 </div>
                 
@@ -452,7 +451,6 @@ function promptEditLog(exId, exName, dateStr, exType) {
     const safeExId = escapeHTML(exId); const safeExName = escapeHTML(exName);
     const dayData = window.currentHistory[exId][dateStr]; document.getElementById('edit-log-title').innerText = `Corregir ${dateStr}`; let html = ''; 
     
-    // El oninput para saltar automático también se aplica a la ventana de editar
     dayData.sets.forEach(s => { 
         if(exType === 'tiempo') {
             let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60;
@@ -460,9 +458,9 @@ function promptEditLog(exId, exName, dateStr, exType) {
             html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]">
                 <span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span>
                 <div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2">
-                    <input type="number" id="edit-m-${s.id}" value="${padM}" min="0" max="99" oninput="if(this.value.length >= 2) { this.value = this.value.slice(0,2); document.getElementById('edit-s-${s.id}').focus(); }" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-m-${s.id}" value="${padM}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=2){ let n=document.getElementById('edit-s-${s.id}'); n.focus(); if(this.value.length>2){ n.value=this.value.slice(2,4); } this.value=this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
                     <span class="text-custom-textMuted font-bold mx-1 pb-1">:</span>
-                    <input type="number" id="edit-s-${s.id}" value="${padSeg}" min="0" max="59" oninput="if(this.value.length >= 2) { this.value = this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-s-${s.id}" value="${padSeg}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>2) this.value=this.value.slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
                 </div>
             </div>`;
         } else {
