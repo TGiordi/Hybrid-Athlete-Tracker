@@ -1,5 +1,5 @@
 /* =========================================================================
-   HAT (Hybrid Athlete Tracker) - MOTOR PRINCIPAL JAVASCRIPT (FASE 8.1)
+   HAT (Hybrid Athlete Tracker) - MOTOR PRINCIPAL JAVASCRIPT
    ========================================================================= */
 
 const subtitleText = "La plataforma de alto rendimiento para quienes dominan el gimnasio y el campo de juego.";
@@ -25,7 +25,7 @@ function showToast(message) {
     setTimeout(() => {
         toast.classList.add('bottom-[-100px]', 'opacity-0');
         toast.classList.remove('bottom-10', 'opacity-100');
-    }, 2500);
+    }, 3500); // Le di 1 segundo más para que se lea bien el mensaje de la IA
 }
 
 function formatTime(totalSeconds) {
@@ -208,13 +208,14 @@ window.askCoachAbout = function(exName) {
     input.focus();
 };
 
-// NUEVA FUNCIÓN: Envía automáticamente un análisis de IA leyendo los datos históricos de un ejercicio
 window.analyzeProgress = function(exId, exName, exType) {
     const history = window.currentHistory[exId];
     if(!history) return;
     const dates = Object.keys(history); 
     
-    if (dates.length < 3) {
+    // 🔥 MODO PRUEBA: Cambiamos temporalmente a 1 solo día para que puedas testearlo.
+    // (ACORDATE de cambiar este "< 1" a "< 3" cuando pongas la app en producción)
+    if (dates.length < 1) {
         showToast("⚠️ Entrená al menos 3 veces para activar el análisis IA.");
         return;
     }
@@ -344,15 +345,7 @@ async function changeDay(day, event) {
             <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative group" data-ex-id="${safeId}">
                 
                 <div class="absolute top-4 right-4 flex items-center gap-2 z-30 ex-menu-container">
-                    <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 3v6" /><path d="M9 6l3-3 3 3" />
-                            <path d="M12 21v-6" /><path d="M9 18l3 3 3-3" />
-                            <path d="M3 12h6" /><path d="M6 9l-3 3 3 3" />
-                            <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
-                        </svg>
-                    </div>
-
+                    
                     <div class="relative">
                         <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
@@ -380,6 +373,16 @@ async function changeDay(day, event) {
                             </button>
                         </div>
                     </div>
+
+                    <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3v6" /><path d="M9 6l3-3 3 3" />
+                            <path d="M12 21v-6" /><path d="M9 18l3 3 3-3" />
+                            <path d="M3 12h6" /><path d="M6 9l-3 3 3 3" />
+                            <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
+                        </svg>
+                    </div>
+
                 </div>
                 
                 <h3 class="text-xl font-bold mb-1 text-white uppercase italic tracking-tighter pr-28 break-words">${safeExName}</h3>
@@ -475,12 +478,12 @@ async function loadEvolucion(exId, exName, exType, forceReload = false) {
         }); 
         
         const chartTitle1 = exType === 'tiempo' ? 'Tiempo Máximo (Segundos)' : 'Carga Máxima (Kilos)';
-        const chartTitle2 = exType === 'tiempo' ? 'Promedio de Tiempo' : 'Promedio de Repeticiones';
+        const chartTitle2 = exType === 'tiempo' ? 'Promedio de Tiempo (Seg)' : 'Promedio de Repeticiones';
 
-        // Estructura de Carrusel (Scroll-Snap)
+        // Estructura de Carrusel con custom-scroll para PC
         container.innerHTML = `
         <div class="mb-6 relative">
-            <div class="flex overflow-x-auto snap-x-mandatory hide-scrollbar gap-4 pb-4" id="carousel-${safeExId}">
+            <div class="flex overflow-x-auto snap-x-mandatory custom-scroll gap-4 pb-2" id="carousel-${safeExId}">
                 <div class="min-w-full snap-center">
                     <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle1} <span class="text-[8px] font-normal lowercase">(Deslizá ->)</span></h4>
                     <div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart1-${safeExId}"></canvas></div>
@@ -501,21 +504,49 @@ async function loadEvolucion(exId, exName, exType, forceReload = false) {
         </div>`; 
         container.classList.remove('hidden'); 
         
-        // Destruir gráficos anteriores si existen
         if (window.myCharts[safeExId + '-1']) window.myCharts[safeExId + '-1'].destroy(); 
         if (window.myCharts[safeExId + '-2']) window.myCharts[safeExId + '-2'].destroy(); 
         
-        // Gráfico 1 (Máximos)
         const ctx1 = document.getElementById(`chart1-${safeExId}`).getContext('2d'); 
         window.myCharts[safeExId + '-1'] = new Chart(ctx1, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle1, data: chartDataMax, borderColor: '#F54927', backgroundColor: 'rgba(245, 73, 39, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#F54927', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
         
-        // Gráfico 2 (Promedios)
         const ctx2 = document.getElementById(`chart2-${safeExId}`).getContext('2d'); 
         window.myCharts[safeExId + '-2'] = new Chart(ctx2, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle2, data: chartDataAvg, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#3b82f6', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
 
         btn.innerText = "OCULTAR PROGRESO"; btn.classList.replace('border-custom-border', 'border-custom-primary'); btn.classList.replace('text-custom-textMuted', 'text-white'); 
     } catch(err) { btn.innerText = "ERROR"; setTimeout(() => { btn.innerText = "VER PROGRESO"; }, 2000); }
 }
+
+window.analyzeProgress = function(exId, exName, exType) {
+    const history = window.currentHistory[exId];
+    if(!history) return;
+    const dates = Object.keys(history); 
+    
+    // MODO PRUEBA: Cambiado a "< 1" para que lo pruebes ahora mismo.
+    if (dates.length < 1) {
+        showToast("⚠️ Entrená al menos 3 veces para activar el análisis IA.");
+        return;
+    }
+    
+    let dataStr = "";
+    dates.forEach(d => {
+        const max = history[d].maxStat;
+        const avg = history[d].totalStat / history[d].totalSets;
+        if(exType === 'tiempo') {
+            dataStr += `Fecha: ${d} | Max: ${formatTime(max)} | Promedio: ${formatTime(avg)}\n`;
+        } else {
+            dataStr += `Fecha: ${d} | Peso Max: ${max}kg | Promedio Reps: ${avg.toFixed(1)}\n`;
+        }
+    });
+
+    const prompt = `Actúa como mi Coach Deportivo. Analiza mi evolución en el ejercicio "${exName}". Aquí están mis datos ordenados por fecha:\n\n${dataStr}\nDame una devolución técnica y motivadora de 1 o 2 párrafos cortos. Dime si vengo mejorando o si estoy estancado. No saludes al principio.`;
+    
+    closeAllModals();
+    openChatModal();
+    const input = document.getElementById('chat-input');
+    input.value = prompt;
+    sendChatMessage(); 
+};
 
 function promptDeleteLog(exName, rawDate, exId, exType) {
     const safeExName = escapeHTML(exName); const safeExId = escapeHTML(exId);
