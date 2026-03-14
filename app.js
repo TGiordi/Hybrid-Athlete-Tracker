@@ -25,31 +25,37 @@ function showToast(message) {
     setTimeout(() => {
         toast.classList.add('bottom-[-100px]', 'opacity-0');
         toast.classList.remove('bottom-10', 'opacity-100');
-    }, 3500);
+    }, 2500);
 }
 
-// NUEVO: Efecto visual al gastar un crédito IA
+// NUEVO: Efecto visual de Token ultra sutil y universal
 function animateTokenLoss() {
-    const badge = document.getElementById('ai-credit-count');
-    if(!badge || badge.innerText.includes('infin')) return; // No animar si tiene infinito
+    const badgeContainer = document.getElementById('credit-badge');
+    const badgeText = document.getElementById('ai-credit-count');
+    if(!badgeText || badgeText.innerHTML.includes('infin')) return;
 
-    const rect = badge.getBoundingClientRect();
+    // Latido sutil en el contenedor
+    badgeContainer.style.transition = 'all 0.3s';
+    badgeContainer.style.transform = 'scale(1.1)';
+    badgeContainer.style.borderColor = '#c084fc'; // purple-400
+    badgeContainer.style.backgroundColor = 'rgba(168, 85, 247, 0.3)';
+    
+    setTimeout(() => {
+        badgeContainer.style.transform = 'scale(1)';
+        badgeContainer.style.borderColor = '';
+        badgeContainer.style.backgroundColor = '';
+    }, 300);
+
+    // Texto flotante
+    const rect = badgeContainer.getBoundingClientRect();
     const animEl = document.createElement('div');
-    animEl.className = 'fixed text-red-500 font-black text-lg z-[9999] pointer-events-none drop-shadow-[0_0_8px_rgba(239,68,68,0.8)] token-anim';
+    animEl.className = 'fixed text-purple-400 font-bold text-sm z-[9999] pointer-events-none token-anim';
     animEl.innerText = '-1 ⚡';
-    animEl.style.left = `${rect.left - 10}px`;
+    animEl.style.left = `${rect.left + (rect.width / 2) - 10}px`;
     animEl.style.top = `${rect.top}px`;
     document.body.appendChild(animEl);
 
-    const badgeContainer = document.getElementById('credit-badge');
-    badgeContainer.style.borderColor = '#ef4444';
-    badgeContainer.style.backgroundColor = 'rgba(239,68,68,0.2)';
-    
-    setTimeout(() => {
-        badgeContainer.style.borderColor = '';
-        badgeContainer.style.backgroundColor = '';
-        animEl.remove();
-    }, 1500);
+    setTimeout(() => animEl.remove(), 1000);
 }
 
 function formatTime(totalSeconds) {
@@ -209,13 +215,13 @@ async function proceedWithAIGeneration() {
         await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
         const exercisesToInsert = routineData.map((ex, index) => { const cleanDay = ex.day_of_week.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); return { user_id: currentUserId, day_of_week: cleanDay, exercise_name: ex.exercise_name, sets: ex.sets, target_reps: ex.target_reps, has_video: false, youtube_url: "", has_image: false, image_url: "", order_index: index }; });
         const { error: dbError } = await supabaseClient.from('user_routines').insert(exercisesToInsert); if(dbError) throw new Error(dbError.message);
+        
+        // ANIMACIÓN DE CRÉDITO AL GENERAR RUTINA
         if(data.remaining_credits !== undefined) { 
             const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); 
-            if(!hasInf) {
-                document.getElementById('ai-credit-count').innerText = data.remaining_credits; 
-                animateTokenLoss(); // Lanza animación visual de -1 token
-            }
+            if(!hasInf) { document.getElementById('ai-credit-count').innerText = data.remaining_credits; animateTokenLoss(); }
         }
+        
         document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); openModal('modal-ai-success');
     } catch(e) { document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); openModal('modal-ai-coach'); document.getElementById('ai-error-msg').innerText = "Detalle: " + e.message; document.getElementById('ai-error-msg').classList.remove('hidden'); }
 }
@@ -243,7 +249,6 @@ window.analyzeProgress = function(exId, exName, exType) {
     if(!history) return;
     const dates = Object.keys(history); 
     
-    // RESTAURADO a 3 veces mínimo.
     if (dates.length < 3) {
         showToast("⚠️ Entrená al menos 3 veces para activar el análisis IA.");
         return;
@@ -279,12 +284,10 @@ async function sendChatMessage() {
         if(error) throw new Error(error.message); if(data && data.error) throw new Error(data.error);
         const aiReply = data.response.candidates[0].content.parts[0].text; window.chatHistory.push({ role: 'model', parts: [{ text: aiReply }] }); localStorage.setItem(`hat_chat_${currentUserId}`, JSON.stringify(window.chatHistory));
         
+        // ANIMACIÓN DE CRÉDITO AL USAR CHAT / ANALISTA
         if(data.remaining_credits !== undefined) { 
             const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); 
-            if(!hasInf) {
-                document.getElementById('ai-credit-count').innerText = data.remaining_credits; 
-                animateTokenLoss(); // Animación de pérdida de token en el Chat / Análisis
-            }
+            if(!hasInf) { document.getElementById('ai-credit-count').innerText = data.remaining_credits; animateTokenLoss(); }
         }
     } catch(e) { window.chatHistory.push({ role: 'model', parts: [{ text: `❌ Error: ${e.message}` }] }); } finally { renderChat(); btn.disabled = false; btn.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>'; }
 }
