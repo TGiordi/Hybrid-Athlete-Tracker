@@ -219,8 +219,10 @@ async function saveExercise() {
     if(hasVideo && !ytId) { msgBox.innerText = "El link de YouTube no es válido."; msgBox.classList.remove('hidden'); return; }
     if(hasImage && (!imgUrl || !imgUrl.startsWith('http'))) { msgBox.innerText = "Pegá un link de imagen válido (que empiece con http)."; msgBox.classList.remove('hidden'); return; }
     const btn = document.getElementById('btn-save-exercise'); btn.innerText = "GUARDANDO..."; btn.disabled = true; msgBox.classList.add('hidden');
+    
     const currentExercisesInDay = window.currentDayExercises.length;
     const exData = { user_id: currentUserId, day_of_week: currentActiveDay, exercise_name: name, sets: parseInt(sets), target_reps: targetReps, has_video: hasVideo, youtube_url: ytId, has_image: hasImage, image_url: imgUrl, order_index: currentExercisesInDay };
+    
     try { if(currentEditExerciseId) { const { error } = await supabaseClient.from('user_routines').update(exData).eq('id', currentEditExerciseId); if (error) throw error; } else { const { error } = await supabaseClient.from('user_routines').insert([exData]); if (error) throw error; } closeAllModals(); changeDay(currentActiveDay); } catch (err) { msgBox.innerText = "Error: " + err.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = currentEditExerciseId ? "ACTUALIZAR EJERCICIO" : "GUARDAR EJERCICIO"; btn.disabled = false; }
 }
 
@@ -272,14 +274,16 @@ async function changeDay(day, event) {
             let setsHtml = ''; for(let i=1; i<=ex.sets; i++) { setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm"><span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span><input type="number" id="peso-${safeId}-${i}" placeholder="Kg" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"><input type="number" id="reps-${safeId}-${i}" placeholder="Rep" class="w-[70px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"><input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer"></div>`; }
             let mediaHtml = ''; if(ex.has_image && ex.image_url) { mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden border border-custom-border w-full"><img src="${escapeHTML(ex.image_url)}" class="w-full h-auto block" onerror="this.parentElement.style.display='none';"></div>`; } if(ex.has_video && ex.youtube_url && ex.youtube_url.length === 11) { mediaHtml += `<div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${escapeHTML(ex.youtube_url)}" frameborder="0" allowfullscreen></iframe></div>`; } else if (!ex.has_video && !ex.has_image) { const searchQuery = encodeURIComponent(ex.exercise_name + " ejercicio tutorial tecnica"); mediaHtml += `<a href="https://www.youtube.com/results?search_query=${searchQuery}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-[#171717] border border-[#262626] text-custom-textMuted hover:text-white hover:border-custom-primary py-3 rounded-xl mb-6 font-bold text-xs uppercase tracking-widest transition-colors"><svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg> Buscar Tutorial en YouTube</a>`; }
 
-            // FIX DEL ÍCONO DE FLECHAS ROTAS: Implementé el SVG estándar de Lucide
+            // ÍCONO IRROMPIBLE DE LAS 4 FLECHAS: Implementado con un "path" único estándar
             container.innerHTML += `
             <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative group" data-ex-id="${safeId}">
+                
                 <div class="absolute top-4 right-4 flex items-center gap-2 z-30 ex-menu-container">
                     <div class="relative">
                         <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
                         </button>
+                        
                         <div id="ex-menu-${safeId}" class="ex-dropdown hidden absolute right-0 mt-2 w-48 bg-[#171717] border border-[#262626] rounded-xl shadow-2xl py-2 flex flex-col z-50">
                             <button onclick="promptCopyExercise('${safeId}')" class="flex items-center gap-3 px-4 py-3 text-sm text-custom-textMuted hover:text-white hover:bg-[#262626] transition-colors text-left w-full">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
@@ -296,15 +300,10 @@ async function changeDay(day, event) {
                             </button>
                         </div>
                     </div>
-                    
+
                     <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
-                            <polyline points="5 9 2 12 5 15"></polyline>
-                            <polyline points="9 5 12 2 15 5"></polyline>
-                            <polyline points="19 9 22 12 19 15"></polyline>
-                            <polyline points="9 19 12 22 15 19"></polyline>
-                            <line x1="2" y1="12" x2="22" y2="12"></line>
-                            <line x1="12" y1="2" x2="12" y2="22"></line>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4l-3 4m3-4l3 4M12 20l-3-4m3 4l3-4M4 12l4-3m-4 3l4 3M20 12l-4-3m4 3l-4 3M12 4v16M4 12h16"></path>
                         </svg>
                     </div>
                 </div>
