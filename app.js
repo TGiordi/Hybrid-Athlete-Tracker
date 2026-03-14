@@ -200,7 +200,6 @@ function renderChat() {
     window.chatHistory.forEach(msg => { const isUser = msg.role === 'user'; const html = `<div class="${isUser ? 'chat-bubble-user' : 'chat-bubble-ai'}">${formatMarkdown(escapeHTML(msg.parts[0].text))}</div>`; container.innerHTML += html; }); container.scrollTop = container.scrollHeight;
 }
 
-// CORRECCIÓN: Botón Coach sin puntos y con espacio final.
 window.askCoachAbout = function(exName) {
     closeAllModals();
     openChatModal();
@@ -294,13 +293,13 @@ async function changeDay(day, event) {
             let setsHtml = ''; 
             for(let i=1; i<=ex.sets; i++) { 
                 if (exType === 'tiempo') {
-                    // CORRECCIÓN: Nuevo diseño de reloj [MM] : [SS]
+                    // UX MEJORADA: oninput restringe a 2 dígitos y salta automático al siguiente input
                     setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm">
                         <span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span>
                         <div class="flex items-center bg-[#0a0a0a] border border-[#262626] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[40px] px-2">
-                            <input type="number" id="min-${safeId}-${i}" placeholder="00" min="0" max="99" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
+                            <input type="number" id="min-${safeId}-${i}" placeholder="00" min="0" max="99" oninput="if(this.value.length >= 2) { this.value = this.value.slice(0,2); document.getElementById('seg-${safeId}-${i}').focus(); }" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
                             <span class="text-custom-textMuted font-bold mx-1 pb-1">:</span>
-                            <input type="number" id="seg-${safeId}-${i}" placeholder="00" min="0" max="59" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
+                            <input type="number" id="seg-${safeId}-${i}" placeholder="00" min="0" max="59" oninput="if(this.value.length >= 2) { this.value = this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
                         </div>
                         <input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer">
                     </div>`;
@@ -453,12 +452,19 @@ function promptEditLog(exId, exName, dateStr, exType) {
     const safeExId = escapeHTML(exId); const safeExName = escapeHTML(exName);
     const dayData = window.currentHistory[exId][dateStr]; document.getElementById('edit-log-title').innerText = `Corregir ${dateStr}`; let html = ''; 
     
-    // CORRECCIÓN: El editor de historial ahora también soporta el nuevo formato de reloj
+    // El oninput para saltar automático también se aplica a la ventana de editar
     dayData.sets.forEach(s => { 
         if(exType === 'tiempo') {
             let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60;
             let padM = m.toString().padStart(2, '0'); let padSeg = seg.toString().padStart(2, '0');
-            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2"><input type="number" id="edit-m-${s.id}" value="${padM}" min="0" max="99" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"><span class="text-custom-textMuted font-bold mx-1 pb-1">:</span><input type="number" id="edit-s-${s.id}" value="${padSeg}" min="0" max="59" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"></div></div>`;
+            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]">
+                <span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span>
+                <div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2">
+                    <input type="number" id="edit-m-${s.id}" value="${padM}" min="0" max="99" oninput="if(this.value.length >= 2) { this.value = this.value.slice(0,2); document.getElementById('edit-s-${s.id}').focus(); }" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
+                    <span class="text-custom-textMuted font-bold mx-1 pb-1">:</span>
+                    <input type="number" id="edit-s-${s.id}" value="${padSeg}" min="0" max="59" oninput="if(this.value.length >= 2) { this.value = this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
+                </div>
+            </div>`;
         } else {
             html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center gap-2"><input type="number" id="edit-w-${s.id}" value="${s.weight}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">kg</span><span class="text-custom-textMuted mx-1">x</span><input type="number" id="edit-r-${s.id}" value="${s.reps}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">rep</span></div></div>`; 
         }
