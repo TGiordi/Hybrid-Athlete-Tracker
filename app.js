@@ -1,5 +1,5 @@
 /* =========================================================================
-   HAT (Hybrid Athlete Tracker) - MOTOR PRINCIPAL JAVASCRIPT (FASE 8)
+   HAT (Hybrid Athlete Tracker) - MOTOR PRINCIPAL JAVASCRIPT
    ========================================================================= */
 
 const subtitleText = "La plataforma de alto rendimiento para quienes dominan el gimnasio y el campo de juego.";
@@ -200,12 +200,12 @@ function renderChat() {
     window.chatHistory.forEach(msg => { const isUser = msg.role === 'user'; const html = `<div class="${isUser ? 'chat-bubble-user' : 'chat-bubble-ai'}">${formatMarkdown(escapeHTML(msg.parts[0].text))}</div>`; container.innerHTML += html; }); container.scrollTop = container.scrollHeight;
 }
 
-// NUEVO: Pide consejos al coach sobre un ejercicio específico
+// CORRECCIÓN: Botón Coach sin puntos y con espacio final.
 window.askCoachAbout = function(exName) {
     closeAllModals();
     openChatModal();
     const input = document.getElementById('chat-input');
-    input.value = `Tengo una duda con el ejercicio: ${exName}. `;
+    input.value = `Mi duda con el ejercicio ${exName} es: `;
     input.focus();
 };
 
@@ -294,7 +294,16 @@ async function changeDay(day, event) {
             let setsHtml = ''; 
             for(let i=1; i<=ex.sets; i++) { 
                 if (exType === 'tiempo') {
-                    setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm"><span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span><div class="flex gap-1"><input type="number" id="min-${safeId}-${i}" placeholder="Min" class="w-[60px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"><input type="number" id="seg-${safeId}-${i}" placeholder="Seg" class="w-[60px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"></div><input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer"></div>`;
+                    // CORRECCIÓN: Nuevo diseño de reloj [MM] : [SS]
+                    setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm">
+                        <span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span>
+                        <div class="flex items-center bg-[#0a0a0a] border border-[#262626] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[40px] px-2">
+                            <input type="number" id="min-${safeId}-${i}" placeholder="00" min="0" max="99" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
+                            <span class="text-custom-textMuted font-bold mx-1 pb-1">:</span>
+                            <input type="number" id="seg-${safeId}-${i}" placeholder="00" min="0" max="59" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
+                        </div>
+                        <input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer">
+                    </div>`;
                 } else {
                     setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm"><span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span><div class="flex gap-1"><input type="number" id="peso-${safeId}-${i}" placeholder="Kg" class="w-[60px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"><input type="number" id="reps-${safeId}-${i}" placeholder="Rep" class="w-[60px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"></div><input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer"></div>`;
                 }
@@ -306,6 +315,16 @@ async function changeDay(day, event) {
             <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative group" data-ex-id="${safeId}">
                 
                 <div class="absolute top-4 right-4 flex items-center gap-2 z-30 ex-menu-container">
+                    
+                    <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3v6" /><path d="M9 6l3-3 3 3" />
+                            <path d="M12 21v-6" /><path d="M9 18l3 3 3-3" />
+                            <path d="M3 12h6" /><path d="M6 9l-3 3 3 3" />
+                            <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
+                        </svg>
+                    </div>
+
                     <div class="relative">
                         <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
@@ -332,15 +351,6 @@ async function changeDay(day, event) {
                                 Eliminar
                             </button>
                         </div>
-                    </div>
-
-                    <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 3v6" /><path d="M9 6l3-3 3 3" />
-                            <path d="M12 21v-6" /><path d="M9 18l3 3 3-3" />
-                            <path d="M3 12h6" /><path d="M6 9l-3 3 3 3" />
-                            <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
-                        </svg>
                     </div>
                 </div>
                 
@@ -407,7 +417,6 @@ async function loadEvolucion(exId, exName, exType, forceReload = false) {
             const [year, month, day] = log.log_date.split('-'); const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }); 
             if (!groupedData[dateStr]) groupedData[dateStr] = { maxStat: 0, sets: [], rawDate: log.log_date }; 
             
-            // Gráfico inteligente: Mide kilos si es fuerza, mide segundos si es tiempo.
             if (exType === 'tiempo') { if (log.time_seconds > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.time_seconds; } 
             else { if (log.weight > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.weight; }
             
@@ -444,10 +453,12 @@ function promptEditLog(exId, exName, dateStr, exType) {
     const safeExId = escapeHTML(exId); const safeExName = escapeHTML(exName);
     const dayData = window.currentHistory[exId][dateStr]; document.getElementById('edit-log-title').innerText = `Corregir ${dateStr}`; let html = ''; 
     
+    // CORRECCIÓN: El editor de historial ahora también soporta el nuevo formato de reloj
     dayData.sets.forEach(s => { 
         if(exType === 'tiempo') {
             let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60;
-            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center gap-2"><input type="number" id="edit-m-${s.id}" value="${m}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">min</span><span class="text-custom-textMuted mx-1">:</span><input type="number" id="edit-s-${s.id}" value="${seg}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">seg</span></div></div>`;
+            let padM = m.toString().padStart(2, '0'); let padSeg = seg.toString().padStart(2, '0');
+            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2"><input type="number" id="edit-m-${s.id}" value="${padM}" min="0" max="99" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"><span class="text-custom-textMuted font-bold mx-1 pb-1">:</span><input type="number" id="edit-s-${s.id}" value="${padSeg}" min="0" max="59" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"></div></div>`;
         } else {
             html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center gap-2"><input type="number" id="edit-w-${s.id}" value="${s.weight}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">kg</span><span class="text-custom-textMuted mx-1">x</span><input type="number" id="edit-r-${s.id}" value="${s.reps}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">rep</span></div></div>`; 
         }
