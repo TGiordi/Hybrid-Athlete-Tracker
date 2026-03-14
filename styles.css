@@ -43,3 +43,14 @@ input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #171717 inset !important
 .drag-handle { cursor: grab; touch-action: none; }
 .drag-handle:active { cursor: grabbing; }
 .sortable-ghost { opacity: 0.3; background-color: #262626 !important; border: 2px dashed #F54927 !important; transform: scale(0.98); }
+
+/* ========================================== */
+/* 📊 CARRUSEL DE GRÁFICOS (SWIPE)            */
+/* ========================================== */
+
+.snap-x-mandatory { scroll-snap-type: x mandatory; }
+.snap-center { scroll-snap-align: center; }
+
+/* Ocultar barra de scroll en el carrusel pero mantener funcionalidad */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
