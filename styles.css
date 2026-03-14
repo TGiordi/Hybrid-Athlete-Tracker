@@ -1,27 +1,28 @@
 /* ========================================== */
-/* ESTILO CSS PERSONALIZADO (HAT)             */
+/* 💅 ESTILOS CSS PERSONALIZADOS (HAT)        */
 /* ========================================== */
 
-/* Ajustes base del cuerpo */
 body { background-color: #0a0a0a; color: #F8FAFC; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
-
-/* Indicador de qué día está activo */
 .tab-btn.active { border-bottom: 3px solid #F54927; color: white; font-weight: 800; }
 
-/* Ocultar elementos molestos por defecto de los navegadores (Flechas de input, ojito de Microsoft) */
+/* FIX: Estilizar los selectores (dropdowns) para quitar fondos blancos del navegador */
+select {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+}
+select option { background-color: #171717; color: white; }
+
 input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 input[type="password"]::-ms-reveal, input[type="password"]::-ms-clear { display: none; }
-
-/* Evita que Chrome pinte los inputs de azul o amarillo al autocompletar contraseñas */
 input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #171717 inset !important; -webkit-text-fill-color: white !important; transition: background-color 5000s ease-in-out 0s; }
 
-/* Barra de Scroll estilizada */
 .custom-scroll::-webkit-scrollbar { height: 6px; width: 6px; }
 .custom-scroll::-webkit-scrollbar-track { background: transparent; }
 .custom-scroll::-webkit-scrollbar-thumb { background: #262626; border-radius: 10px; }
 .custom-scroll::-webkit-scrollbar-thumb:hover { background: #F54927; }
 
-/* Animaciones de la pantalla de inicio (Pulso de fondo y entrada de texto) */
+/* Animaciones Landing */
 .bg-pulse { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 100vw; height: 100vw; max-width: 800px; max-height: 800px; background: radial-gradient(circle, rgba(245,73,39,0.25) 0%, rgba(10,10,10,0) 60%); border-radius: 50%; animation: breathe 3.5s infinite alternate ease-in-out; z-index: 0; pointer-events: none; }
 @keyframes breathe { 0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.4; } 100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; } }
 @keyframes fadeInUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
@@ -32,24 +33,13 @@ input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #171717 inset !important
 .typewriter-cursor { border-right: 2px solid #F54927; animation: blink 0.75s step-end infinite; padding-right: 4px; }
 @keyframes blink { 50% { border-color: transparent; } }
 
-/* Estilos del Chat de la IA (Burbujas) */
+/* Chat IA */
 .chat-bubble-user { background-color: #262626; border-radius: 16px 16px 0 16px; padding: 12px 16px; font-size: 14px; margin-left: auto; max-width: 85%; color: white; margin-bottom: 12px; border: 1px solid #333; line-height: 1.5;}
 .chat-bubble-ai { background: linear-gradient(to right, #7e22ce, #3b82f6); border-radius: 16px 16px 16px 0; padding: 12px 16px; font-size: 14px; margin-right: auto; max-width: 90%; color: white; margin-bottom: 12px; box-shadow: 0 4px 15px rgba(147, 51, 234, 0.2); line-height: 1.6;}
 .chat-bubble-ai strong { color: #f8fafc; font-weight: 800; }
 .chat-bubble-ai em { font-style: italic; opacity: 0.9; }
 
-/* ========================================== */
-/* 🖱️ ESTILOS PARA ARRASTRAR Y SOLTAR (DRAG)  */
-/* ========================================== */
-
-/* Cursor de manito para PC */
+/* Efectos de Drag & Drop */
 .drag-handle { cursor: grab; touch-action: none; }
 .drag-handle:active { cursor: grabbing; }
-
-/* El efecto "Fantasma" cuando estás moviendo una tarjeta */
-.sortable-ghost { 
-    opacity: 0.3; 
-    background-color: #262626 !important; 
-    border: 2px dashed #F54927 !important; 
-    transform: scale(0.98);
-}
+.sortable-ghost { opacity: 0.3; background-color: #262626 !important; border: 2px dashed #F54927 !important; transform: scale(0.98); }
