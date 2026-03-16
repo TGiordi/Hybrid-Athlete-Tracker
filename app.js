@@ -10,12 +10,10 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const REDIRECT_URL = "https://tgiordi.github.io/Hybrid-Athlete-Tracker/";
 
 let supabaseClient = null; let currentUserId = null; let isSignUp = false; let currentActiveDay = 'lunes'; let currentEditExerciseId = null; let currentAIPrompt = ""; let exerciseToCopy = null;
-let pendingSavedRoutineId = null; // Para modales de rutinas guardadas
+let pendingSavedRoutineId = null;
 window.myCharts = {}; window.currentHistory = {}; window.currentDayExercises = []; window.chatHistory = [];
 
-// --- VARIABLES CRONÓMETRO ---
-let timerInterval = null;
-let timerSecondsLeft = 0;
+let timerInterval = null; let timerSecondsLeft = 0;
 
 function escapeHTML(str) {
     if (!str) return '';
@@ -35,20 +33,14 @@ function showToast(message) {
 
 function formatTime(totalSeconds) {
     if(!totalSeconds) return "0s";
-    let m = Math.floor(totalSeconds / 60);
-    let s = Math.round(totalSeconds % 60);
-    if(m > 0 && s > 0) return `${m}m ${s}s`;
-    if(m > 0) return `${m}m`;
-    return `${s}s`;
+    let m = Math.floor(totalSeconds / 60); let s = Math.round(totalSeconds % 60);
+    if(m > 0 && s > 0) return `${m}m ${s}s`; if(m > 0) return `${m}m`; return `${s}s`;
 }
 
-// --- CLICS AFUERA PARA CERRAR MENÚS Y FAB ---
 document.addEventListener('click', (e) => {
-    // Cerrar menú de 3 puntos
     if (!e.target.closest('.ex-menu-container')) {
         document.querySelectorAll('.ex-dropdown').forEach(el => el.classList.add('hidden'));
     }
-    // Cerrar Rueda (FAB) si está abierta y tocamos afuera
     const fabContainer = document.getElementById('fab-container');
     const fabOptions = document.getElementById('fab-options');
     if (fabContainer && !e.target.closest('#fab-container') && !fabOptions.classList.contains('opacity-0')) {
@@ -56,11 +48,13 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// --- INICIALIZACIÓN ---
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) closeAllModals();
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(typeWriter, 500); 
     if (typeof Chart !== 'undefined') { Chart.defaults.font.family = "'Montserrat', sans-serif"; Chart.defaults.color = '#94A3B8'; }
-    
     document.getElementById('auth-password').addEventListener('keypress', function (e) { if (e.key === 'Enter') handleAuth(); });
     document.getElementById('new-password-input').addEventListener('keypress', function (e) { if (e.key === 'Enter') saveNewPassword(); });
     document.getElementById('chat-input').addEventListener('keypress', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
@@ -78,11 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             supabaseClient.auth.onAuthStateChange((event, session) => {
                 if (event === 'PASSWORD_RECOVERY') { isRecovering = true; openModal('modal-new-pwd'); } 
-                else if (event === 'SIGNED_IN' && session) { 
-                    setTimeout(() => {
-                        if(!isRecovering && !currentUserId) { currentUserId = session.user.id; loadDashboardView(session.user.email); }
-                    }, 500);
-                }
+                else if (event === 'SIGNED_IN' && session) { setTimeout(() => { if(!isRecovering && !currentUserId) { currentUserId = session.user.id; loadDashboardView(session.user.email); } }, 500); }
                 else if (event === 'SIGNED_OUT') { currentUserId = null; location.reload(); }
             });
         }
@@ -106,8 +96,6 @@ function openModal(modalId) {
 function closeAllModals() {
     document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');
     document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); document.body.style.overflow = 'auto'; window.location.hash = ''; 
-    
-    // Si cerramos todo y el cronómetro sigue activo, mostramos el mini widget
     if (timerSecondsLeft > 0) {
         const miniWidget = document.getElementById('mini-timer-widget');
         miniWidget.classList.remove('translate-x-[-150%]', 'opacity-0');
@@ -117,129 +105,64 @@ function closeAllModals() {
 
 function toggleFabMenu() {
     const options = document.getElementById('fab-options'); const icon = document.getElementById('fab-icon');
-    if (options.classList.contains('opacity-0')) { 
-        options.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none'); 
-        icon.style.transform = 'rotate(45deg)'; 
-    } else { 
-        options.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none'); 
-        icon.style.transform = 'rotate(0deg)'; 
-    }
+    if (options.classList.contains('opacity-0')) { options.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none'); icon.style.transform = 'rotate(45deg)'; } 
+    else { options.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none'); icon.style.transform = 'rotate(0deg)'; }
 }
 
 function closeFabAndRun(callback) { toggleFabMenu(); callback(); }
 
-// --- SOPORTE TÉCNICO ---
 async function submitSupportTicket() {
-    const msg = document.getElementById('support-text').value.trim();
-    if(!msg) return;
-    const btn = document.getElementById('btn-submit-support');
-    btn.disabled = true; btn.innerText = "Enviando...";
+    const msg = document.getElementById('support-text').value.trim(); if(!msg) return;
+    const btn = document.getElementById('btn-submit-support'); btn.disabled = true; btn.innerText = "Enviando...";
     try {
-        const { error } = await supabaseClient.from('support_tickets').insert([{ user_id: currentUserId, message: msg }]);
-        if(error) throw error;
-        document.getElementById('support-text').value = '';
-        document.getElementById('support-text').classList.add('hidden');
-        btn.classList.add('hidden');
-        document.getElementById('support-msg-feedback').innerText = "¡Recibimos tu mensaje! Lo leeremos pronto.";
-        document.getElementById('support-msg-feedback').classList.remove('hidden');
+        const { error } = await supabaseClient.from('support_tickets').insert([{ user_id: currentUserId, message: msg }]); if(error) throw error;
+        document.getElementById('support-text').value = ''; document.getElementById('support-text').classList.add('hidden'); btn.classList.add('hidden');
+        document.getElementById('support-msg-feedback').innerText = "¡Recibimos tu mensaje! Lo leeremos pronto."; document.getElementById('support-msg-feedback').classList.remove('hidden');
         setTimeout(() => { closeAllModals(); document.getElementById('support-text').classList.remove('hidden'); btn.classList.remove('hidden'); document.getElementById('support-msg-feedback').classList.add('hidden'); btn.innerText = "Enviar Mensaje"; btn.disabled = false; }, 3000);
     } catch(e) { alert("Error: " + e.message); btn.innerText = "Enviar Mensaje"; btn.disabled = false; }
 }
 
-// --- CRONÓMETRO PRINCIPAL Y FLOTANTE ---
 function openTimerModal() {
-    // Ocultamos el mini-widget si estaba visible
-    document.getElementById('mini-timer-widget').classList.add('translate-x-[-150%]', 'opacity-0');
-    document.getElementById('mini-timer-widget').classList.remove('translate-x-0', 'opacity-100');
-    
-    // Si NO está corriendo, limpiamos inputs
-    if (timerSecondsLeft === 0) {
-        document.getElementById('timer-min').value = '';
-        document.getElementById('timer-seg').value = '';
-        document.getElementById('timer-inputs').classList.remove('hidden');
-        document.getElementById('timer-display').classList.add('hidden');
-    } else {
-        document.getElementById('timer-inputs').classList.add('hidden');
-        document.getElementById('timer-display').classList.remove('hidden');
-    }
+    document.getElementById('mini-timer-widget').classList.add('translate-x-[-150%]', 'opacity-0'); document.getElementById('mini-timer-widget').classList.remove('translate-x-0', 'opacity-100');
+    if (timerSecondsLeft === 0) { document.getElementById('timer-min').value = ''; document.getElementById('timer-seg').value = ''; document.getElementById('timer-inputs').classList.remove('hidden'); document.getElementById('timer-display').classList.add('hidden'); } 
+    else { document.getElementById('timer-inputs').classList.add('hidden'); document.getElementById('timer-display').classList.remove('hidden'); }
     openModal('modal-timer');
 }
 
 function toggleTimer() {
-    const btn = document.getElementById('btn-timer-start');
-    const btnMini = document.getElementById('btn-mini-play');
-    
+    const btn = document.getElementById('btn-timer-start'); const btnMini = document.getElementById('btn-mini-play');
     if (timerInterval) {
-        // Pausar
-        clearInterval(timerInterval);
-        timerInterval = null;
+        clearInterval(timerInterval); timerInterval = null;
         btn.innerText = "Reanudar"; btn.classList.replace('bg-orange-600', 'bg-green-600');
-        btnMini.classList.replace('bg-orange-600', 'bg-green-500');
-        btnMini.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; // Play Icon
-        document.getElementById('timer-countdown').classList.remove('timer-pulse');
-        document.getElementById('mini-timer-countdown').classList.remove('timer-pulse');
+        btnMini.classList.replace('bg-orange-600', 'bg-green-500'); btnMini.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+        document.getElementById('timer-countdown').classList.remove('timer-pulse'); document.getElementById('mini-timer-countdown').classList.remove('timer-pulse');
     } else {
-        // Iniciar
         if(timerSecondsLeft <= 0) {
-            let m = parseInt(document.getElementById('timer-min').value) || 0;
-            let s = parseInt(document.getElementById('timer-seg').value) || 0;
-            timerSecondsLeft = (m * 60) + s;
+            let m = parseInt(document.getElementById('timer-min').value) || 0; let s = parseInt(document.getElementById('timer-seg').value) || 0; timerSecondsLeft = (m * 60) + s;
             if(timerSecondsLeft <= 0) return;
-            document.getElementById('timer-inputs').classList.add('hidden');
-            document.getElementById('timer-display').classList.remove('hidden');
+            document.getElementById('timer-inputs').classList.add('hidden'); document.getElementById('timer-display').classList.remove('hidden');
         }
         btn.innerText = "Pausar"; btn.classList.replace('bg-green-600', 'bg-orange-600');
-        btnMini.classList.replace('bg-green-500', 'bg-orange-600');
-        btnMini.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>'; // Pause Icon
-        
+        btnMini.classList.replace('bg-green-500', 'bg-orange-600'); btnMini.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>';
         updateTimerDisplay();
         timerInterval = setInterval(() => {
-            timerSecondsLeft--;
-            updateTimerDisplay();
-            if(timerSecondsLeft <= 0) {
-                stopTimer();
-                if (navigator.vibrate) navigator.vibrate([500, 200, 500]); // Vibración
-                showToast("¡Descanso Terminado!");
-            }
+            timerSecondsLeft--; updateTimerDisplay();
+            if(timerSecondsLeft <= 0) { stopTimer(); if (navigator.vibrate) navigator.vibrate([500, 200, 500]); showToast("¡Descanso Terminado!"); }
         }, 1000);
     }
 }
 
 function stopTimer() {
-    if(timerInterval) clearInterval(timerInterval);
-    timerInterval = null;
-    timerSecondsLeft = 0;
-    
-    // UI Modal Principal
-    document.getElementById('timer-inputs').classList.remove('hidden');
-    document.getElementById('timer-display').classList.add('hidden');
-    document.getElementById('timer-countdown').classList.remove('timer-pulse');
-    const btn = document.getElementById('btn-timer-start');
-    btn.innerText = "Iniciar"; btn.classList.remove('bg-orange-600'); btn.classList.add('bg-green-600');
-    
-    // UI Widget Flotante
-    const miniWidget = document.getElementById('mini-timer-widget');
-    miniWidget.classList.add('translate-x-[-150%]', 'opacity-0');
-    miniWidget.classList.remove('translate-x-0', 'opacity-100');
-    document.getElementById('mini-timer-countdown').classList.remove('timer-pulse');
+    if(timerInterval) clearInterval(timerInterval); timerInterval = null; timerSecondsLeft = 0;
+    document.getElementById('timer-inputs').classList.remove('hidden'); document.getElementById('timer-display').classList.add('hidden'); document.getElementById('timer-countdown').classList.remove('timer-pulse');
+    const btn = document.getElementById('btn-timer-start'); btn.innerText = "Iniciar"; btn.classList.remove('bg-orange-600'); btn.classList.add('bg-green-600');
+    const miniWidget = document.getElementById('mini-timer-widget'); miniWidget.classList.add('translate-x-[-150%]', 'opacity-0'); miniWidget.classList.remove('translate-x-0', 'opacity-100'); document.getElementById('mini-timer-countdown').classList.remove('timer-pulse');
 }
 
-function hideMiniTimer(stopAsWell = false) {
-    const miniWidget = document.getElementById('mini-timer-widget');
-    miniWidget.classList.add('translate-x-[-150%]', 'opacity-0');
-    miniWidget.classList.remove('translate-x-0', 'opacity-100');
-    if (stopAsWell) stopTimer();
-}
+function hideMiniTimer(stopAsWell = false) { const miniWidget = document.getElementById('mini-timer-widget'); miniWidget.classList.add('translate-x-[-150%]', 'opacity-0'); miniWidget.classList.remove('translate-x-0', 'opacity-100'); if (stopAsWell) stopTimer(); }
 
-function updateTimerDisplay() {
-    let m = Math.floor(timerSecondsLeft / 60).toString().padStart(2, '0');
-    let s = (timerSecondsLeft % 60).toString().padStart(2, '0');
-    let txt = `${m}:${s}`;
-    document.getElementById('timer-countdown').innerText = txt;
-    document.getElementById('mini-timer-countdown').innerText = txt;
-}
+function updateTimerDisplay() { let m = Math.floor(timerSecondsLeft / 60).toString().padStart(2, '0'); let s = (timerSecondsLeft % 60).toString().padStart(2, '0'); let txt = `${m}:${s}`; document.getElementById('timer-countdown').innerText = txt; document.getElementById('mini-timer-countdown').innerText = txt; }
 
-// --- AUTH UI ---
 function updateAuthUI() { 
     const modal = document.getElementById('modal-auth'); const title = document.getElementById('auth-title'); const btn = document.getElementById('btn-auth-action'); const toggleMsg = document.getElementById('auth-toggle-msg'); const closeBtn = document.getElementById('close-auth-btn'); const eyeBtn = document.getElementById('eye-btn'); const forgotPass = document.getElementById('forgot-password-container'); const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
     if(isSignUp) { modal.classList.replace('bg-custom-card', 'bg-custom-primary'); modal.classList.replace('border-custom-border', 'border-[#d43e20]'); title.innerText = "Crear Nueva Cuenta"; inputs.forEach(inp => { inp.className = "w-full bg-[#171717] border border-[#262626] p-3 pr-12 rounded-xl outline-none focus:border-white text-white placeholder-white/50 transition-all"; }); eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-white/50 hover:text-white transition-colors cursor-pointer"; btn.innerText = "Registrarme"; btn.className = "w-full bg-[#171717] text-white py-3 rounded-xl font-bold hover:bg-black border border-black/50 transition-colors shadow-lg"; toggleMsg.innerHTML = "O <span onclick='toggleAuthMode()' class='cursor-pointer font-extrabold underline hover:text-black transition-colors'>ingresá a tu cuenta acá</span>"; toggleMsg.className = "text-center text-sm text-white mt-4 transition-colors font-medium"; closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors"; forgotPass.classList.add('hidden'); } 
@@ -301,10 +224,7 @@ function animateTokenLoss() {
     const badgeText = document.getElementById('ai-credit-count');
     if(!badgeText || badgeText.innerHTML.includes('infin')) return;
 
-    badgeContainer.style.transition = 'all 0.3s';
-    badgeContainer.style.transform = 'scale(1.1)';
-    badgeContainer.style.borderColor = '#c084fc';
-    badgeContainer.style.backgroundColor = 'rgba(168, 85, 247, 0.3)';
+    badgeContainer.style.transition = 'all 0.3s'; badgeContainer.style.transform = 'scale(1.1)'; badgeContainer.style.borderColor = '#c084fc'; badgeContainer.style.backgroundColor = 'rgba(168, 85, 247, 0.3)';
     setTimeout(() => { badgeContainer.style.transform = 'scale(1)'; badgeContainer.style.borderColor = ''; badgeContainer.style.backgroundColor = ''; }, 300);
 
     const rect = badgeContainer.getBoundingClientRect();
@@ -324,11 +244,9 @@ async function updateCreditsDisplay() {
     } catch(e) { document.getElementById('ai-credit-count').innerText = "10"; }
 }
 
-// --- RUTINAS GUARDADAS ---
 async function openRoutinesModal() {
     openModal('modal-routines');
-    const list = document.getElementById('saved-routines-list');
-    list.innerHTML = '<div class="text-center text-xs text-custom-textMuted py-4">Buscando rutinas...</div>';
+    const list = document.getElementById('saved-routines-list'); list.innerHTML = '<div class="text-center text-xs text-custom-textMuted py-4">Buscando rutinas...</div>';
     try {
         const { data, error } = await supabaseClient.from('saved_routines').select('id, routine_name').eq('user_id', currentUserId).order('created_at', { ascending: false });
         if(error) throw error;
@@ -336,23 +254,13 @@ async function openRoutinesModal() {
         
         let html = '';
         data.forEach(r => {
-            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]">
-                <span class="text-sm font-bold text-white">${escapeHTML(r.routine_name)}</span>
-                <div class="flex gap-2">
-                    <button onclick="promptLoadRoutine('${r.id}')" class="text-xs bg-custom-primary text-white px-3 py-1.5 rounded-lg font-bold hover:opacity-80">Cargar</button>
-                    <button onclick="promptDeleteSavedRoutine('${r.id}')" class="text-xs border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white px-2 py-1.5 rounded-lg transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
-                </div>
-            </div>`;
+            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-sm font-bold text-white">${escapeHTML(r.routine_name)}</span><div class="flex gap-2"><button onclick="promptLoadRoutine('${r.id}')" class="text-xs bg-custom-primary text-white px-3 py-1.5 rounded-lg font-bold hover:opacity-80">Cargar</button><button onclick="promptDeleteSavedRoutine('${r.id}')" class="text-xs border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white px-2 py-1.5 rounded-lg transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></div></div>`;
         });
         list.innerHTML = html;
     } catch(e) { list.innerHTML = `<div class="text-xs text-red-500">Error: ${e.message}</div>`; }
 }
 
-function promptSaveRoutine() {
-    closeAllModals();
-    document.getElementById('routine-save-name').value = '';
-    openModal('modal-save-routine');
-}
+function promptSaveRoutine() { closeAllModals(); document.getElementById('routine-save-name').value = ''; openModal('modal-save-routine'); }
 
 async function saveRoutine() {
     const name = document.getElementById('routine-save-name').value.trim();
@@ -370,23 +278,16 @@ async function saveRoutine() {
     } catch(e) { showToast("Error al guardar: " + e.message); }
 }
 
-// Modales Customizados para Cargar y Eliminar Rutinas Guardadas
 function promptLoadRoutine(savedId) {
-    pendingSavedRoutineId = savedId;
-    closeAllModals();
-    openModal('modal-confirm-load-saved');
-    
+    pendingSavedRoutineId = savedId; closeAllModals(); openModal('modal-confirm-load-saved');
     document.getElementById('btn-confirm-load-action').onclick = async () => {
-        const btn = document.getElementById('btn-confirm-load-action');
-        btn.innerText = "Cargando..."; btn.disabled = true;
+        const btn = document.getElementById('btn-confirm-load-action'); btn.innerText = "Cargando..."; btn.disabled = true;
         try {
             const { data, error } = await supabaseClient.from('saved_routines').select('routine_data').eq('id', pendingSavedRoutineId).single();
             if(error) throw error;
             await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
             
-            const newExercises = data.routine_data.map(ex => {
-                delete ex.id; delete ex.created_at; ex.user_id = currentUserId; return ex;
-            });
+            const newExercises = data.routine_data.map(ex => { delete ex.id; delete ex.created_at; ex.user_id = currentUserId; return ex; });
             
             const { error: insertError } = await supabaseClient.from('user_routines').insert(newExercises);
             if(insertError) throw insertError;
@@ -398,23 +299,15 @@ function promptLoadRoutine(savedId) {
 }
 
 function promptDeleteSavedRoutine(savedId) {
-    pendingSavedRoutineId = savedId;
-    closeAllModals();
-    openModal('modal-confirm-delete-saved');
-    
+    pendingSavedRoutineId = savedId; closeAllModals(); openModal('modal-confirm-delete-saved');
     document.getElementById('btn-confirm-delete-saved-action').onclick = async () => {
-        const btn = document.getElementById('btn-confirm-delete-saved-action');
-        btn.innerText = "Borrando..."; btn.disabled = true;
-        try {
-            await supabaseClient.from('saved_routines').delete().eq('id', pendingSavedRoutineId);
-            openRoutinesModal();
-        } catch(e) { showToast("Error: " + e.message); } 
+        const btn = document.getElementById('btn-confirm-delete-saved-action'); btn.innerText = "Borrando..."; btn.disabled = true;
+        try { await supabaseClient.from('saved_routines').delete().eq('id', pendingSavedRoutineId); openRoutinesModal(); } 
+        catch(e) { showToast("Error: " + e.message); } 
         finally { btn.innerText = "Sí, Borrar"; btn.disabled = false; }
     };
 }
 
-
-// --- INTELIGENCIA ARTIFICIAL ---
 function formatMarkdown(text) { if (!text) return ''; let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>'); formatted = formatted.replace(/\n/g, '<br>'); return formatted; }
 function handleAIGenerationRequest() { document.getElementById('ai-prompt').value = ""; openModal('modal-ai-coach'); }
 
@@ -423,10 +316,7 @@ async function processAIPrompt() {
     if(!userPrompt) { msgBox.innerText = "Escribí tu objetivo para que el Coach Inteligente arme la rutina."; msgBox.classList.remove('hidden'); return; }
     try { const { count, error } = await supabaseClient.from('user_routines').select('*', { count: 'exact', head: true }).eq('user_id', currentUserId);
         if (error) throw error; 
-        
-        // MODIFICACIÓN DE PROMPT PARA ASEGURAR TIPO Y DESCANSO
         currentAIPrompt = userPrompt + ". MUY IMPORTANTE: Devuelve un JSON exacto. Cada ejercicio DEBE tener: 'day_of_week', 'exercise_name', 'sets', 'target_reps' (si hay descanso ponlo aquí ej: '10 reps - 60s rest'), y 'exercise_type' (debe ser estrictamente la palabra 'carga' si es de peso/repeticiones o 'tiempo' si es isometría/cardio/planchas)."; 
-        
         if (count > 0) openModal('modal-confirm-ai-overwrite'); else proceedWithAIGeneration();
     } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); }
 }
@@ -440,26 +330,17 @@ async function proceedWithAIGeneration() {
         
         let rawJson = data.response.candidates[0].content.parts[0].text; rawJson = rawJson.replace(/```json/g, '').replace(/```/g, '').trim(); 
         const routineData = JSON.parse(rawJson);
-        
-        // OBTENEMOS EL BANCO GLOBAL DE IMÁGENES
         const { data: globalMedia } = await supabaseClient.from('global_media_bank').select('*');
-
         await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
         
         const exercisesToInsert = routineData.map((ex, index) => { 
             const cleanDay = ex.day_of_week.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); 
             let exType = ex.exercise_type === 'tiempo' ? 'tiempo' : 'carga';
-            
-            // MAGIA DE BANCO GLOBAL (Buscamos si el nombre existe en la tabla compartida)
             let imgUrl = ""; let hasImg = false; let ytUrl = ""; let hasVid = false;
             if (globalMedia) {
                 const match = globalMedia.find(gm => ex.exercise_name.toLowerCase().includes(gm.exercise_name.toLowerCase()) || gm.exercise_name.toLowerCase().includes(ex.exercise_name.toLowerCase()));
-                if (match) {
-                    imgUrl = match.image_url || ""; hasImg = match.has_image || false;
-                    ytUrl = match.youtube_url || ""; hasVid = match.has_video || false;
-                }
+                if (match) { imgUrl = match.image_url || ""; hasImg = match.has_image || false; ytUrl = match.youtube_url || ""; hasVid = match.has_video || false; }
             }
-
             return { user_id: currentUserId, day_of_week: cleanDay, exercise_name: ex.exercise_name, sets: ex.sets, target_reps: ex.target_reps, exercise_type: exType, has_video: hasVid, youtube_url: ytUrl, has_image: hasImg, image_url: imgUrl, order_index: index }; 
         });
         
@@ -531,21 +412,35 @@ async function saveExercise() {
 
 window.toggleExMenu = function(id) {
     const menu = document.getElementById(`ex-menu-${id}`);
-    document.querySelectorAll('.ex-dropdown').forEach(el => { if (el.id !== `ex-menu-${id}`) el.classList.add('hidden'); });
+    document.querySelectorAll('.ex-dropdown').forEach(el => {
+        if (el.id !== `ex-menu-${id}`) el.classList.add('hidden');
+    });
     menu.classList.toggle('hidden');
 };
 
-function promptCopyExercise(exId) { exerciseToCopy = window.currentDayExercises.find(e => e.id === exId); document.getElementById('copy-target-day').value = currentActiveDay; openModal('modal-copy-exercise'); }
+function promptCopyExercise(exId) {
+    exerciseToCopy = window.currentDayExercises.find(e => e.id === exId);
+    document.getElementById('copy-target-day').value = currentActiveDay;
+    openModal('modal-copy-exercise');
+}
 
 async function confirmCopyExercise() {
-    const targetDay = document.getElementById('copy-target-day').value; const btn = document.getElementById('btn-confirm-copy'); btn.innerText = "Copiando..."; btn.disabled = true;
+    const targetDay = document.getElementById('copy-target-day').value;
+    const btn = document.getElementById('btn-confirm-copy');
+    btn.innerText = "Copiando..."; btn.disabled = true;
     const { data: destExercises } = await supabaseClient.from('user_routines').select('id').eq('user_id', currentUserId).eq('day_of_week', targetDay);
     const newOrderIndex = destExercises ? destExercises.length : 0;
     const newEx = { user_id: currentUserId, day_of_week: targetDay, exercise_name: exerciseToCopy.exercise_name, sets: exerciseToCopy.sets, target_reps: exerciseToCopy.target_reps, exercise_type: exerciseToCopy.exercise_type, has_video: exerciseToCopy.has_video, youtube_url: exerciseToCopy.youtube_url, has_image: exerciseToCopy.has_image, image_url: exerciseToCopy.image_url, order_index: newOrderIndex };
-    try { const {error} = await supabaseClient.from('user_routines').insert([newEx]); if(error) throw error; closeAllModals(); showToast("¡Ejercicio copiado exitosamente!"); if(targetDay === currentActiveDay) { changeDay(currentActiveDay); } 
+    try {
+        const {error} = await supabaseClient.from('user_routines').insert([newEx]);
+        if(error) throw error;
+        closeAllModals();
+        showToast("¡Ejercicio copiado exitosamente!");
+        if(targetDay === currentActiveDay) { changeDay(currentActiveDay); } 
     } catch(e) { alert("Error al copiar: " + e.message); } finally { btn.innerText = "Copiar"; btn.disabled = false; }
 }
 
+// --- DRAG & DROP PARA MÓVILES ---
 async function changeDay(day, event) {
     currentActiveDay = day;
     if(event) { document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }); event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white'); event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } 
@@ -560,11 +455,21 @@ async function changeDay(day, event) {
         
         container.innerHTML = '';
         exercises.forEach(ex => {
-            const safeExName = escapeHTML(ex.exercise_name); const safeId = escapeHTML(ex.id); const exType = ex.exercise_type || 'carga';
+            const safeExName = escapeHTML(ex.exercise_name); const safeId = escapeHTML(ex.id);
+            const exType = ex.exercise_type || 'carga';
+            
             let setsHtml = ''; 
             for(let i=1; i<=ex.sets; i++) { 
                 if (exType === 'tiempo') {
-                    setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm"><span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span><div class="flex items-center bg-[#0a0a0a] border border-[#262626] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[40px] px-2"><input type="text" inputmode="numeric" pattern="[0-9]*" id="min-${safeId}-${i}" placeholder="00" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=2){ let n=document.getElementById('seg-${safeId}-${i}'); n.focus(); if(this.value.length>2){ n.value=this.value.slice(2,4); } this.value=this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0"><span class="text-custom-textMuted font-bold mx-1 pb-1">:</span><input type="text" inputmode="numeric" pattern="[0-9]*" id="seg-${safeId}-${i}" placeholder="00" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>2) this.value=this.value.slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0"></div><input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer"></div>`;
+                    setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm">
+                        <span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span>
+                        <div class="flex items-center bg-[#0a0a0a] border border-[#262626] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[40px] px-2">
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" id="min-${safeId}-${i}" placeholder="00" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=2){ let n=document.getElementById('seg-${safeId}-${i}'); n.focus(); if(this.value.length>2){ n.value=this.value.slice(2,4); } this.value=this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
+                            <span class="text-custom-textMuted font-bold mx-1 pb-1">:</span>
+                            <input type="text" inputmode="numeric" pattern="[0-9]*" id="seg-${safeId}-${i}" placeholder="00" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>2) this.value=this.value.slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-lg font-bold outline-none appearance-none p-0">
+                        </div>
+                        <input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer">
+                    </div>`;
                 } else {
                     setsHtml += `<div class="flex items-center justify-between mb-3 bg-custom-bg p-3 rounded-lg border border-custom-border shadow-sm"><span class="w-16 text-[10px] font-bold text-custom-textMuted uppercase">Set ${i}</span><div class="flex gap-1"><input type="number" id="peso-${safeId}-${i}" placeholder="Kg" class="w-[60px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"><input type="number" id="reps-${safeId}-${i}" placeholder="Rep" class="w-[60px] h-[40px] rounded bg-custom-bg border border-custom-border text-white text-center text-lg font-bold outline-none focus:border-custom-primary"></div><input type="checkbox" id="check-${safeId}-${i}" class="w-6 h-6 accent-custom-primary cursor-pointer"></div>`;
                 }
@@ -574,20 +479,44 @@ async function changeDay(day, event) {
 
             container.innerHTML += `
             <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative group" data-ex-id="${safeId}">
+                
                 <div class="absolute top-4 right-4 flex items-center gap-2 z-30 ex-menu-container">
+                    
                     <div class="relative">
-                        <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button>
+                        <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                        </button>
+                        
                         <div id="ex-menu-${safeId}" class="ex-dropdown hidden absolute right-0 mt-2 w-48 bg-[#171717] border border-[#262626] rounded-xl shadow-2xl py-2 flex flex-col z-50">
-                            <button onclick="askCoachAbout('${safeExName}')" class="flex items-center gap-3 px-4 py-3 text-sm text-purple-400 hover:text-white hover:bg-purple-500/20 transition-colors text-left w-full font-bold"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>Consultar Coach</button>
+                            <button onclick="askCoachAbout('${safeExName}')" class="flex items-center gap-3 px-4 py-3 text-sm text-purple-400 hover:text-white hover:bg-purple-500/20 transition-colors text-left w-full font-bold">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                Consultar Coach
+                            </button>
                             <div class="h-px bg-[#262626] my-1 w-full"></div>
-                            <button onclick="promptCopyExercise('${safeId}')" class="flex items-center gap-3 px-4 py-3 text-sm text-custom-textMuted hover:text-white hover:bg-[#262626] transition-colors text-left w-full"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>Copiar</button>
-                            <button onclick="openEditExerciseModal('${safeId}')" class="flex items-center gap-3 px-4 py-3 text-sm text-custom-textMuted hover:text-white hover:bg-[#262626] transition-colors text-left w-full"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>Editar</button>
+                            
+                            <button onclick="promptCopyExercise('${safeId}')" class="flex items-center gap-3 px-4 py-3 text-sm text-custom-textMuted hover:text-white hover:bg-[#262626] transition-colors text-left w-full">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                                Copiar
+                            </button>
+                            <button onclick="openEditExerciseModal('${safeId}')" class="flex items-center gap-3 px-4 py-3 text-sm text-custom-textMuted hover:text-white hover:bg-[#262626] transition-colors text-left w-full">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                                Editar
+                            </button>
                             <div class="h-px bg-[#262626] my-1 w-full"></div>
-                            <button onclick="promptDeleteExercise('${safeId}', '${safeExName}')" class="flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:text-white hover:bg-red-500 transition-colors text-left w-full"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>Eliminar</button>
+                            <button onclick="promptDeleteExercise('${safeId}', '${safeExName}')" class="flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:text-white hover:bg-red-500 transition-colors text-left w-full">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                Eliminar
+                            </button>
                         </div>
                     </div>
+
                     <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6" /><path d="M9 6l3-3 3 3" /><path d="M12 21v-6" /><path d="M9 18l3 3 3-3" /><path d="M3 12h6" /><path d="M6 9l-3 3 3 3" /><path d="M21 12h-6" /><path d="M18 9l3 3-3 3" /></svg>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3v6" /><path d="M9 6l3-3 3 3" />
+                            <path d="M12 21v-6" /><path d="M9 18l3 3 3-3" />
+                            <path d="M3 12h6" /><path d="M6 9l-3 3 3 3" />
+                            <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
+                        </svg>
                     </div>
                 </div>
                 
@@ -602,8 +531,14 @@ async function changeDay(day, event) {
             </div>`;
         });
 
+        // FIX MÓVIL: SortableJS mejorado con Delay
         Sortable.create(document.getElementById('exercise-container'), {
-            handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', 
+            handle: '.drag-handle', 
+            animation: 150, 
+            ghostClass: 'sortable-ghost', 
+            delay: 150, // Demora 150ms para diferenciar de un scroll
+            delayOnTouchOnly: true, // Solo aplica el delay en celulares
+            touchStartThreshold: 3, // Si el dedo se mueve 3px, se cancela el drag (es un scroll)
             onEnd: async function () {
                 const items = Array.from(document.getElementById('exercise-container').children);
                 const promises = items.map((item, index) => {
@@ -623,14 +558,18 @@ async function saveToCloud(exId, totalSets, exName, exType, btnEvent) {
         const checked = document.getElementById(`check-${exId}-${i}`).checked; 
         if (checked) {
             if (exType === 'tiempo') {
-                let m = document.getElementById(`min-${exId}-${i}`).value || 0; let s = document.getElementById(`seg-${exId}-${i}`).value || 0; let totalSecs = (parseInt(m) * 60) + parseInt(s);
+                let m = document.getElementById(`min-${exId}-${i}`).value || 0;
+                let s = document.getElementById(`seg-${exId}-${i}`).value || 0;
+                let totalSecs = (parseInt(m) * 60) + parseInt(s);
                 if(totalSecs > 0) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: 0, reps: 0, time_seconds: totalSecs, exercise_type: 'tiempo', set_number: i, log_date: dateString }); }
             } else {
-                let w = document.getElementById(`peso-${exId}-${i}`).value; let r = document.getElementById(`reps-${exId}-${i}`).value;
+                let w = document.getElementById(`peso-${exId}-${i}`).value;
+                let r = document.getElementById(`reps-${exId}-${i}`).value;
                 if(w && r) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: parseFloat(w), reps: parseInt(r), time_seconds: 0, exercise_type: 'carga', set_number: i, log_date: dateString }); }
             }
         } 
     }
+    
     if(logs.length === 0) { const originalText = btnText.innerText; btn.classList.add('bg-red-600'); btnText.innerText = "MARCÁ 1 SERIE MÍNIMO"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = originalText; }, 2000); return; } btnText.innerText = "GUARDANDO...";
     try { await supabaseClient.from('workout_logs').delete().eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', dateString); await supabaseClient.from('workout_logs').insert(logs); btn.classList.replace('bg-custom-primary', 'bg-green-600'); btnText.innerText = "¡GUARDADO!"; const evoContainer = document.getElementById(`evo-container-${exId}`); if(!evoContainer.classList.contains('hidden')) loadEvolucion(exId, exName, exType, true); setTimeout(() => { btn.classList.replace('bg-green-600', 'bg-custom-primary'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); showToast("¡Entrenamiento registrado!"); } catch (e) { btn.classList.add('bg-red-600'); btnText.innerText = "ERROR"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); }
 }
@@ -647,30 +586,70 @@ async function loadEvolucion(exId, exName, exType, forceReload = false) {
         data.forEach(log => { 
             const [year, month, day] = log.log_date.split('-'); const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }); 
             if (!groupedData[dateStr]) groupedData[dateStr] = { maxStat: 0, totalStat: 0, totalSets: 0, sets: [], rawDate: log.log_date }; 
-            if (exType === 'tiempo') { if (log.time_seconds > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.time_seconds; groupedData[dateStr].totalStat += log.time_seconds; } 
-            else { if (log.weight > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.weight; groupedData[dateStr].totalStat += log.reps; }
-            groupedData[dateStr].totalSets += 1; groupedData[dateStr].sets.push(log); 
+            
+            if (exType === 'tiempo') { 
+                if (log.time_seconds > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.time_seconds; 
+                groupedData[dateStr].totalStat += log.time_seconds;
+            } else { 
+                if (log.weight > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.weight; 
+                groupedData[dateStr].totalStat += log.reps;
+            }
+            
+            groupedData[dateStr].totalSets += 1;
+            groupedData[dateStr].sets.push(log); 
         }); 
-        window.currentHistory[safeExId] = groupedData; const dates = Object.keys(groupedData); const chartDataMax = dates.map(d => groupedData[d].maxStat); const chartDataAvg = dates.map(d => Math.round((groupedData[d].totalStat / groupedData[d].totalSets) * 10) / 10); 
+        
+        window.currentHistory[safeExId] = groupedData; 
+        const dates = Object.keys(groupedData); 
+        const chartDataMax = dates.map(d => groupedData[d].maxStat); 
+        const chartDataAvg = dates.map(d => Math.round((groupedData[d].totalStat / groupedData[d].totalSets) * 10) / 10); 
+        
         let tableRows = ''; const reversedDates = [...dates].reverse(); 
+        
         reversedDates.forEach(date => { 
             const dayData = groupedData[date]; dayData.sets.sort((a,b) => a.set_number - b.set_number); 
             const badges = dayData.sets.map(s => {
                 if (exType === 'tiempo') { return `<span class="inline-block bg-[#262626] border border-[#333] text-xs px-2 py-1 rounded text-custom-textMuted whitespace-nowrap mb-1 mr-1"><strong class="text-white">${formatTime(s.time_seconds)}</strong></span>`; }
                 else { return `<span class="inline-block bg-[#262626] border border-[#333] text-xs px-2 py-1 rounded text-custom-textMuted whitespace-nowrap mb-1 mr-1"><strong class="text-white">${s.weight}kg</strong> x ${s.reps}</span>`; }
             }).join(''); 
+            
             tableRows += `<tr class="border-b border-custom-border hover:bg-[#171717] transition-colors"><td class="py-3 px-3 text-sm font-bold text-custom-primary whitespace-nowrap align-middle">${date}</td><td class="py-3 px-2 align-middle w-full">${badges}</td><td class="py-3 px-3 align-middle text-right space-x-1 whitespace-nowrap"><button type="button" onclick="promptEditLog('${safeExId}', '${safeExName}', '${date}', '${exType}')" class="p-1.5 bg-[#262626] rounded text-custom-textMuted hover:text-white transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button><button type="button" onclick="promptDeleteLog('${safeExName}', '${dayData.rawDate}', '${safeExId}', '${exType}')" class="p-1.5 bg-red-500/10 rounded text-red-500 hover:bg-red-500 hover:text-white transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></td></tr>`; 
         }); 
         
         const chartTitle1 = exType === 'tiempo' ? 'Tiempo Máximo (Segundos)' : 'Carga Máxima (Kilos)';
         const chartTitle2 = exType === 'tiempo' ? 'Promedio de Tiempo (Seg)' : 'Promedio de Repeticiones';
 
-        container.innerHTML = `<div class="mb-6 relative"><div class="flex overflow-x-auto snap-x-mandatory custom-scroll gap-4 pb-2" id="carousel-${safeExId}"><div class="min-w-full snap-center"><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle1} <span class="text-[8px] font-normal lowercase">(Deslizá ->)</span></h4><div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart1-${safeExId}"></canvas></div></div><div class="min-w-full snap-center"><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle2}</h4><div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart2-${safeExId}"></canvas></div></div></div><button onclick="analyzeProgress('${safeExId}', '${safeExName}', '${exType}')" class="w-full mt-2 bg-gradient-to-r from-purple-600/20 to-blue-500/20 border border-purple-500/30 text-purple-400 hover:text-white hover:bg-purple-500/40 py-3 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 text-sm"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>Analizar Progreso con IA</button></div><div><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">Historial</h4><div class="overflow-x-auto rounded-xl border border-custom-border bg-[#0a0a0a]"><table class="w-full text-left border-collapse"><thead class="bg-[#171717]"><tr class="border-b border-custom-border text-custom-textMuted text-[10px] uppercase tracking-widest"><th class="py-3 px-3 font-bold">Día</th><th class="py-3 px-2 font-bold">Series</th><th class="py-3 px-3 font-bold text-right">Acción</th></tr></thead><tbody>${tableRows}</tbody></table></div></div>`; 
+        container.innerHTML = `
+        <div class="mb-6 relative">
+            <div class="flex overflow-x-auto snap-x-mandatory custom-scroll gap-4 pb-2" id="carousel-${safeExId}">
+                <div class="min-w-full snap-center">
+                    <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle1} <span class="text-[8px] font-normal lowercase">(Deslizá ->)</span></h4>
+                    <div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart1-${safeExId}"></canvas></div>
+                </div>
+                <div class="min-w-full snap-center">
+                    <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle2}</h4>
+                    <div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart2-${safeExId}"></canvas></div>
+                </div>
+            </div>
+            <button onclick="analyzeProgress('${safeExId}', '${safeExName}', '${exType}')" class="w-full mt-2 bg-gradient-to-r from-purple-600/20 to-blue-500/20 border border-purple-500/30 text-purple-400 hover:text-white hover:bg-purple-500/40 py-3 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 text-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                Analizar Progreso con IA
+            </button>
+        </div>
+        <div>
+            <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">Historial</h4>
+            <div class="overflow-x-auto rounded-xl border border-custom-border bg-[#0a0a0a]"><table class="w-full text-left border-collapse"><thead class="bg-[#171717]"><tr class="border-b border-custom-border text-custom-textMuted text-[10px] uppercase tracking-widest"><th class="py-3 px-3 font-bold">Día</th><th class="py-3 px-2 font-bold">Series</th><th class="py-3 px-3 font-bold text-right">Acción</th></tr></thead><tbody>${tableRows}</tbody></table></div>
+        </div>`; 
         container.classList.remove('hidden'); 
         
-        if (window.myCharts[safeExId + '-1']) window.myCharts[safeExId + '-1'].destroy(); if (window.myCharts[safeExId + '-2']) window.myCharts[safeExId + '-2'].destroy(); 
-        const ctx1 = document.getElementById(`chart1-${safeExId}`).getContext('2d'); window.myCharts[safeExId + '-1'] = new Chart(ctx1, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle1, data: chartDataMax, borderColor: '#F54927', backgroundColor: 'rgba(245, 73, 39, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#F54927', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
-        const ctx2 = document.getElementById(`chart2-${safeExId}`).getContext('2d'); window.myCharts[safeExId + '-2'] = new Chart(ctx2, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle2, data: chartDataAvg, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#3b82f6', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
+        if (window.myCharts[safeExId + '-1']) window.myCharts[safeExId + '-1'].destroy(); 
+        if (window.myCharts[safeExId + '-2']) window.myCharts[safeExId + '-2'].destroy(); 
+        
+        const ctx1 = document.getElementById(`chart1-${safeExId}`).getContext('2d'); 
+        window.myCharts[safeExId + '-1'] = new Chart(ctx1, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle1, data: chartDataMax, borderColor: '#F54927', backgroundColor: 'rgba(245, 73, 39, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#F54927', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
+        
+        const ctx2 = document.getElementById(`chart2-${safeExId}`).getContext('2d'); 
+        window.myCharts[safeExId + '-2'] = new Chart(ctx2, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle2, data: chartDataAvg, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#3b82f6', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
 
         btn.innerText = "OCULTAR PROGRESO"; btn.classList.replace('border-custom-border', 'border-custom-primary'); btn.classList.replace('text-custom-textMuted', 'text-white'); 
     } catch(err) { btn.innerText = "ERROR"; setTimeout(() => { btn.innerText = "VER PROGRESO"; }, 2000); }
@@ -687,13 +666,37 @@ function promptEditLog(exId, exName, dateStr, exType) {
     
     dayData.sets.forEach(s => { 
         if(exType === 'tiempo') {
-            let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60; let padM = m.toString().padStart(2, '0'); let padSeg = seg.toString().padStart(2, '0');
-            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2"><input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-m-${s.id}" value="${padM}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=2){ document.getElementById('edit-s-${s.id}').focus(); this.value=this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"><span class="text-custom-textMuted font-bold mx-1 pb-1">:</span><input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-s-${s.id}" value="${padSeg}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>2) this.value=this.value.slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"></div></div>`;
+            let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60;
+            let padM = m.toString().padStart(2, '0'); let padSeg = seg.toString().padStart(2, '0');
+            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]">
+                <span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span>
+                <div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2">
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-m-${s.id}" value="${padM}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=2){ let n=document.getElementById('edit-s-${s.id}'); n.focus(); if(this.value.length>2){ n.value=this.value.slice(2,4); } this.value=this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
+                    <span class="text-custom-textMuted font-bold mx-1 pb-1">:</span>
+                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-s-${s.id}" value="${padSeg}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>2) this.value=this.value.slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
+                </div>
+            </div>`;
         } else {
             html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center gap-2"><input type="number" id="edit-w-${s.id}" value="${s.weight}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">kg</span><span class="text-custom-textMuted mx-1">x</span><input type="number" id="edit-r-${s.id}" value="${s.reps}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">rep</span></div></div>`; 
         }
     }); 
     
     document.getElementById('edit-log-sets-container').innerHTML = html; const btn = document.getElementById('btn-save-edit'); const msgBox = document.getElementById('edit-error-msg'); 
-    btn.onclick = async () => { btn.innerText = "Actualizando..."; btn.disabled = true; msgBox.classList.add('hidden'); try { for(let s of dayData.sets) { if(exType === 'tiempo') { let m = document.getElementById(`edit-m-${s.id}`).value || 0; let seg = document.getElementById(`edit-s-${s.id}`).value || 0; let t = (parseInt(m)*60) + parseInt(seg); await supabaseClient.from('workout_logs').update({ time_seconds: t }).eq('id', s.id); } else { let w = document.getElementById(`edit-w-${s.id}`).value; let r = document.getElementById(`edit-r-${s.id}`).value; await supabaseClient.from('workout_logs').update({ weight: parseFloat(w), reps: parseInt(r) }).eq('id', s.id); } } closeAllModals(); loadEvolucion(safeExId, safeExName, exType, true); } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = "Actualizar Datos"; btn.disabled = false; } }; openModal('modal-edit-log');
+    btn.onclick = async () => { 
+        btn.innerText = "Actualizando..."; btn.disabled = true; msgBox.classList.add('hidden'); 
+        try { 
+            for(let s of dayData.sets) { 
+                if(exType === 'tiempo') {
+                    let m = document.getElementById(`edit-m-${s.id}`).value || 0; let seg = document.getElementById(`edit-s-${s.id}`).value || 0;
+                    let t = (parseInt(m)*60) + parseInt(seg);
+                    await supabaseClient.from('workout_logs').update({ time_seconds: t }).eq('id', s.id);
+                } else {
+                    let w = document.getElementById(`edit-w-${s.id}`).value; let r = document.getElementById(`edit-r-${s.id}`).value; 
+                    await supabaseClient.from('workout_logs').update({ weight: parseFloat(w), reps: parseInt(r) }).eq('id', s.id); 
+                }
+            } 
+            closeAllModals(); loadEvolucion(safeExId, safeExName, exType, true); 
+        } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = "Actualizar Datos"; btn.disabled = false; } 
+    }; 
+    openModal('modal-edit-log');
 }
