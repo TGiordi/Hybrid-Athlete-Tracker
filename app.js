@@ -13,7 +13,35 @@ let supabaseClient = null; let currentUserId = null; let isSignUp = false; let c
 let pendingSavedRoutineId = null;
 window.myCharts = {}; window.currentHistory = {}; window.currentDayExercises = []; window.chatHistory = [];
 
+// --- VARIABLES CRONÓMETRO ---
 let timerInterval = null; let timerSecondsLeft = 0;
+
+// --- MOTOR DE SONIDO (WEB AUDIO API) ---
+let audioCtx = null;
+function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } }
+// El navegador necesita un click para permitir el sonido
+document.addEventListener('click', initAudio, {once: true});
+document.addEventListener('touchstart', initAudio, {once: true});
+
+function playTone(freq, type, duration, vol=0.05) {
+    if(!audioCtx) return;
+    if(audioCtx.state === 'suspended') audioCtx.resume();
+    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+    osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+function playTap() { playTone(600, 'sine', 0.1, 0.02); }
+function playPop() { playTone(400, 'triangle', 0.1, 0.03); }
+function playAlarm() {
+    if(!audioCtx) return;
+    for(let i=0; i<4; i++) {
+        setTimeout(() => playTone(880, 'square', 0.15, 0.1), i*400);
+        setTimeout(() => playTone(1046.50, 'square', 0.15, 0.1), i*400 + 200);
+    }
+}
 
 function escapeHTML(str) {
     if (!str) return '';
@@ -23,12 +51,8 @@ function escapeHTML(str) {
 function showToast(message) {
     const toast = document.getElementById('toast-notification');
     document.getElementById('toast-msg').innerText = message;
-    toast.classList.remove('bottom-[-100px]', 'opacity-0');
-    toast.classList.add('bottom-10', 'opacity-100');
-    setTimeout(() => {
-        toast.classList.add('bottom-[-100px]', 'opacity-0');
-        toast.classList.remove('bottom-10', 'opacity-100');
-    }, 2500);
+    toast.classList.remove('bottom-[-100px]', 'opacity-0'); toast.classList.add('bottom-10', 'opacity-100');
+    setTimeout(() => { toast.classList.add('bottom-[-100px]', 'opacity-0'); toast.classList.remove('bottom-10', 'opacity-100'); }, 2500);
 }
 
 function formatTime(totalSeconds) {
@@ -37,27 +61,89 @@ function formatTime(totalSeconds) {
     if(m > 0 && s > 0) return `${m}m ${s}s`; if(m > 0) return `${m}m`; return `${s}s`;
 }
 
+// --- CLICS AFUERA PARA CERRAR MENÚS Y FAB ---
 document.addEventListener('click', (e) => {
-    if (!e.target.closest('.ex-menu-container')) {
-        document.querySelectorAll('.ex-dropdown').forEach(el => el.classList.add('hidden'));
-    }
-    const fabContainer = document.getElementById('fab-container');
-    const fabOptions = document.getElementById('fab-options');
-    if (fabContainer && !e.target.closest('#fab-container') && !fabOptions.classList.contains('opacity-0')) {
-        toggleFabMenu();
-    }
+    if (!e.target.closest('.ex-menu-container')) { document.querySelectorAll('.ex-dropdown').forEach(el => el.classList.add('hidden')); }
+    const fabContainer = document.getElementById('fab-container'); const fabOptions = document.getElementById('fab-options');
+    if (fabContainer && !e.target.closest('#fab-container') && !fabOptions.classList.contains('opacity-0')) { toggleFabMenu(); }
 });
 
 document.getElementById('modal-overlay').addEventListener('click', function(e) {
     if (e.target === this) closeAllModals();
 });
 
+// --- LÓGICA DE DRAG & DROP DEL MINI TIMER ---
+const miniTimer = document.getElementById('mini-timer-widget');
+let isDraggingTimer = false; let startX, startY, initialX, initialY;
+
+function timerDragStart(e) {
+    if(e.target.closest('button')) return; 
+    isDraggingTimer = true;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const rect = miniTimer.getBoundingClientRect();
+    startX = clientX; startY = clientY;
+    initialX = rect.left; initialY = rect.top;
+    miniTimer.style.transition = 'none';
+}
+
+function timerDragMove(e) {
+    if(!isDraggingTimer) return;
+    e.preventDefault(); 
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const dx = clientX - startX; const dy = clientY - startY;
+    miniTimer.style.left = `${initialX + dx}px`;
+    miniTimer.style.top = `${initialY + dy}px`;
+    miniTimer.style.bottom = 'auto'; 
+    miniTimer.style.right = 'auto'; 
+    miniTimer.style.transform = 'none';
+}
+
+function timerDragEnd(e) {
+    if(!isDraggingTimer) return;
+    isDraggingTimer = false;
+    miniTimer.style.transition = 'all 0.3s ease';
+    const rect = miniTimer.getBoundingClientRect();
+    const screenWidth = window.innerWidth;
+    
+    // Snap (Imán) hacia la izquierda o derecha
+    if (rect.left + rect.width / 2 < screenWidth / 2) {
+        miniTimer.style.left = '16px'; 
+    } else {
+        miniTimer.style.left = `${screenWidth - rect.width - 16}px`; 
+    }
+    
+    // Límites arriba y abajo
+    if(rect.top < 80) miniTimer.style.top = '80px';
+    if(rect.top > window.innerHeight - 100) miniTimer.style.top = `${window.innerHeight - 100}px`;
+}
+
+miniTimer.addEventListener('mousedown', timerDragStart);
+window.addEventListener('mousemove', timerDragMove);
+window.addEventListener('mouseup', timerDragEnd);
+miniTimer.addEventListener('touchstart', timerDragStart, {passive: false});
+window.addEventListener('touchmove', timerDragMove, {passive: false});
+window.addEventListener('touchend', timerDragEnd);
+
+// --- INICIALIZACIÓN ---
 document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(typeWriter, 500); 
     if (typeof Chart !== 'undefined') { Chart.defaults.font.family = "'Montserrat', sans-serif"; Chart.defaults.color = '#94A3B8'; }
+    
     document.getElementById('auth-password').addEventListener('keypress', function (e) { if (e.key === 'Enter') handleAuth(); });
     document.getElementById('new-password-input').addEventListener('keypress', function (e) { if (e.key === 'Enter') saveNewPassword(); });
     document.getElementById('chat-input').addEventListener('keypress', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
+    
+    // Tecla Enter para Timer
+    document.getElementById('timer-min').addEventListener('keypress', function (e) { if (e.key === 'Enter') toggleTimer(); });
+    document.getElementById('timer-seg').addEventListener('keypress', function (e) { if (e.key === 'Enter') toggleTimer(); });
+    
+    // Tecla Enter para Ejercicios y Rutinas
+    document.getElementById('routine-save-name').addEventListener('keypress', function (e) { if (e.key === 'Enter') saveRoutine(); });
+    ['new-ex-name', 'new-ex-sets', 'new-ex-reps'].forEach(id => {
+        document.getElementById(id)?.addEventListener('keypress', e => { if(e.key === 'Enter') saveExercise(); });
+    });
 
     try {
         if (window.supabase) {
@@ -72,7 +158,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             supabaseClient.auth.onAuthStateChange((event, session) => {
                 if (event === 'PASSWORD_RECOVERY') { isRecovering = true; openModal('modal-new-pwd'); } 
-                else if (event === 'SIGNED_IN' && session) { setTimeout(() => { if(!isRecovering && !currentUserId) { currentUserId = session.user.id; loadDashboardView(session.user.email); } }, 500); }
+                else if (event === 'SIGNED_IN' && session) { 
+                    setTimeout(() => {
+                        if(!isRecovering && !currentUserId) { currentUserId = session.user.id; loadDashboardView(session.user.email); }
+                    }, 500);
+                }
                 else if (event === 'SIGNED_OUT') { currentUserId = null; location.reload(); }
             });
         }
@@ -85,6 +175,7 @@ function typeWriter() {
 }
 
 function openModal(modalId) {
+    playPop();
     const overlay = document.getElementById('modal-overlay'); overlay.classList.remove('hidden'); overlay.classList.add('flex');
     document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); document.getElementById(modalId).classList.remove('hidden'); document.body.style.overflow = 'hidden';
     if(modalId === 'modal-auth') { isSignUp = false; updateAuthUI(); document.getElementById('auth-password').type = 'password'; }
@@ -94,16 +185,19 @@ function openModal(modalId) {
 }
 
 function closeAllModals() {
+    playPop();
     document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');
     document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); document.body.style.overflow = 'auto'; window.location.hash = ''; 
+    
     if (timerSecondsLeft > 0) {
         const miniWidget = document.getElementById('mini-timer-widget');
-        miniWidget.classList.remove('translate-x-[-150%]', 'opacity-0');
+        miniWidget.classList.remove('translate-x-[-150%]', 'opacity-0', 'hidden');
         miniWidget.classList.add('translate-x-0', 'opacity-100');
     }
 }
 
 function toggleFabMenu() {
+    playTap();
     const options = document.getElementById('fab-options'); const icon = document.getElementById('fab-icon');
     if (options.classList.contains('opacity-0')) { options.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none'); icon.style.transform = 'rotate(45deg)'; } 
     else { options.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none'); icon.style.transform = 'rotate(0deg)'; }
@@ -111,6 +205,7 @@ function toggleFabMenu() {
 
 function closeFabAndRun(callback) { toggleFabMenu(); callback(); }
 
+// --- SOPORTE TÉCNICO ---
 async function submitSupportTicket() {
     const msg = document.getElementById('support-text').value.trim(); if(!msg) return;
     const btn = document.getElementById('btn-submit-support'); btn.disabled = true; btn.innerText = "Enviando...";
@@ -118,10 +213,11 @@ async function submitSupportTicket() {
         const { error } = await supabaseClient.from('support_tickets').insert([{ user_id: currentUserId, message: msg }]); if(error) throw error;
         document.getElementById('support-text').value = ''; document.getElementById('support-text').classList.add('hidden'); btn.classList.add('hidden');
         document.getElementById('support-msg-feedback').innerText = "¡Recibimos tu mensaje! Lo leeremos pronto."; document.getElementById('support-msg-feedback').classList.remove('hidden');
-        setTimeout(() => { closeAllModals(); document.getElementById('support-text').classList.remove('hidden'); btn.classList.remove('hidden'); document.getElementById('support-msg-feedback').classList.add('hidden'); btn.innerText = "Enviar Mensaje"; btn.disabled = false; }, 3000);
+        setTimeout(() => { closeAllModals(); setTimeout(() => { document.getElementById('support-text').classList.remove('hidden'); btn.classList.remove('hidden'); document.getElementById('support-msg-feedback').classList.add('hidden'); btn.innerText = "Enviar Mensaje"; btn.disabled = false; }, 500); }, 2000);
     } catch(e) { alert("Error: " + e.message); btn.innerText = "Enviar Mensaje"; btn.disabled = false; }
 }
 
+// --- CRONÓMETRO ---
 function openTimerModal() {
     document.getElementById('mini-timer-widget').classList.add('translate-x-[-150%]', 'opacity-0'); document.getElementById('mini-timer-widget').classList.remove('translate-x-0', 'opacity-100');
     if (timerSecondsLeft === 0) { document.getElementById('timer-min').value = ''; document.getElementById('timer-seg').value = ''; document.getElementById('timer-inputs').classList.remove('hidden'); document.getElementById('timer-display').classList.add('hidden'); } 
@@ -130,6 +226,7 @@ function openTimerModal() {
 }
 
 function toggleTimer() {
+    playTap();
     const btn = document.getElementById('btn-timer-start'); const btnMini = document.getElementById('btn-mini-play');
     if (timerInterval) {
         clearInterval(timerInterval); timerInterval = null;
@@ -147,7 +244,12 @@ function toggleTimer() {
         updateTimerDisplay();
         timerInterval = setInterval(() => {
             timerSecondsLeft--; updateTimerDisplay();
-            if(timerSecondsLeft <= 0) { stopTimer(); if (navigator.vibrate) navigator.vibrate([500, 200, 500]); showToast("¡Descanso Terminado!"); }
+            if(timerSecondsLeft <= 0) { 
+                stopTimer(); 
+                playAlarm(); 
+                if (navigator.vibrate) navigator.vibrate([500, 200, 500]); 
+                showToast("¡Descanso Terminado!"); 
+            }
         }, 1000);
     }
 }
@@ -163,6 +265,7 @@ function hideMiniTimer(stopAsWell = false) { const miniWidget = document.getElem
 
 function updateTimerDisplay() { let m = Math.floor(timerSecondsLeft / 60).toString().padStart(2, '0'); let s = (timerSecondsLeft % 60).toString().padStart(2, '0'); let txt = `${m}:${s}`; document.getElementById('timer-countdown').innerText = txt; document.getElementById('mini-timer-countdown').innerText = txt; }
 
+// --- AUTH UI ---
 function updateAuthUI() { 
     const modal = document.getElementById('modal-auth'); const title = document.getElementById('auth-title'); const btn = document.getElementById('btn-auth-action'); const toggleMsg = document.getElementById('auth-toggle-msg'); const closeBtn = document.getElementById('close-auth-btn'); const eyeBtn = document.getElementById('eye-btn'); const forgotPass = document.getElementById('forgot-password-container'); const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
     if(isSignUp) { modal.classList.replace('bg-custom-card', 'bg-custom-primary'); modal.classList.replace('border-custom-border', 'border-[#d43e20]'); title.innerText = "Crear Nueva Cuenta"; inputs.forEach(inp => { inp.className = "w-full bg-[#171717] border border-[#262626] p-3 pr-12 rounded-xl outline-none focus:border-white text-white placeholder-white/50 transition-all"; }); eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-white/50 hover:text-white transition-colors cursor-pointer"; btn.innerText = "Registrarme"; btn.className = "w-full bg-[#171717] text-white py-3 rounded-xl font-bold hover:bg-black border border-black/50 transition-colors shadow-lg"; toggleMsg.innerHTML = "O <span onclick='toggleAuthMode()' class='cursor-pointer font-extrabold underline hover:text-black transition-colors'>ingresá a tu cuenta acá</span>"; toggleMsg.className = "text-center text-sm text-white mt-4 transition-colors font-medium"; closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors"; forgotPass.classList.add('hidden'); } 
@@ -330,6 +433,7 @@ async function proceedWithAIGeneration() {
         
         let rawJson = data.response.candidates[0].content.parts[0].text; rawJson = rawJson.replace(/```json/g, '').replace(/```/g, '').trim(); 
         const routineData = JSON.parse(rawJson);
+        
         const { data: globalMedia } = await supabaseClient.from('global_media_bank').select('*');
         await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
         
@@ -440,10 +544,9 @@ async function confirmCopyExercise() {
     } catch(e) { alert("Error al copiar: " + e.message); } finally { btn.innerText = "Copiar"; btn.disabled = false; }
 }
 
-// --- DRAG & DROP PARA MÓVILES ---
 async function changeDay(day, event) {
     currentActiveDay = day;
-    if(event) { document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }); event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white'); event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } 
+    if(event) { playTap(); document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }); event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white'); event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } 
     else { document.querySelectorAll('.tab-btn').forEach(b => { if(b.innerText.toLowerCase() === day.toLowerCase()) { b.classList.add('active'); b.classList.remove('text-custom-textMuted'); b.classList.add('text-white'); b.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } else { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); } }); }
     const container = document.getElementById('exercise-container'); container.innerHTML = '<div class="col-span-1 md:col-span-2 text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando tu rutina...</div>';
     
@@ -451,7 +554,7 @@ async function changeDay(day, event) {
         const { data: exercises, error } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).eq('day_of_week', day).order('order_index', { ascending: true }).order('created_at', { ascending: true });
         if (error) throw error; window.currentDayExercises = exercises;
         
-        if (exercises.length === 0) { container.innerHTML = `<div class="col-span-1 md:col-span-2 flex flex-col items-center justify-center p-10 bg-custom-card border border-dashed border-custom-border rounded-3xl text-center"><div class="w-16 h-16 bg-[#171717] rounded-full flex items-center justify-center mb-4"><svg class="w-8 h-8 text-custom-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg></div><h3 class="text-xl font-bold text-white mb-2">Día libre o sin configurar</h3><p class="text-custom-textMuted text-sm mb-4">Aún no agregaste ejercicios para el día seleccionado.</p></div>`; return; }
+        if (exercises.length === 0) { container.innerHTML = `<div class="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 flex flex-col items-center justify-center p-10 bg-custom-card border border-dashed border-custom-border rounded-3xl text-center"><div class="w-16 h-16 bg-[#171717] rounded-full flex items-center justify-center mb-4"><svg class="w-8 h-8 text-custom-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg></div><h3 class="text-xl font-bold text-white mb-2">Día libre o sin configurar</h3><p class="text-custom-textMuted text-sm mb-4">Aún no agregaste ejercicios para el día seleccionado.</p></div>`; return; }
         
         container.innerHTML = '';
         exercises.forEach(ex => {
@@ -518,6 +621,7 @@ async function changeDay(day, event) {
                             <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
                         </svg>
                     </div>
+
                 </div>
                 
                 <h3 class="text-xl font-bold mb-1 text-white uppercase italic tracking-tighter pr-28 break-words">${safeExName}</h3>
@@ -531,14 +635,13 @@ async function changeDay(day, event) {
             </div>`;
         });
 
-        // FIX MÓVIL: SortableJS mejorado con Delay
         Sortable.create(document.getElementById('exercise-container'), {
             handle: '.drag-handle', 
             animation: 150, 
             ghostClass: 'sortable-ghost', 
-            delay: 150, // Demora 150ms para diferenciar de un scroll
-            delayOnTouchOnly: true, // Solo aplica el delay en celulares
-            touchStartThreshold: 3, // Si el dedo se mueve 3px, se cancela el drag (es un scroll)
+            delay: 150, 
+            delayOnTouchOnly: true, 
+            touchStartThreshold: 3,
             onEnd: async function () {
                 const items = Array.from(document.getElementById('exercise-container').children);
                 const promises = items.map((item, index) => {
@@ -571,7 +674,7 @@ async function saveToCloud(exId, totalSets, exName, exType, btnEvent) {
     }
     
     if(logs.length === 0) { const originalText = btnText.innerText; btn.classList.add('bg-red-600'); btnText.innerText = "MARCÁ 1 SERIE MÍNIMO"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = originalText; }, 2000); return; } btnText.innerText = "GUARDANDO...";
-    try { await supabaseClient.from('workout_logs').delete().eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', dateString); await supabaseClient.from('workout_logs').insert(logs); btn.classList.replace('bg-custom-primary', 'bg-green-600'); btnText.innerText = "¡GUARDADO!"; const evoContainer = document.getElementById(`evo-container-${exId}`); if(!evoContainer.classList.contains('hidden')) loadEvolucion(exId, exName, exType, true); setTimeout(() => { btn.classList.replace('bg-green-600', 'bg-custom-primary'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); showToast("¡Entrenamiento registrado!"); } catch (e) { btn.classList.add('bg-red-600'); btnText.innerText = "ERROR"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); }
+    try { await supabaseClient.from('workout_logs').delete().eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', dateString); await supabaseClient.from('workout_logs').insert(logs); btn.classList.replace('bg-custom-primary', 'bg-green-600'); btnText.innerText = "¡GUARDADO!"; const evoContainer = document.getElementById(`evo-container-${exId}`); if(!evoContainer.classList.contains('hidden')) loadEvolucion(exId, exName, exType, true); setTimeout(() => { btn.classList.replace('bg-green-600', 'bg-custom-primary'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); showToast("¡Entrenamiento registrado!"); playSuccess(); } catch (e) { btn.classList.add('bg-red-600'); btnText.innerText = "ERROR"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); }
 }
 
 async function loadEvolucion(exId, exName, exType, forceReload = false) {
