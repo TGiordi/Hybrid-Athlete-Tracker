@@ -10,14 +10,15 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const REDIRECT_URL = "https://tgiordi.github.io/Hybrid-Athlete-Tracker/";
 
 let supabaseClient = null; let currentUserId = null; let isSignUp = false; let currentActiveDay = 'lunes'; let currentEditExerciseId = null; let currentAIPrompt = ""; let exerciseToCopy = null;
-let pendingSavedRoutineId = null;
+let pendingSavedRoutineId = null; let pendingDeleteSessionId = null;
 window.myCharts = {}; window.currentHistory = {}; window.currentDayExercises = []; window.chatHistory = [];
 
 // --- VARIABLES DE TIEMPO ---
 let timerInterval = null; let timerSecondsLeft = 0;
 let globalTimerInterval = null; let globalSeconds = 0;
+window.exerciseTimers = {}; // Guarda los tiempos por cada tarjeta de ejercicio
 
-// --- MOTOR DE SONIDO MEJORADO (WEB AUDIO API) ---
+// --- MOTOR DE SONIDO (WEB AUDIO API) ---
 let audioCtx = null;
 function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } }
 document.addEventListener('click', initAudio, {once: true}); document.addEventListener('touchstart', initAudio, {once: true});
@@ -34,24 +35,17 @@ function playTone(freq, type, duration, vol=0.05) {
 }
 function playTap() { playTone(600, 'sine', 0.1, 0.02); }
 function playPop() { playTone(400, 'triangle', 0.1, 0.03); }
-
-// NUEVA ALARMA: Un arpegio rápido ascendente (más energético)
 function playAlarm() {
     if(!audioCtx) return;
-    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-    for(let j=0; j<3; j++) { // Repite 3 veces
-        notes.forEach((freq, i) => {
-            setTimeout(() => playTone(freq, 'square', 0.1, 0.05), (j * 600) + (i * 100));
-        });
+    const notes = [523.25, 659.25, 783.99, 1046.50]; 
+    for(let j=0; j<3; j++) { 
+        notes.forEach((freq, i) => { setTimeout(() => playTone(freq, 'square', 0.1, 0.05), (j * 600) + (i * 100)); });
     }
 }
-// NUEVA VICTORIA: Acorde mayor de éxito
 function playVictory() {
     if(!audioCtx) return;
-    const notes = [440, 554.37, 659.25, 880]; // A4, C#5, E5, A5
-    notes.forEach((freq, i) => {
-        setTimeout(() => playTone(freq, 'sine', 0.15, 0.08), i * 150);
-    });
+    const notes = [440, 554.37, 659.25, 880]; 
+    notes.forEach((freq, i) => { setTimeout(() => playTone(freq, 'sine', 0.15, 0.08), i * 150); });
 }
 
 function escapeHTML(str) {
@@ -162,7 +156,6 @@ function closeAllModals() {
     playPop();
     document.getElementById('modal-overlay').classList.add('hidden'); document.getElementById('modal-overlay').classList.remove('flex');
     document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); document.body.style.overflow = 'auto'; window.location.hash = ''; 
-    
     if (timerSecondsLeft > 0) {
         const miniWidget = document.getElementById('mini-timer-widget');
         miniWidget.classList.remove('translate-x-[-150%]', 'opacity-0', 'hidden');
@@ -195,8 +188,11 @@ function updateGlobalTimerDisplay() {
     document.getElementById('global-timer-display').innerText = `${h}:${m}:${s}`;
 }
 
-async function stopGlobalWorkout() {
-    if(!confirm("¿Finalizar entrenamiento y guardar el tiempo total?")) return;
+function promptStopGlobalWorkout() {
+    openModal('modal-confirm-stop-workout');
+}
+
+async function confirmStopGlobalWorkout() {
     clearInterval(globalTimerInterval); globalTimerInterval = null;
     document.getElementById('global-workout-timer').classList.add('hidden');
     document.getElementById('btn-start-workout').classList.remove('hidden');
@@ -205,8 +201,7 @@ async function stopGlobalWorkout() {
     const dateString = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
     try {
         await supabaseClient.from('workout_sessions').insert([{ user_id: currentUserId, session_date: dateString, duration_seconds: globalSeconds }]);
-        showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(globalSeconds)}`);
-        playVictory();
+        closeAllModals(); showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(globalSeconds)}`); playVictory();
     } catch(e) { console.error(e); }
     globalSeconds = 0;
 }
@@ -216,40 +211,75 @@ async function openGlobalStats() {
     const container = document.getElementById('global-stats-container');
     container.innerHTML = '<div class="text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando métricas...</div>';
     try {
-        const { data, error } = await supabaseClient.from('workout_sessions').select('session_date, duration_seconds').eq('user_id', currentUserId).order('session_date', { ascending: true });
+        const { data, error } = await supabaseClient.from('workout_sessions').select('id, session_date, duration_seconds').eq('user_id', currentUserId).order('session_date', { ascending: true });
         if(error) throw error;
         if(data.length === 0) { container.innerHTML = `<p class="text-custom-textMuted text-sm text-center">Aún no hay entrenamientos registrados.</p>`; return; }
         
-        // Agrupamos por día (por si tocó Iniciar/Finalizar dos veces el mismo día)
         const grouped = {};
         data.forEach(d => {
-            if(!grouped[d.session_date]) grouped[d.session_date] = 0;
-            grouped[d.session_date] += d.duration_seconds;
+            if(!grouped[d.session_date]) grouped[d.session_date] = { totalSecs: 0, ids: [] };
+            grouped[d.session_date].totalSecs += d.duration_seconds;
+            grouped[d.session_date].ids.push(d.id);
         });
 
         const dates = Object.keys(grouped);
-        // Convertimos a minutos para el gráfico
-        const durations = dates.map(d => Math.round(grouped[d] / 60)); 
+        const durations = dates.map(d => Math.round(grouped[d].totalSecs / 60)); 
         
-        container.innerHTML = `<div class="h-56 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart-global-time"></canvas></div>`;
+        let htmlList = `<div class="mt-6 border-t border-custom-border pt-4 max-h-[30vh] overflow-y-auto custom-scroll pr-2 space-y-2">`;
+        [...dates].reverse().forEach(d => {
+            // Pasamos el ID del primer registro de ese día por simplicidad de borrado
+            let firstId = grouped[d].ids[0];
+            htmlList += `<div class="flex justify-between items-center bg-[#0a0a0a] p-3 rounded-lg border border-[#262626]">
+                <span class="text-sm font-bold text-white">${d}</span>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-custom-textMuted">${formatTime(grouped[d].totalSecs)}</span>
+                    <button onclick="promptDeleteSession('${firstId}')" class="text-red-500 hover:text-white hover:bg-red-500 p-1.5 rounded-md transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                </div>
+            </div>`;
+        });
+        htmlList += `</div>`;
+
+        container.innerHTML = `<div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative mb-2"><canvas id="chart-global-time"></canvas></div>` + htmlList;
         const ctx = document.getElementById('chart-global-time').getContext('2d');
         new Chart(ctx, { type: 'bar', data: { labels: dates, datasets: [{ label: 'Minutos de Entrenamiento', data: durations, backgroundColor: 'rgba(20, 184, 166, 0.8)', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } });
         
     } catch(e) { container.innerHTML = `<div class="text-xs text-red-500">Error: ${e.message}</div>`; }
 }
 
-
-// --- SOPORTE TÉCNICO ---
-async function submitSupportTicket() {
-    const msg = document.getElementById('support-text').value.trim(); if(!msg) return;
-    const btn = document.getElementById('btn-submit-support'); btn.disabled = true; btn.innerText = "Enviando...";
-    try {
-        const { error } = await supabaseClient.from('support_tickets').insert([{ user_id: currentUserId, message: msg }]); if(error) throw error;
-        document.getElementById('support-text').value = ''; document.getElementById('support-text').classList.add('hidden'); btn.classList.add('hidden');
-        document.getElementById('support-msg-feedback').innerText = "¡Recibimos tu mensaje! Lo leeremos pronto."; document.getElementById('support-msg-feedback').classList.remove('hidden');
-        setTimeout(() => { closeAllModals(); setTimeout(() => { document.getElementById('support-text').classList.remove('hidden'); btn.classList.remove('hidden'); document.getElementById('support-msg-feedback').classList.add('hidden'); btn.innerText = "Enviar Mensaje"; btn.disabled = false; }, 500); }, 2000);
-    } catch(e) { alert("Error: " + e.message); btn.innerText = "Enviar Mensaje"; btn.disabled = false; }
+function promptDeleteSession(id) {
+    pendingDeleteSessionId = id; closeAllModals(); openModal('modal-confirm-delete-session');
+    document.getElementById('btn-confirm-delete-session').onclick = async () => {
+        const btn = document.getElementById('btn-confirm-delete-session'); btn.innerText = "Borrando..."; btn.disabled = true;
+        try { await supabaseClient.from('workout_sessions').delete().eq('id', pendingDeleteSessionId); openGlobalStats(); } 
+        catch(e) { showToast("Error: " + e.message); } 
+        finally { btn.innerText = "Sí, Borrar"; btn.disabled = false; }
+    };
 }
+
+// --- CRONÓMETRO INDIVIDUAL POR EJERCICIO ---
+window.toggleExTimer = function(exId) {
+    playTap();
+    if(!window.exerciseTimers[exId]) window.exerciseTimers[exId] = { seconds: 0, interval: null };
+    const t = window.exerciseTimers[exId];
+    const btn = document.getElementById(`btn-extimer-${exId}`);
+    const display = document.getElementById(`display-extimer-${exId}`);
+    
+    if(t.interval) {
+        clearInterval(t.interval); t.interval = null;
+        btn.innerHTML = '<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Retomar';
+        btn.classList.replace('text-green-400', 'text-orange-400');
+    } else {
+        btn.innerHTML = '<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg> Pausar';
+        btn.classList.replace('text-orange-400', 'text-green-400');
+        if(!btn.classList.contains('text-green-400')) btn.classList.add('text-green-400');
+        
+        t.interval = setInterval(() => {
+            t.seconds++;
+            let m = Math.floor(t.seconds / 60).toString().padStart(2, '0'); let s = (t.seconds % 60).toString().padStart(2, '0');
+            display.innerText = `${m}:${s}`;
+        }, 1000);
+    }
+};
 
 // --- CRONÓMETRO DE DESCANSO ---
 function openTimerModal() {
@@ -278,6 +308,8 @@ function toggleTimer() {
         updateTimerDisplay();
         timerInterval = setInterval(() => {
             timerSecondsLeft--; updateTimerDisplay();
+            // SONIDO EN LOS ÚLTIMOS 10 SEGUNDOS
+            if(timerSecondsLeft <= 10 && timerSecondsLeft > 0) { playTap(); }
             if(timerSecondsLeft <= 0) { stopTimer(); playAlarm(); if (navigator.vibrate) navigator.vibrate([500, 200, 500]); showToast("¡Descanso Terminado!"); }
         }, 1000);
     }
@@ -347,29 +379,19 @@ function loadDashboardView(email) {
     document.getElementById('user-controls').classList.add('flex'); document.getElementById('user-display').innerText = email;
     document.getElementById('fab-container').classList.remove('hidden'); document.getElementById('fab-container').classList.add('flex');
     document.getElementById('fab-options').classList.add('pointer-events-none');
-    
-    // Mostramos el botón de empezar entrenamiento de forma prominente en el header
     document.getElementById('btn-start-workout').classList.remove('hidden');
-    
     closeAllModals(); updateCreditsDisplay(); setTimeout(() => { changeDay('lunes'); }, 100);
 }
 async function handleSignOut() { if (supabaseClient) await supabaseClient.auth.signOut(); location.reload(); }
 
 function animateTokenLoss() {
-    const badgeContainer = document.getElementById('credit-badge');
-    const badgeText = document.getElementById('ai-credit-count');
+    const badgeContainer = document.getElementById('credit-badge'); const badgeText = document.getElementById('ai-credit-count');
     if(!badgeText || badgeText.innerHTML.includes('infin')) return;
-
     badgeContainer.style.transition = 'all 0.3s'; badgeContainer.style.transform = 'scale(1.1)'; badgeContainer.style.borderColor = '#c084fc'; badgeContainer.style.backgroundColor = 'rgba(168, 85, 247, 0.3)';
     setTimeout(() => { badgeContainer.style.transform = 'scale(1)'; badgeContainer.style.borderColor = ''; badgeContainer.style.backgroundColor = ''; }, 300);
-
-    const rect = badgeContainer.getBoundingClientRect();
-    const animEl = document.createElement('div');
-    animEl.className = 'fixed text-purple-400 font-bold text-sm z-[9999] pointer-events-none token-anim';
-    animEl.innerText = '-1 ⚡';
-    animEl.style.left = `${rect.left + (rect.width / 2) - 10}px`;
-    animEl.style.top = `${rect.top}px`;
-    document.body.appendChild(animEl);
+    const rect = badgeContainer.getBoundingClientRect(); const animEl = document.createElement('div');
+    animEl.className = 'fixed text-purple-400 font-bold text-sm z-[9999] pointer-events-none token-anim'; animEl.innerText = '-1 ⚡';
+    animEl.style.left = `${rect.left + (rect.width / 2) - 10}px`; animEl.style.top = `${rect.top}px`; document.body.appendChild(animEl);
     setTimeout(() => animEl.remove(), 1000);
 }
 
@@ -380,71 +402,7 @@ async function updateCreditsDisplay() {
     } catch(e) { document.getElementById('ai-credit-count').innerText = "10"; }
 }
 
-// --- RUTINAS ---
-async function openRoutinesModal() {
-    openModal('modal-routines');
-    const list = document.getElementById('saved-routines-list'); list.innerHTML = '<div class="text-center text-xs text-custom-textMuted py-4">Buscando rutinas...</div>';
-    try {
-        const { data, error } = await supabaseClient.from('saved_routines').select('id, routine_name').eq('user_id', currentUserId).order('created_at', { ascending: false });
-        if(error) throw error;
-        if(data.length === 0) { list.innerHTML = '<div class="text-center text-xs text-custom-textMuted py-4">No tenés rutinas guardadas.</div>'; return; }
-        
-        let html = '';
-        data.forEach(r => {
-            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-sm font-bold text-white">${escapeHTML(r.routine_name)}</span><div class="flex gap-2"><button onclick="promptLoadRoutine('${r.id}')" class="text-xs bg-custom-primary text-white px-3 py-1.5 rounded-lg font-bold hover:opacity-80">Cargar</button><button onclick="promptDeleteSavedRoutine('${r.id}')" class="text-xs border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white px-2 py-1.5 rounded-lg transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></div></div>`;
-        });
-        list.innerHTML = html;
-    } catch(e) { list.innerHTML = `<div class="text-xs text-red-500">Error: ${e.message}</div>`; }
-}
-
-function promptSaveRoutine() { closeAllModals(); document.getElementById('routine-save-name').value = ''; openModal('modal-save-routine'); }
-
-async function saveRoutine() {
-    const name = document.getElementById('routine-save-name').value.trim();
-    if(!name) { showToast("Escribí un nombre para la rutina."); return; }
-    
-    const { data: exercises, error } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId);
-    if(error) { showToast("Error al leer rutina: " + error.message); return; }
-    if(exercises.length === 0) { showToast("No tenés ejercicios para guardar."); return; }
-
-    try {
-        const { error: saveError } = await supabaseClient.from('saved_routines').insert([{ user_id: currentUserId, routine_name: name, routine_data: exercises }]);
-        if(saveError) throw saveError;
-        showToast("¡Rutina Guardada!");
-        openRoutinesModal();
-    } catch(e) { showToast("Error al guardar: " + e.message); }
-}
-
-function promptLoadRoutine(savedId) {
-    pendingSavedRoutineId = savedId; closeAllModals(); openModal('modal-confirm-load-saved');
-    document.getElementById('btn-confirm-load-action').onclick = async () => {
-        const btn = document.getElementById('btn-confirm-load-action'); btn.innerText = "Cargando..."; btn.disabled = true;
-        try {
-            const { data, error } = await supabaseClient.from('saved_routines').select('routine_data').eq('id', pendingSavedRoutineId).single();
-            if(error) throw error;
-            await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
-            
-            const newExercises = data.routine_data.map(ex => { delete ex.id; delete ex.created_at; ex.user_id = currentUserId; return ex; });
-            
-            const { error: insertError } = await supabaseClient.from('user_routines').insert(newExercises);
-            if(insertError) throw insertError;
-            
-            closeAllModals(); showToast("¡Rutina Cargada Exitosamente!"); changeDay(currentActiveDay);
-        } catch(e) { showToast("Error al cargar: " + e.message); } 
-        finally { btn.innerText = "Sí, Cargar"; btn.disabled = false; }
-    };
-}
-
-function promptDeleteSavedRoutine(savedId) {
-    pendingSavedRoutineId = savedId; closeAllModals(); openModal('modal-confirm-delete-saved');
-    document.getElementById('btn-confirm-delete-saved-action').onclick = async () => {
-        const btn = document.getElementById('btn-confirm-delete-saved-action'); btn.innerText = "Borrando..."; btn.disabled = true;
-        try { await supabaseClient.from('saved_routines').delete().eq('id', pendingSavedRoutineId); openRoutinesModal(); } 
-        catch(e) { showToast("Error: " + e.message); } 
-        finally { btn.innerText = "Sí, Borrar"; btn.disabled = false; }
-    };
-}
-
+// --- RUTINAS GLOBALES / IA ---
 function formatMarkdown(text) { if (!text) return ''; let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>'); formatted = formatted.replace(/\n/g, '<br>'); return formatted; }
 function handleAIGenerationRequest() { document.getElementById('ai-prompt').value = ""; openModal('modal-ai-coach'); }
 
@@ -453,7 +411,6 @@ async function processAIPrompt() {
     if(!userPrompt) { msgBox.innerText = "Escribí tu objetivo para que el Coach Inteligente arme la rutina."; msgBox.classList.remove('hidden'); return; }
     try { const { count, error } = await supabaseClient.from('user_routines').select('*', { count: 'exact', head: true }).eq('user_id', currentUserId);
         if (error) throw error; 
-        // FIX: Prompt modificado para pedir rutinas completas (5 o 6 ejercicios)
         currentAIPrompt = userPrompt + ". MUY IMPORTANTE: Devuelve un JSON exacto. La rutina debe ser COMPLETA y exigente, incluyendo al menos 5 a 6 ejercicios por cada día de entrenamiento. Cada ejercicio DEBE tener: 'day_of_week', 'exercise_name', 'sets', 'target_reps' (incluye el descanso aquí, ej: '10 reps - 60s rest'), y 'exercise_type' (debe ser estrictamente la palabra 'carga' si es de peso/repeticiones o 'tiempo' si es isometría/cardio/planchas)."; 
         if (count > 0) openModal('modal-confirm-ai-overwrite'); else proceedWithAIGeneration();
     } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); }
@@ -465,13 +422,10 @@ async function proceedWithAIGeneration() {
         const { data: { session } } = await supabaseClient.auth.getSession();
         const { data, error } = await supabaseClient.functions.invoke('coach', { headers: { Authorization: `Bearer ${session.access_token}` }, body: { action: 'generate_routine', prompt: currentAIPrompt } });
         if(error) throw new Error(error.message); if(data && data.error) throw new Error(data.error);
-        
         let rawJson = data.response.candidates[0].content.parts[0].text; rawJson = rawJson.replace(/```json/g, '').replace(/```/g, '').trim(); 
         const routineData = JSON.parse(rawJson);
-        
         const { data: globalMedia } = await supabaseClient.from('global_media_bank').select('*');
         await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
-        
         const exercisesToInsert = routineData.map((ex, index) => { 
             const cleanDay = ex.day_of_week.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); 
             let exType = ex.exercise_type === 'tiempo' ? 'tiempo' : 'carga';
@@ -482,7 +436,6 @@ async function proceedWithAIGeneration() {
             }
             return { user_id: currentUserId, day_of_week: cleanDay, exercise_name: ex.exercise_name, sets: ex.sets, target_reps: ex.target_reps, exercise_type: exType, has_video: hasVid, youtube_url: ytUrl, has_image: hasImg, image_url: imgUrl, order_index: index }; 
         });
-        
         const { error: dbError } = await supabaseClient.from('user_routines').insert(exercisesToInsert); if(dbError) throw new Error(dbError.message);
         if(data.remaining_credits !== undefined) { const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); if(!hasInf) { document.getElementById('ai-credit-count').innerText = data.remaining_credits; animateTokenLoss(); } }
         document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); openModal('modal-ai-success');
@@ -500,7 +453,6 @@ function renderChat() {
 }
 
 window.askCoachAbout = function(exName) { closeAllModals(); openChatModal(); const input = document.getElementById('chat-input'); input.value = `Mi duda con el ejercicio ${exName} es: `; input.focus(); };
-
 window.analyzeProgress = function(exId, exName, exType) {
     const history = window.currentHistory[exId]; if(!history) return; const dates = Object.keys(history); 
     if (dates.length < 3) { showToast("⚠️ Entrená al menos 3 veces para activar el análisis IA."); return; }
@@ -531,57 +483,10 @@ function promptDeleteEntireRoutine() { openModal('modal-confirm-delete-all'); }
 async function confirmDeleteEntireRoutine() { closeAllModals(); document.getElementById('loading-title').innerText = "Borrando Semana..."; document.getElementById('loading-desc').innerText = "Limpiando todos los ejercicios de tu plan..."; document.getElementById('ai-loading-overlay').classList.remove('hidden'); document.getElementById('ai-loading-overlay').classList.add('flex'); try { const { error } = await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId); if(error) throw error; changeDay('lunes'); } catch(e) { alert("Error al borrar rutina: " + e.message); } finally { document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); } }
 function toggleMediaInput(type) { const checkbox = document.getElementById(`check-${type}`); const container = document.getElementById(`input-${type}-container`); checkbox.checked = !checkbox.checked; if(checkbox.checked) { container.classList.remove('hidden'); } else { container.classList.add('hidden'); document.getElementById(`new-ex-${type}`).value = ''; } }
 
-function openAddExerciseModal() { currentEditExerciseId = null; document.getElementById('modal-ex-title').innerText = "Nuevo Ejercicio"; document.getElementById('new-ex-name').value = ''; document.getElementById('new-ex-sets').value = '4'; document.getElementById('new-ex-reps').value = ''; document.getElementById('new-ex-type').value = 'carga'; document.getElementById('check-video').checked = false; document.getElementById('input-video-container').classList.add('hidden'); document.getElementById('new-ex-video').value = ''; document.getElementById('check-image').checked = false; document.getElementById('input-image-container').classList.add('hidden'); document.getElementById('new-ex-image').value = ''; document.getElementById('btn-save-exercise').innerText = "GUARDAR EJERCICIO"; openModal('modal-exercise'); }
-function openEditExerciseModal(exId) { currentEditExerciseId = exId; const ex = window.currentDayExercises.find(e => e.id === exId); document.getElementById('modal-ex-title').innerText = "Editar Ejercicio"; document.getElementById('new-ex-name').value = ex.exercise_name; document.getElementById('new-ex-sets').value = ex.sets; document.getElementById('new-ex-reps').value = ex.target_reps; document.getElementById('new-ex-type').value = ex.exercise_type || 'carga'; document.getElementById('check-video').checked = ex.has_video; document.getElementById('input-video-container').className = ex.has_video ? "mb-2 pl-4 border-l-2 border-custom-primary" : "hidden mb-2 pl-4 border-l-2 border-custom-primary"; document.getElementById('new-ex-video').value = ex.has_video ? `https://youtu.be/${ex.youtube_url}` : ''; document.getElementById('check-image').checked = ex.has_image; document.getElementById('input-image-container').className = ex.has_image ? "mb-4 pl-4 border-l-2 border-custom-primary" : "hidden mb-4 pl-4 border-l-2 border-custom-primary"; document.getElementById('new-ex-image').value = ex.image_url || ''; document.getElementById('btn-save-exercise').innerText = "ACTUALIZAR EJERCICIO"; openModal('modal-exercise'); }
-function promptDeleteExercise(exId, exName) { openModal('modal-confirm-delete-exercise'); const btn = document.getElementById('btn-confirm-delete-ex'); btn.onclick = async () => { btn.innerText = "Quitando..."; btn.disabled = true; try { const {error} = await supabaseClient.from('user_routines').delete().eq('id', exId); if(error) throw error; closeAllModals(); changeDay(currentActiveDay); } catch(e) { alert("Error: " + e.message); } finally { btn.innerText = "Sí, quitar"; btn.disabled = false; } }; }
-function extractYoutubeId(url) { if(!url) return null; const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/; const match = url.match(regExp); return (match && match[2].length === 11) ? match[2] : null; }
-
-async function saveExercise() {
-    const msgBox = document.getElementById('ex-error-msg'); const name = document.getElementById('new-ex-name').value; const sets = document.getElementById('new-ex-sets').value; const targetReps = document.getElementById('new-ex-reps').value; const exType = document.getElementById('new-ex-type').value; const hasVideo = document.getElementById('check-video').checked; let ytUrl = document.getElementById('new-ex-video').value; const ytId = extractYoutubeId(ytUrl); const hasImage = document.getElementById('check-image').checked; const imgUrl = document.getElementById('new-ex-image').value;
-    if(!name || !sets || !targetReps) { msgBox.innerText = "Completá el nombre, series y objetivo."; msgBox.classList.remove('hidden'); return; }
-    if(hasVideo && !ytId) { msgBox.innerText = "El link de YouTube no es válido."; msgBox.classList.remove('hidden'); return; }
-    if(hasImage && (!imgUrl || !imgUrl.startsWith('http'))) { msgBox.innerText = "Pegá un link de imagen válido (que empiece con http)."; msgBox.classList.remove('hidden'); return; }
-    const btn = document.getElementById('btn-save-exercise'); btn.innerText = "GUARDANDO..."; btn.disabled = true; msgBox.classList.add('hidden');
-    
-    const currentExercisesInDay = window.currentDayExercises.length;
-    const exData = { user_id: currentUserId, day_of_week: currentActiveDay, exercise_name: name, sets: parseInt(sets), target_reps: targetReps, exercise_type: exType, has_video: hasVideo, youtube_url: ytId, has_image: hasImage, image_url: imgUrl, order_index: currentExercisesInDay };
-    
-    try { if(currentEditExerciseId) { const { error } = await supabaseClient.from('user_routines').update(exData).eq('id', currentEditExerciseId); if (error) throw error; } else { const { error } = await supabaseClient.from('user_routines').insert([exData]); if (error) throw error; } closeAllModals(); changeDay(currentActiveDay); } catch (err) { msgBox.innerText = "Error: " + err.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = currentEditExerciseId ? "ACTUALIZAR EJERCICIO" : "GUARDAR EJERCICIO"; btn.disabled = false; }
-}
-
-window.toggleExMenu = function(id) {
-    const menu = document.getElementById(`ex-menu-${id}`);
-    document.querySelectorAll('.ex-dropdown').forEach(el => {
-        if (el.id !== `ex-menu-${id}`) el.classList.add('hidden');
-    });
-    menu.classList.toggle('hidden');
-};
-
-function promptCopyExercise(exId) {
-    exerciseToCopy = window.currentDayExercises.find(e => e.id === exId);
-    document.getElementById('copy-target-day').value = currentActiveDay;
-    openModal('modal-copy-exercise');
-}
-
-async function confirmCopyExercise() {
-    const targetDay = document.getElementById('copy-target-day').value;
-    const btn = document.getElementById('btn-confirm-copy');
-    btn.innerText = "Copiando..."; btn.disabled = true;
-    const { data: destExercises } = await supabaseClient.from('user_routines').select('id').eq('user_id', currentUserId).eq('day_of_week', targetDay);
-    const newOrderIndex = destExercises ? destExercises.length : 0;
-    const newEx = { user_id: currentUserId, day_of_week: targetDay, exercise_name: exerciseToCopy.exercise_name, sets: exerciseToCopy.sets, target_reps: exerciseToCopy.target_reps, exercise_type: exerciseToCopy.exercise_type, has_video: exerciseToCopy.has_video, youtube_url: exerciseToCopy.youtube_url, has_image: exerciseToCopy.has_image, image_url: exerciseToCopy.image_url, order_index: newOrderIndex };
-    try {
-        const {error} = await supabaseClient.from('user_routines').insert([newEx]);
-        if(error) throw error;
-        closeAllModals();
-        showToast("¡Ejercicio copiado exitosamente!");
-        if(targetDay === currentActiveDay) { changeDay(currentActiveDay); } 
-    } catch(e) { alert("Error al copiar: " + e.message); } finally { btn.innerText = "Copiar"; btn.disabled = false; }
-}
-
+// --- RENDERIZADO DE EJERCICIOS ---
 async function changeDay(day, event) {
     currentActiveDay = day;
-    if(event) { document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }); event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white'); event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } 
+    if(event) { playTap(); document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }); event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white'); event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } 
     else { document.querySelectorAll('.tab-btn').forEach(b => { if(b.innerText.toLowerCase() === day.toLowerCase()) { b.classList.add('active'); b.classList.remove('text-custom-textMuted'); b.classList.add('text-white'); b.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } else { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); } }); }
     const container = document.getElementById('exercise-container'); container.innerHTML = '<div class="col-span-1 md:col-span-2 text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando tu rutina...</div>';
     
@@ -596,6 +501,12 @@ async function changeDay(day, event) {
             const safeExName = escapeHTML(ex.exercise_name); const safeId = escapeHTML(ex.id);
             const exType = ex.exercise_type || 'carga';
             
+            // Re-inicializar variables de timer si no existen
+            if(!window.exerciseTimers[safeId]) window.exerciseTimers[safeId] = { seconds: 0, interval: null };
+            let tDisplay = formatTime(window.exerciseTimers[safeId].seconds);
+            let tIcon = window.exerciseTimers[safeId].interval ? '⏸️ Pausar' : '⏱️ Iniciar';
+            let tColor = window.exerciseTimers[safeId].interval ? 'text-orange-400' : 'text-custom-textMuted';
+
             let setsHtml = ''; 
             for(let i=1; i<=ex.sets; i++) { 
                 if (exType === 'tiempo') {
@@ -614,18 +525,11 @@ async function changeDay(day, event) {
             }
 
             let mediaHtml = ''; if(ex.has_image && ex.image_url) { mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden border border-custom-border w-full"><img src="${escapeHTML(ex.image_url)}" class="w-full h-auto block" onerror="this.parentElement.style.display='none';"></div>`; } 
-            
-            // FIX DE YOUTUBE: Siempre mostramos el enlace para buscar en YouTube si no hay video
-            if(ex.has_video && ex.youtube_url && ex.youtube_url.length === 11) { 
-                mediaHtml += `<div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${escapeHTML(ex.youtube_url)}" frameborder="0" allowfullscreen></iframe></div>`; 
-            } else { 
-                const searchQuery = encodeURIComponent(ex.exercise_name + " ejercicio tutorial tecnica"); 
-                mediaHtml += `<a href="https://www.youtube.com/results?search_query=${searchQuery}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-[#171717] border border-[#262626] text-custom-textMuted hover:text-white hover:border-custom-primary py-3 rounded-xl mb-6 font-bold text-xs uppercase tracking-widest transition-colors"><svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg> Buscar Tutorial en YouTube</a>`; 
-            }
+            if(ex.has_video && ex.youtube_url && ex.youtube_url.length === 11) { mediaHtml += `<div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${escapeHTML(ex.youtube_url)}" frameborder="0" allowfullscreen></iframe></div>`; } 
+            else { const searchQuery = encodeURIComponent(ex.exercise_name + " tutorial tecnica"); mediaHtml += `<a href="https://www.youtube.com/results?search_query=${searchQuery}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-[#171717] border border-[#262626] text-custom-textMuted hover:text-white hover:border-custom-primary py-3 rounded-xl mb-6 font-bold text-xs uppercase tracking-widest transition-colors"><svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg> Buscar en YouTube</a>`; }
 
             container.innerHTML += `
             <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative group" data-ex-id="${safeId}">
-                
                 <div class="absolute top-4 right-4 flex items-center gap-2 z-30 ex-menu-container">
                     <div class="relative">
                         <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button>
@@ -646,6 +550,15 @@ async function changeDay(day, event) {
                 <h3 class="text-xl font-bold mb-1 text-white uppercase italic tracking-tighter pr-28 break-words">${safeExName}</h3>
                 <p class="text-xs text-custom-primary font-bold tracking-widest mb-4 uppercase">Objetivo: ${escapeHTML(ex.target_reps)}</p>
                 ${mediaHtml}${setsHtml}
+                
+                <div class="flex items-center justify-between mt-2 mb-2 px-1 bg-[#0a0a0a] rounded-lg p-2 border border-[#262626]">
+                    <span class="text-xs text-white font-bold tracking-widest uppercase">Tiempo</span>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm font-black text-white w-12 text-center" id="display-extimer-${safeId}">${tDisplay}</span>
+                        <button onclick="toggleExTimer('${safeId}')" id="btn-extimer-${safeId}" class="px-3 py-1 bg-[#171717] rounded-md font-bold text-xs ${tColor} transition-colors border border-[#262626] hover:border-[#333]">${tIcon}</button>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
                     <button onclick="saveToCloud('${safeId}', ${ex.sets}, '${safeExName}', '${exType}', event)" class="w-full bg-custom-primary py-4 rounded-xl font-extrabold text-white tracking-widest hover:bg-custom-hover transition-all active:scale-95 shadow-lg relative overflow-hidden text-sm"><span class="relative z-10 btn-text">GUARDAR SESIÓN</span></button>
                     <button onclick="loadEvolucion('${safeId}', '${safeExName}', '${exType}')" id="btn-evo-${safeId}" class="w-full bg-transparent border-2 border-custom-border text-custom-textMuted py-4 rounded-xl font-bold hover:border-custom-primary hover:text-white transition-all active:scale-95 text-sm uppercase tracking-widest">VER PROGRESO</button>
@@ -658,10 +571,7 @@ async function changeDay(day, event) {
             handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', delay: 150, delayOnTouchOnly: true, touchStartThreshold: 3,
             onEnd: async function () {
                 const items = Array.from(document.getElementById('exercise-container').children);
-                const promises = items.map((item, index) => {
-                    const id = item.getAttribute('data-ex-id');
-                    return supabaseClient.from('user_routines').update({ order_index: index }).eq('id', id);
-                });
+                const promises = items.map((item, index) => { return supabaseClient.from('user_routines').update({ order_index: index }).eq('id', item.getAttribute('data-ex-id')); });
                 await Promise.all(promises);
             }
         });
@@ -669,22 +579,52 @@ async function changeDay(day, event) {
     } catch(e) { container.innerHTML = `<div class="col-span-1 md:col-span-2 text-center text-red-500 py-10 font-bold">Error al cargar rutinas: ${e.message}</div>`; }
 }
 
+// LÓGICA DEL CRONÓMETRO DE EJERCICIO
+window.toggleExTimer = function(exId) {
+    playTap();
+    if(!window.exerciseTimers[exId]) window.exerciseTimers[exId] = { seconds: 0, interval: null };
+    const t = window.exerciseTimers[exId];
+    const btn = document.getElementById(`btn-extimer-${exId}`);
+    const display = document.getElementById(`display-extimer-${exId}`);
+    
+    if(t.interval) {
+        clearInterval(t.interval); t.interval = null;
+        btn.innerHTML = '▶️ Retomar'; btn.classList.replace('text-green-400', 'text-orange-400');
+    } else {
+        btn.innerHTML = '⏸️ Pausar'; btn.classList.replace('text-custom-textMuted', 'text-green-400'); btn.classList.replace('text-orange-400', 'text-green-400');
+        t.interval = setInterval(() => {
+            t.seconds++;
+            let m = Math.floor(t.seconds / 60).toString().padStart(2, '0'); let s = (t.seconds % 60).toString().padStart(2, '0');
+            display.innerText = `${m}:${s}`;
+        }, 1000);
+    }
+};
+
 async function saveToCloud(exId, totalSets, exName, exType, btnEvent) {
     const btn = btnEvent.currentTarget; const btnText = btn.querySelector('.btn-text'); let logs = []; const today = new Date(); const dateString = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
+    
+    // Frenamos el timer si estaba corriendo y obtenemos el valor
+    let exTotalSeconds = 0;
+    if(window.exerciseTimers[exId]) {
+        if(window.exerciseTimers[exId].interval) { clearInterval(window.exerciseTimers[exId].interval); window.exerciseTimers[exId].interval = null; document.getElementById(`btn-extimer-${exId}`).innerHTML = '▶️ Retomar'; }
+        exTotalSeconds = window.exerciseTimers[exId].seconds;
+    }
+
     for(let i=1; i<=totalSets; i++) { 
         const checked = document.getElementById(`check-${exId}-${i}`).checked; 
         if (checked) {
             if (exType === 'tiempo') {
                 let m = document.getElementById(`min-${exId}-${i}`).value || 0; let s = document.getElementById(`seg-${exId}-${i}`).value || 0; let totalSecs = (parseInt(m) * 60) + parseInt(s);
-                if(totalSecs > 0) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: 0, reps: 0, time_seconds: totalSecs, exercise_type: 'tiempo', set_number: i, log_date: dateString }); }
+                if(totalSecs > 0) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: 0, reps: 0, time_seconds: totalSecs, exercise_type: 'tiempo', exercise_duration: exTotalSeconds, set_number: i, log_date: dateString }); }
             } else {
                 let w = document.getElementById(`peso-${exId}-${i}`).value; let r = document.getElementById(`reps-${exId}-${i}`).value;
-                if(w && r) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: parseFloat(w), reps: parseInt(r), time_seconds: 0, exercise_type: 'carga', set_number: i, log_date: dateString }); }
+                if(w && r) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: parseFloat(w), reps: parseInt(r), time_seconds: 0, exercise_type: 'carga', exercise_duration: exTotalSeconds, set_number: i, log_date: dateString }); }
             }
         } 
     }
+    
     if(logs.length === 0) { const originalText = btnText.innerText; btn.classList.add('bg-red-600'); btnText.innerText = "MARCÁ 1 SERIE MÍNIMO"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = originalText; }, 2000); return; } btnText.innerText = "GUARDANDO...";
-    try { await supabaseClient.from('workout_logs').delete().eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', dateString); await supabaseClient.from('workout_logs').insert(logs); btn.classList.replace('bg-custom-primary', 'bg-green-600'); btnText.innerText = "¡GUARDADO!"; const evoContainer = document.getElementById(`evo-container-${exId}`); if(!evoContainer.classList.contains('hidden')) loadEvolucion(exId, exName, exType, true); setTimeout(() => { btn.classList.replace('bg-green-600', 'bg-custom-primary'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); showToast("¡Entrenamiento registrado!"); } catch (e) { btn.classList.add('bg-red-600'); btnText.innerText = "ERROR"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); }
+    try { await supabaseClient.from('workout_logs').delete().eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', dateString); await supabaseClient.from('workout_logs').insert(logs); btn.classList.replace('bg-custom-primary', 'bg-green-600'); btnText.innerText = "¡GUARDADO!"; const evoContainer = document.getElementById(`evo-container-${exId}`); if(!evoContainer.classList.contains('hidden')) loadEvolucion(exId, exName, exType, true); setTimeout(() => { btn.classList.replace('bg-green-600', 'bg-custom-primary'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); showToast("¡Entrenamiento registrado!"); playVictory(); } catch (e) { btn.classList.add('bg-red-600'); btnText.innerText = "ERROR"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); }
 }
 
 async function loadEvolucion(exId, exName, exType, forceReload = false) {
@@ -698,12 +638,19 @@ async function loadEvolucion(exId, exName, exType, forceReload = false) {
         const groupedData = {}; 
         data.forEach(log => { 
             const [year, month, day] = log.log_date.split('-'); const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }); 
-            if (!groupedData[dateStr]) groupedData[dateStr] = { maxStat: 0, totalStat: 0, totalSets: 0, sets: [], rawDate: log.log_date }; 
+            if (!groupedData[dateStr]) groupedData[dateStr] = { maxStat: 0, totalStat: 0, totalSets: 0, duration: log.exercise_duration || 0, sets: [], rawDate: log.log_date }; 
             if (exType === 'tiempo') { if (log.time_seconds > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.time_seconds; groupedData[dateStr].totalStat += log.time_seconds; } 
             else { if (log.weight > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.weight; groupedData[dateStr].totalStat += log.reps; }
+            if(log.exercise_duration > groupedData[dateStr].duration) groupedData[dateStr].duration = log.exercise_duration; // Guarda el más alto si hay conflicto
             groupedData[dateStr].totalSets += 1; groupedData[dateStr].sets.push(log); 
         }); 
-        window.currentHistory[safeExId] = groupedData; const dates = Object.keys(groupedData); const chartDataMax = dates.map(d => groupedData[d].maxStat); const chartDataAvg = dates.map(d => Math.round((groupedData[d].totalStat / groupedData[d].totalSets) * 10) / 10); 
+        
+        window.currentHistory[safeExId] = groupedData; 
+        const dates = Object.keys(groupedData); 
+        const chartDataMax = dates.map(d => groupedData[d].maxStat); 
+        const chartDataAvg = dates.map(d => Math.round((groupedData[d].totalStat / groupedData[d].totalSets) * 10) / 10); 
+        const chartDataDuration = dates.map(d => Math.round(groupedData[d].duration / 60)); // En Minutos
+        
         let tableRows = ''; const reversedDates = [...dates].reverse(); 
         reversedDates.forEach(date => { 
             const dayData = groupedData[date]; dayData.sets.sort((a,b) => a.set_number - b.set_number); 
@@ -717,35 +664,66 @@ async function loadEvolucion(exId, exName, exType, forceReload = false) {
         const chartTitle1 = exType === 'tiempo' ? 'Tiempo Máximo (Segundos)' : 'Carga Máxima (Kilos)';
         const chartTitle2 = exType === 'tiempo' ? 'Promedio de Tiempo (Seg)' : 'Promedio de Repeticiones';
 
-        container.innerHTML = `<div class="mb-6 relative"><div class="flex overflow-x-auto snap-x-mandatory custom-scroll gap-4 pb-2" id="carousel-${safeExId}"><div class="min-w-full snap-center"><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle1} <span class="text-[8px] font-normal lowercase">(Deslizá ->)</span></h4><div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart1-${safeExId}"></canvas></div></div><div class="min-w-full snap-center"><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle2}</h4><div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart2-${safeExId}"></canvas></div></div></div><button onclick="analyzeProgress('${safeExId}', '${safeExName}', '${exType}')" class="w-full mt-2 bg-gradient-to-r from-purple-600/20 to-blue-500/20 border border-purple-500/30 text-purple-400 hover:text-white hover:bg-purple-500/40 py-3 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 text-sm"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>Analizar Progreso con IA</button></div><div><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">Historial</h4><div class="overflow-x-auto rounded-xl border border-custom-border bg-[#0a0a0a]"><table class="w-full text-left border-collapse"><thead class="bg-[#171717]"><tr class="border-b border-custom-border text-custom-textMuted text-[10px] uppercase tracking-widest"><th class="py-3 px-3 font-bold">Día</th><th class="py-3 px-2 font-bold">Series</th><th class="py-3 px-3 font-bold text-right">Acción</th></tr></thead><tbody>${tableRows}</tbody></table></div></div>`; 
+        // TRES GRÁFICOS AHORA
+        container.innerHTML = `
+        <div class="mb-6 relative">
+            <div class="flex overflow-x-auto snap-x-mandatory custom-scroll gap-4 pb-2" id="carousel-${safeExId}">
+                <div class="min-w-full snap-center">
+                    <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle1} <span class="text-[8px] font-normal lowercase">(Deslizá ->)</span></h4>
+                    <div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart1-${safeExId}"></canvas></div>
+                </div>
+                <div class="min-w-full snap-center">
+                    <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle2}</h4>
+                    <div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart2-${safeExId}"></canvas></div>
+                </div>
+                <div class="min-w-full snap-center">
+                    <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">Tiempo de Ejercicio (Mins)</h4>
+                    <div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart3-${safeExId}"></canvas></div>
+                </div>
+            </div>
+            <button onclick="analyzeProgress('${safeExId}', '${safeExName}', '${exType}')" class="w-full mt-2 bg-gradient-to-r from-purple-600/20 to-blue-500/20 border border-purple-500/30 text-purple-400 hover:text-white hover:bg-purple-500/40 py-3 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 text-sm">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> Analizar Progreso con IA
+            </button>
+        </div>
+        <div>
+            <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">Historial</h4>
+            <div class="overflow-x-auto rounded-xl border border-custom-border bg-[#0a0a0a]"><table class="w-full text-left border-collapse"><thead class="bg-[#171717]"><tr class="border-b border-custom-border text-custom-textMuted text-[10px] uppercase tracking-widest"><th class="py-3 px-3 font-bold">Día</th><th class="py-3 px-2 font-bold">Series</th><th class="py-3 px-3 font-bold text-right">Acción</th></tr></thead><tbody>${tableRows}</tbody></table></div>
+        </div>`; 
         container.classList.remove('hidden'); 
         
-        if (window.myCharts[safeExId + '-1']) window.myCharts[safeExId + '-1'].destroy(); if (window.myCharts[safeExId + '-2']) window.myCharts[safeExId + '-2'].destroy(); 
-        const ctx1 = document.getElementById(`chart1-${safeExId}`).getContext('2d'); window.myCharts[safeExId + '-1'] = new Chart(ctx1, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle1, data: chartDataMax, borderColor: '#F54927', backgroundColor: 'rgba(245, 73, 39, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#F54927', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
-        const ctx2 = document.getElementById(`chart2-${safeExId}`).getContext('2d'); window.myCharts[safeExId + '-2'] = new Chart(ctx2, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle2, data: chartDataAvg, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#3b82f6', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
+        if (window.myCharts[safeExId + '-1']) window.myCharts[safeExId + '-1'].destroy(); 
+        if (window.myCharts[safeExId + '-2']) window.myCharts[safeExId + '-2'].destroy(); 
+        if (window.myCharts[safeExId + '-3']) window.myCharts[safeExId + '-3'].destroy(); 
+        
+        const ctx1 = document.getElementById(`chart1-${safeExId}`).getContext('2d'); 
+        window.myCharts[safeExId + '-1'] = new Chart(ctx1, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle1, data: chartDataMax, borderColor: '#F54927', backgroundColor: 'rgba(245, 73, 39, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#F54927', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
+        
+        const ctx2 = document.getElementById(`chart2-${safeExId}`).getContext('2d'); 
+        window.myCharts[safeExId + '-2'] = new Chart(ctx2, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle2, data: chartDataAvg, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#3b82f6', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
+
+        const ctx3 = document.getElementById(`chart3-${safeExId}`).getContext('2d'); 
+        window.myCharts[safeExId + '-3'] = new Chart(ctx3, { type: 'bar', data: { labels: dates, datasets: [{ label: 'Minutos', data: chartDataDuration, backgroundColor: 'rgba(168, 85, 247, 0.8)', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } });
 
         btn.innerText = "OCULTAR PROGRESO"; btn.classList.replace('border-custom-border', 'border-custom-primary'); btn.classList.replace('text-custom-textMuted', 'text-white'); 
     } catch(err) { btn.innerText = "ERROR"; setTimeout(() => { btn.innerText = "VER PROGRESO"; }, 2000); }
 }
 
-function promptDeleteLog(exName, rawDate, exId, exType) {
-    const safeExName = escapeHTML(exName); const safeExId = escapeHTML(exId);
-    openModal('modal-confirm-delete'); const btn = document.getElementById('btn-confirm-delete'); const msgBox = document.getElementById('delete-error-msg'); btn.onclick = async () => { btn.innerText = "Borrando..."; btn.disabled = true; msgBox.classList.add('hidden'); try { await supabaseClient.from('workout_logs').delete().eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', rawDate); closeAllModals(); loadEvolucion(safeExId, safeExName, exType, true); } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = "Borrar"; btn.disabled = false; } };
+function openAddExerciseModal() { currentEditExerciseId = null; document.getElementById('modal-ex-title').innerText = "Nuevo Ejercicio"; document.getElementById('new-ex-name').value = ''; document.getElementById('new-ex-sets').value = '4'; document.getElementById('new-ex-reps').value = ''; document.getElementById('new-ex-type').value = 'carga'; document.getElementById('check-video').checked = false; document.getElementById('input-video-container').classList.add('hidden'); document.getElementById('new-ex-video').value = ''; document.getElementById('check-image').checked = false; document.getElementById('input-image-container').classList.add('hidden'); document.getElementById('new-ex-image').value = ''; document.getElementById('btn-save-exercise').innerText = "GUARDAR EJERCICIO"; openModal('modal-exercise'); }
+function openEditExerciseModal(exId) { currentEditExerciseId = exId; const ex = window.currentDayExercises.find(e => e.id === exId); document.getElementById('modal-ex-title').innerText = "Editar Ejercicio"; document.getElementById('new-ex-name').value = ex.exercise_name; document.getElementById('new-ex-sets').value = ex.sets; document.getElementById('new-ex-reps').value = ex.target_reps; document.getElementById('new-ex-type').value = ex.exercise_type || 'carga'; document.getElementById('check-video').checked = ex.has_video; document.getElementById('input-video-container').className = ex.has_video ? "mb-2 pl-4 border-l-2 border-custom-primary" : "hidden mb-2 pl-4 border-l-2 border-custom-primary"; document.getElementById('new-ex-video').value = ex.has_video ? `https://youtu.be/${ex.youtube_url}` : ''; document.getElementById('check-image').checked = ex.has_image; document.getElementById('input-image-container').className = ex.has_image ? "mb-4 pl-4 border-l-2 border-custom-primary" : "hidden mb-4 pl-4 border-l-2 border-custom-primary"; document.getElementById('new-ex-image').value = ex.image_url || ''; document.getElementById('btn-save-exercise').innerText = "ACTUALIZAR EJERCICIO"; openModal('modal-exercise'); }
+function promptDeleteExercise(exId, exName) { openModal('modal-confirm-delete-exercise'); const btn = document.getElementById('btn-confirm-delete-ex'); btn.onclick = async () => { btn.innerText = "Quitando..."; btn.disabled = true; try { const {error} = await supabaseClient.from('user_routines').delete().eq('id', exId); if(error) throw error; closeAllModals(); changeDay(currentActiveDay); } catch(e) { alert("Error: " + e.message); } finally { btn.innerText = "Sí, quitar"; btn.disabled = false; } }; }
+function extractYoutubeId(url) { if(!url) return null; const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/; const match = url.match(regExp); return (match && match[2].length === 11) ? match[2] : null; }
+
+async function saveExercise() {
+    const msgBox = document.getElementById('ex-error-msg'); const name = document.getElementById('new-ex-name').value; const sets = document.getElementById('new-ex-sets').value; const targetReps = document.getElementById('new-ex-reps').value; const exType = document.getElementById('new-ex-type').value; const hasVideo = document.getElementById('check-video').checked; let ytUrl = document.getElementById('new-ex-video').value; const ytId = extractYoutubeId(ytUrl); const hasImage = document.getElementById('check-image').checked; const imgUrl = document.getElementById('new-ex-image').value;
+    if(!name || !sets || !targetReps) { msgBox.innerText = "Completá el nombre, series y objetivo."; msgBox.classList.remove('hidden'); return; }
+    if(hasVideo && !ytId) { msgBox.innerText = "El link de YouTube no es válido."; msgBox.classList.remove('hidden'); return; }
+    if(hasImage && (!imgUrl || !imgUrl.startsWith('http'))) { msgBox.innerText = "Pegá un link de imagen válido (que empiece con http)."; msgBox.classList.remove('hidden'); return; }
+    const btn = document.getElementById('btn-save-exercise'); btn.innerText = "GUARDANDO..."; btn.disabled = true; msgBox.classList.add('hidden');
+    
+    const currentExercisesInDay = window.currentDayExercises.length;
+    const exData = { user_id: currentUserId, day_of_week: currentActiveDay, exercise_name: name, sets: parseInt(sets), target_reps: targetReps, exercise_type: exType, has_video: hasVideo, youtube_url: ytId, has_image: hasImage, image_url: imgUrl, order_index: currentExercisesInDay };
+    
+    try { if(currentEditExerciseId) { const { error } = await supabaseClient.from('user_routines').update(exData).eq('id', currentEditExerciseId); if (error) throw error; } else { const { error } = await supabaseClient.from('user_routines').insert([exData]); if (error) throw error; } closeAllModals(); changeDay(currentActiveDay); } catch (err) { msgBox.innerText = "Error: " + err.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = currentEditExerciseId ? "ACTUALIZAR EJERCICIO" : "GUARDAR EJERCICIO"; btn.disabled = false; }
 }
 
-function promptEditLog(exId, exName, dateStr, exType) {
-    const safeExId = escapeHTML(exId); const safeExName = escapeHTML(exName);
-    const dayData = window.currentHistory[exId][dateStr]; document.getElementById('edit-log-title').innerText = `Corregir ${dateStr}`; let html = ''; 
-    
-    dayData.sets.forEach(s => { 
-        if(exType === 'tiempo') {
-            let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60; let padM = m.toString().padStart(2, '0'); let padSeg = seg.toString().padStart(2, '0');
-            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2"><input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-m-${s.id}" value="${padM}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=2){ let n=document.getElementById('edit-s-${s.id}'); n.focus(); if(this.value.length>2){ n.value=this.value.slice(2,4); } this.value=this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"><span class="text-custom-textMuted font-bold mx-1 pb-1">:</span><input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-s-${s.id}" value="${padSeg}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>2) this.value=this.value.slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"></div></div>`;
-        } else {
-            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center gap-2"><input type="number" id="edit-w-${s.id}" value="${s.weight}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">kg</span><span class="text-custom-textMuted mx-1">x</span><input type="number" id="edit-r-${s.id}" value="${s.reps}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">rep</span></div></div>`; 
-        }
-    }); 
-    
-    document.getElementById('edit-log-sets-container').innerHTML = html; const btn = document.getElementById('btn-save-edit'); const msgBox = document.getElementById('edit-error-msg'); 
-    btn.onclick = async () => { btn.innerText = "Actualizando..."; btn.disabled = true; msgBox.classList.add('hidden'); try { for(let s of dayData.sets) { if(exType === 'tiempo') { let m = document.getElementById(`edit-m-${s.id}`).value || 0; let seg = document.getElementById(`edit-s-${s.id}`).value || 0; let t = (parseInt(m)*60) + parseInt(seg); await supabaseClient.from('workout_logs').update({ time_seconds: t }).eq('id', s.id); } else { let w = document.getElementById(`edit-w-${s.id}`).value; let r = document.getElementById(`edit-r-${s.id}`).value; await supabaseClient.from('workout_logs').update({ weight: parseFloat(w), reps: parseInt(r) }).eq('id', s.id); } } closeAllModals(); loadEvolucion(safeExId, safeExName, exType, true); } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = "Actualizar Datos"; btn.disabled = false; } }; openModal('modal-edit-log');
-}
+function toggleMediaInput(type) { const checkbox = document.getElementById(`check-${type}`); const container = document.getElementById(`input-${type}-container`); checkbox.checked = !checkbox.checked; if(checkbox.checked) { container.classList.remove('hidden'); } else { container.classList.add('hidden'); document.getElementById(`new-ex-${type}`).value = ''; } }
