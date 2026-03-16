@@ -13,15 +13,14 @@ let supabaseClient = null; let currentUserId = null; let isSignUp = false; let c
 let pendingSavedRoutineId = null;
 window.myCharts = {}; window.currentHistory = {}; window.currentDayExercises = []; window.chatHistory = [];
 
-// --- VARIABLES CRONÓMETRO ---
+// --- VARIABLES DE TIEMPO ---
 let timerInterval = null; let timerSecondsLeft = 0;
+let globalTimerInterval = null; let globalSeconds = 0;
 
-// --- MOTOR DE SONIDO (WEB AUDIO API) ---
+// --- MOTOR DE SONIDO MEJORADO (WEB AUDIO API) ---
 let audioCtx = null;
 function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } }
-// El navegador necesita un click para permitir el sonido
-document.addEventListener('click', initAudio, {once: true});
-document.addEventListener('touchstart', initAudio, {once: true});
+document.addEventListener('click', initAudio, {once: true}); document.addEventListener('touchstart', initAudio, {once: true});
 
 function playTone(freq, type, duration, vol=0.05) {
     if(!audioCtx) return;
@@ -35,12 +34,24 @@ function playTone(freq, type, duration, vol=0.05) {
 }
 function playTap() { playTone(600, 'sine', 0.1, 0.02); }
 function playPop() { playTone(400, 'triangle', 0.1, 0.03); }
+
+// NUEVA ALARMA: Un arpegio rápido ascendente (más energético)
 function playAlarm() {
     if(!audioCtx) return;
-    for(let i=0; i<4; i++) {
-        setTimeout(() => playTone(880, 'square', 0.15, 0.1), i*400);
-        setTimeout(() => playTone(1046.50, 'square', 0.15, 0.1), i*400 + 200);
+    const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+    for(let j=0; j<3; j++) { // Repite 3 veces
+        notes.forEach((freq, i) => {
+            setTimeout(() => playTone(freq, 'square', 0.1, 0.05), (j * 600) + (i * 100));
+        });
     }
+}
+// NUEVA VICTORIA: Acorde mayor de éxito
+function playVictory() {
+    if(!audioCtx) return;
+    const notes = [440, 554.37, 659.25, 880]; // A4, C#5, E5, A5
+    notes.forEach((freq, i) => {
+        setTimeout(() => playTone(freq, 'sine', 0.15, 0.08), i * 150);
+    });
 }
 
 function escapeHTML(str) {
@@ -52,7 +63,7 @@ function showToast(message) {
     const toast = document.getElementById('toast-notification');
     document.getElementById('toast-msg').innerText = message;
     toast.classList.remove('bottom-[-100px]', 'opacity-0'); toast.classList.add('bottom-10', 'opacity-100');
-    setTimeout(() => { toast.classList.add('bottom-[-100px]', 'opacity-0'); toast.classList.remove('bottom-10', 'opacity-100'); }, 2500);
+    setTimeout(() => { toast.classList.add('bottom-[-100px]', 'opacity-0'); toast.classList.remove('bottom-10', 'opacity-100'); }, 3000);
 }
 
 function formatTime(totalSeconds) {
@@ -72,59 +83,32 @@ document.getElementById('modal-overlay').addEventListener('click', function(e) {
     if (e.target === this) closeAllModals();
 });
 
-// --- LÓGICA DE DRAG & DROP DEL MINI TIMER ---
+// --- DRAG & DROP DEL MINI TIMER ---
 const miniTimer = document.getElementById('mini-timer-widget');
 let isDraggingTimer = false; let startX, startY, initialX, initialY;
-
 function timerDragStart(e) {
     if(e.target.closest('button')) return; 
     isDraggingTimer = true;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     const rect = miniTimer.getBoundingClientRect();
-    startX = clientX; startY = clientY;
-    initialX = rect.left; initialY = rect.top;
+    startX = clientX; startY = clientY; initialX = rect.left; initialY = rect.top;
     miniTimer.style.transition = 'none';
 }
-
 function timerDragMove(e) {
-    if(!isDraggingTimer) return;
-    e.preventDefault(); 
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    if(!isDraggingTimer) return; e.preventDefault(); 
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     const dx = clientX - startX; const dy = clientY - startY;
-    miniTimer.style.left = `${initialX + dx}px`;
-    miniTimer.style.top = `${initialY + dy}px`;
-    miniTimer.style.bottom = 'auto'; 
-    miniTimer.style.right = 'auto'; 
-    miniTimer.style.transform = 'none';
+    miniTimer.style.left = `${initialX + dx}px`; miniTimer.style.top = `${initialY + dy}px`; miniTimer.style.bottom = 'auto'; miniTimer.style.right = 'auto'; miniTimer.style.transform = 'none';
 }
-
 function timerDragEnd(e) {
-    if(!isDraggingTimer) return;
-    isDraggingTimer = false;
-    miniTimer.style.transition = 'all 0.3s ease';
-    const rect = miniTimer.getBoundingClientRect();
-    const screenWidth = window.innerWidth;
-    
-    // Snap (Imán) hacia la izquierda o derecha
-    if (rect.left + rect.width / 2 < screenWidth / 2) {
-        miniTimer.style.left = '16px'; 
-    } else {
-        miniTimer.style.left = `${screenWidth - rect.width - 16}px`; 
-    }
-    
-    // Límites arriba y abajo
+    if(!isDraggingTimer) return; isDraggingTimer = false; miniTimer.style.transition = 'all 0.3s ease';
+    const rect = miniTimer.getBoundingClientRect(); const screenWidth = window.innerWidth;
+    if (rect.left + rect.width / 2 < screenWidth / 2) { miniTimer.style.left = '16px'; } else { miniTimer.style.left = `${screenWidth - rect.width - 16}px`; }
     if(rect.top < 80) miniTimer.style.top = '80px';
     if(rect.top > window.innerHeight - 100) miniTimer.style.top = `${window.innerHeight - 100}px`;
 }
-
-miniTimer.addEventListener('mousedown', timerDragStart);
-window.addEventListener('mousemove', timerDragMove);
-window.addEventListener('mouseup', timerDragEnd);
-miniTimer.addEventListener('touchstart', timerDragStart, {passive: false});
-window.addEventListener('touchmove', timerDragMove, {passive: false});
-window.addEventListener('touchend', timerDragEnd);
+miniTimer.addEventListener('mousedown', timerDragStart); window.addEventListener('mousemove', timerDragMove); window.addEventListener('mouseup', timerDragEnd);
+miniTimer.addEventListener('touchstart', timerDragStart, {passive: false}); window.addEventListener('touchmove', timerDragMove, {passive: false}); window.addEventListener('touchend', timerDragEnd);
 
 // --- INICIALIZACIÓN ---
 document.addEventListener('DOMContentLoaded', async () => {
@@ -134,16 +118,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('auth-password').addEventListener('keypress', function (e) { if (e.key === 'Enter') handleAuth(); });
     document.getElementById('new-password-input').addEventListener('keypress', function (e) { if (e.key === 'Enter') saveNewPassword(); });
     document.getElementById('chat-input').addEventListener('keypress', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
-    
-    // Tecla Enter para Timer
     document.getElementById('timer-min').addEventListener('keypress', function (e) { if (e.key === 'Enter') toggleTimer(); });
     document.getElementById('timer-seg').addEventListener('keypress', function (e) { if (e.key === 'Enter') toggleTimer(); });
-    
-    // Tecla Enter para Ejercicios y Rutinas
     document.getElementById('routine-save-name').addEventListener('keypress', function (e) { if (e.key === 'Enter') saveRoutine(); });
-    ['new-ex-name', 'new-ex-sets', 'new-ex-reps'].forEach(id => {
-        document.getElementById(id)?.addEventListener('keypress', e => { if(e.key === 'Enter') saveExercise(); });
-    });
+    ['new-ex-name', 'new-ex-sets', 'new-ex-reps'].forEach(id => { document.getElementById(id)?.addEventListener('keypress', e => { if(e.key === 'Enter') saveExercise(); }); });
 
     try {
         if (window.supabase) {
@@ -158,11 +136,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             supabaseClient.auth.onAuthStateChange((event, session) => {
                 if (event === 'PASSWORD_RECOVERY') { isRecovering = true; openModal('modal-new-pwd'); } 
-                else if (event === 'SIGNED_IN' && session) { 
-                    setTimeout(() => {
-                        if(!isRecovering && !currentUserId) { currentUserId = session.user.id; loadDashboardView(session.user.email); }
-                    }, 500);
-                }
+                else if (event === 'SIGNED_IN' && session) { setTimeout(() => { if(!isRecovering && !currentUserId) { currentUserId = session.user.id; loadDashboardView(session.user.email); } }, 500); }
                 else if (event === 'SIGNED_OUT') { currentUserId = null; location.reload(); }
             });
         }
@@ -205,6 +179,66 @@ function toggleFabMenu() {
 
 function closeFabAndRun(callback) { toggleFabMenu(); callback(); }
 
+// --- TIEMPO GLOBAL DE ENTRENAMIENTO ---
+function startGlobalWorkout() {
+    playVictory(); 
+    document.getElementById('btn-start-workout').classList.add('hidden');
+    document.getElementById('global-workout-timer').classList.remove('hidden');
+    globalSeconds = 0; updateGlobalTimerDisplay();
+    globalTimerInterval = setInterval(() => { globalSeconds++; updateGlobalTimerDisplay(); }, 1000);
+}
+
+function updateGlobalTimerDisplay() {
+    let h = Math.floor(globalSeconds / 3600).toString().padStart(2, '0');
+    let m = Math.floor((globalSeconds % 3600) / 60).toString().padStart(2, '0');
+    let s = (globalSeconds % 60).toString().padStart(2, '0');
+    document.getElementById('global-timer-display').innerText = `${h}:${m}:${s}`;
+}
+
+async function stopGlobalWorkout() {
+    if(!confirm("¿Finalizar entrenamiento y guardar el tiempo total?")) return;
+    clearInterval(globalTimerInterval); globalTimerInterval = null;
+    document.getElementById('global-workout-timer').classList.add('hidden');
+    document.getElementById('btn-start-workout').classList.remove('hidden');
+    
+    const today = new Date(); 
+    const dateString = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
+    try {
+        await supabaseClient.from('workout_sessions').insert([{ user_id: currentUserId, session_date: dateString, duration_seconds: globalSeconds }]);
+        showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(globalSeconds)}`);
+        playVictory();
+    } catch(e) { console.error(e); }
+    globalSeconds = 0;
+}
+
+async function openGlobalStats() {
+    openModal('modal-global-stats');
+    const container = document.getElementById('global-stats-container');
+    container.innerHTML = '<div class="text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando métricas...</div>';
+    try {
+        const { data, error } = await supabaseClient.from('workout_sessions').select('session_date, duration_seconds').eq('user_id', currentUserId).order('session_date', { ascending: true });
+        if(error) throw error;
+        if(data.length === 0) { container.innerHTML = `<p class="text-custom-textMuted text-sm text-center">Aún no hay entrenamientos registrados.</p>`; return; }
+        
+        // Agrupamos por día (por si tocó Iniciar/Finalizar dos veces el mismo día)
+        const grouped = {};
+        data.forEach(d => {
+            if(!grouped[d.session_date]) grouped[d.session_date] = 0;
+            grouped[d.session_date] += d.duration_seconds;
+        });
+
+        const dates = Object.keys(grouped);
+        // Convertimos a minutos para el gráfico
+        const durations = dates.map(d => Math.round(grouped[d] / 60)); 
+        
+        container.innerHTML = `<div class="h-56 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart-global-time"></canvas></div>`;
+        const ctx = document.getElementById('chart-global-time').getContext('2d');
+        new Chart(ctx, { type: 'bar', data: { labels: dates, datasets: [{ label: 'Minutos de Entrenamiento', data: durations, backgroundColor: 'rgba(20, 184, 166, 0.8)', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } });
+        
+    } catch(e) { container.innerHTML = `<div class="text-xs text-red-500">Error: ${e.message}</div>`; }
+}
+
+
 // --- SOPORTE TÉCNICO ---
 async function submitSupportTicket() {
     const msg = document.getElementById('support-text').value.trim(); if(!msg) return;
@@ -217,7 +251,7 @@ async function submitSupportTicket() {
     } catch(e) { alert("Error: " + e.message); btn.innerText = "Enviar Mensaje"; btn.disabled = false; }
 }
 
-// --- CRONÓMETRO ---
+// --- CRONÓMETRO DE DESCANSO ---
 function openTimerModal() {
     document.getElementById('mini-timer-widget').classList.add('translate-x-[-150%]', 'opacity-0'); document.getElementById('mini-timer-widget').classList.remove('translate-x-0', 'opacity-100');
     if (timerSecondsLeft === 0) { document.getElementById('timer-min').value = ''; document.getElementById('timer-seg').value = ''; document.getElementById('timer-inputs').classList.remove('hidden'); document.getElementById('timer-display').classList.add('hidden'); } 
@@ -244,12 +278,7 @@ function toggleTimer() {
         updateTimerDisplay();
         timerInterval = setInterval(() => {
             timerSecondsLeft--; updateTimerDisplay();
-            if(timerSecondsLeft <= 0) { 
-                stopTimer(); 
-                playAlarm(); 
-                if (navigator.vibrate) navigator.vibrate([500, 200, 500]); 
-                showToast("¡Descanso Terminado!"); 
-            }
+            if(timerSecondsLeft <= 0) { stopTimer(); playAlarm(); if (navigator.vibrate) navigator.vibrate([500, 200, 500]); showToast("¡Descanso Terminado!"); }
         }, 1000);
     }
 }
@@ -318,6 +347,10 @@ function loadDashboardView(email) {
     document.getElementById('user-controls').classList.add('flex'); document.getElementById('user-display').innerText = email;
     document.getElementById('fab-container').classList.remove('hidden'); document.getElementById('fab-container').classList.add('flex');
     document.getElementById('fab-options').classList.add('pointer-events-none');
+    
+    // Mostramos el botón de empezar entrenamiento de forma prominente en el header
+    document.getElementById('btn-start-workout').classList.remove('hidden');
+    
     closeAllModals(); updateCreditsDisplay(); setTimeout(() => { changeDay('lunes'); }, 100);
 }
 async function handleSignOut() { if (supabaseClient) await supabaseClient.auth.signOut(); location.reload(); }
@@ -347,6 +380,7 @@ async function updateCreditsDisplay() {
     } catch(e) { document.getElementById('ai-credit-count').innerText = "10"; }
 }
 
+// --- RUTINAS ---
 async function openRoutinesModal() {
     openModal('modal-routines');
     const list = document.getElementById('saved-routines-list'); list.innerHTML = '<div class="text-center text-xs text-custom-textMuted py-4">Buscando rutinas...</div>';
@@ -419,7 +453,8 @@ async function processAIPrompt() {
     if(!userPrompt) { msgBox.innerText = "Escribí tu objetivo para que el Coach Inteligente arme la rutina."; msgBox.classList.remove('hidden'); return; }
     try { const { count, error } = await supabaseClient.from('user_routines').select('*', { count: 'exact', head: true }).eq('user_id', currentUserId);
         if (error) throw error; 
-        currentAIPrompt = userPrompt + ". MUY IMPORTANTE: Devuelve un JSON exacto. Cada ejercicio DEBE tener: 'day_of_week', 'exercise_name', 'sets', 'target_reps' (si hay descanso ponlo aquí ej: '10 reps - 60s rest'), y 'exercise_type' (debe ser estrictamente la palabra 'carga' si es de peso/repeticiones o 'tiempo' si es isometría/cardio/planchas)."; 
+        // FIX: Prompt modificado para pedir rutinas completas (5 o 6 ejercicios)
+        currentAIPrompt = userPrompt + ". MUY IMPORTANTE: Devuelve un JSON exacto. La rutina debe ser COMPLETA y exigente, incluyendo al menos 5 a 6 ejercicios por cada día de entrenamiento. Cada ejercicio DEBE tener: 'day_of_week', 'exercise_name', 'sets', 'target_reps' (incluye el descanso aquí, ej: '10 reps - 60s rest'), y 'exercise_type' (debe ser estrictamente la palabra 'carga' si es de peso/repeticiones o 'tiempo' si es isometría/cardio/planchas)."; 
         if (count > 0) openModal('modal-confirm-ai-overwrite'); else proceedWithAIGeneration();
     } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); }
 }
@@ -546,7 +581,7 @@ async function confirmCopyExercise() {
 
 async function changeDay(day, event) {
     currentActiveDay = day;
-    if(event) { playTap(); document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }); event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white'); event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } 
+    if(event) { document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); }); event.target.classList.add('active'); event.target.classList.remove('text-custom-textMuted'); event.target.classList.add('text-white'); event.target.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } 
     else { document.querySelectorAll('.tab-btn').forEach(b => { if(b.innerText.toLowerCase() === day.toLowerCase()) { b.classList.add('active'); b.classList.remove('text-custom-textMuted'); b.classList.add('text-white'); b.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' }); } else { b.classList.remove('active'); b.classList.add('text-custom-textMuted'); b.classList.remove('text-white'); } }); }
     const container = document.getElementById('exercise-container'); container.innerHTML = '<div class="col-span-1 md:col-span-2 text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando tu rutina...</div>';
     
@@ -578,50 +613,34 @@ async function changeDay(day, event) {
                 }
             }
 
-            let mediaHtml = ''; if(ex.has_image && ex.image_url) { mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden border border-custom-border w-full"><img src="${escapeHTML(ex.image_url)}" class="w-full h-auto block" onerror="this.parentElement.style.display='none';"></div>`; } if(ex.has_video && ex.youtube_url && ex.youtube_url.length === 11) { mediaHtml += `<div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${escapeHTML(ex.youtube_url)}" frameborder="0" allowfullscreen></iframe></div>`; } else if (!ex.has_video && !ex.has_image) { const searchQuery = encodeURIComponent(ex.exercise_name + " ejercicio tutorial tecnica"); mediaHtml += `<a href="https://www.youtube.com/results?search_query=${searchQuery}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-[#171717] border border-[#262626] text-custom-textMuted hover:text-white hover:border-custom-primary py-3 rounded-xl mb-6 font-bold text-xs uppercase tracking-widest transition-colors"><svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg> Buscar Tutorial en YouTube</a>`; }
+            let mediaHtml = ''; if(ex.has_image && ex.image_url) { mediaHtml += `<div class="mb-6 rounded-xl overflow-hidden border border-custom-border w-full"><img src="${escapeHTML(ex.image_url)}" class="w-full h-auto block" onerror="this.parentElement.style.display='none';"></div>`; } 
+            
+            // FIX DE YOUTUBE: Siempre mostramos el enlace para buscar en YouTube si no hay video
+            if(ex.has_video && ex.youtube_url && ex.youtube_url.length === 11) { 
+                mediaHtml += `<div class="aspect-video mb-6 rounded-xl overflow-hidden bg-black border border-custom-border"><iframe class="w-full h-full" src="https://www.youtube.com/embed/${escapeHTML(ex.youtube_url)}" frameborder="0" allowfullscreen></iframe></div>`; 
+            } else { 
+                const searchQuery = encodeURIComponent(ex.exercise_name + " ejercicio tutorial tecnica"); 
+                mediaHtml += `<a href="https://www.youtube.com/results?search_query=${searchQuery}" target="_blank" class="flex items-center justify-center gap-2 w-full bg-[#171717] border border-[#262626] text-custom-textMuted hover:text-white hover:border-custom-primary py-3 rounded-xl mb-6 font-bold text-xs uppercase tracking-widest transition-colors"><svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg> Buscar Tutorial en YouTube</a>`; 
+            }
 
             container.innerHTML += `
             <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative group" data-ex-id="${safeId}">
                 
                 <div class="absolute top-4 right-4 flex items-center gap-2 z-30 ex-menu-container">
-                    
                     <div class="relative">
-                        <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones">
-                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
-                        </button>
-                        
+                        <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg></button>
                         <div id="ex-menu-${safeId}" class="ex-dropdown hidden absolute right-0 mt-2 w-48 bg-[#171717] border border-[#262626] rounded-xl shadow-2xl py-2 flex flex-col z-50">
-                            <button onclick="askCoachAbout('${safeExName}')" class="flex items-center gap-3 px-4 py-3 text-sm text-purple-400 hover:text-white hover:bg-purple-500/20 transition-colors text-left w-full font-bold">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                                Consultar Coach
-                            </button>
+                            <button onclick="askCoachAbout('${safeExName}')" class="flex items-center gap-3 px-4 py-3 text-sm text-purple-400 hover:text-white hover:bg-purple-500/20 transition-colors text-left w-full font-bold"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>Consultar Coach</button>
                             <div class="h-px bg-[#262626] my-1 w-full"></div>
-                            
-                            <button onclick="promptCopyExercise('${safeId}')" class="flex items-center gap-3 px-4 py-3 text-sm text-custom-textMuted hover:text-white hover:bg-[#262626] transition-colors text-left w-full">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                                Copiar
-                            </button>
-                            <button onclick="openEditExerciseModal('${safeId}')" class="flex items-center gap-3 px-4 py-3 text-sm text-custom-textMuted hover:text-white hover:bg-[#262626] transition-colors text-left w-full">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
-                                Editar
-                            </button>
+                            <button onclick="promptCopyExercise('${safeId}')" class="flex items-center gap-3 px-4 py-3 text-sm text-custom-textMuted hover:text-white hover:bg-[#262626] transition-colors text-left w-full"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>Copiar</button>
+                            <button onclick="openEditExerciseModal('${safeId}')" class="flex items-center gap-3 px-4 py-3 text-sm text-custom-textMuted hover:text-white hover:bg-[#262626] transition-colors text-left w-full"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>Editar</button>
                             <div class="h-px bg-[#262626] my-1 w-full"></div>
-                            <button onclick="promptDeleteExercise('${safeId}', '${safeExName}')" class="flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:text-white hover:bg-red-500 transition-colors text-left w-full">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                Eliminar
-                            </button>
+                            <button onclick="promptDeleteExercise('${safeId}', '${safeExName}')" class="flex items-center gap-3 px-4 py-3 text-sm text-red-500 hover:text-white hover:bg-red-500 transition-colors text-left w-full"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>Eliminar</button>
                         </div>
                     </div>
-
                     <div class="drag-handle p-2 text-custom-textMuted hover:text-white transition-colors cursor-grab active:cursor-grabbing" title="Mantener para mover">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 3v6" /><path d="M9 6l3-3 3 3" />
-                            <path d="M12 21v-6" /><path d="M9 18l3 3 3-3" />
-                            <path d="M3 12h6" /><path d="M6 9l-3 3 3 3" />
-                            <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
-                        </svg>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6" /><path d="M9 6l3-3 3 3" /><path d="M12 21v-6" /><path d="M9 18l3 3 3-3" /><path d="M3 12h6" /><path d="M6 9l-3 3 3 3" /><path d="M21 12h-6" /><path d="M18 9l3 3-3 3" /></svg>
                     </div>
-
                 </div>
                 
                 <h3 class="text-xl font-bold mb-1 text-white uppercase italic tracking-tighter pr-28 break-words">${safeExName}</h3>
@@ -636,12 +655,7 @@ async function changeDay(day, event) {
         });
 
         Sortable.create(document.getElementById('exercise-container'), {
-            handle: '.drag-handle', 
-            animation: 150, 
-            ghostClass: 'sortable-ghost', 
-            delay: 150, 
-            delayOnTouchOnly: true, 
-            touchStartThreshold: 3,
+            handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', delay: 150, delayOnTouchOnly: true, touchStartThreshold: 3,
             onEnd: async function () {
                 const items = Array.from(document.getElementById('exercise-container').children);
                 const promises = items.map((item, index) => {
@@ -661,20 +675,16 @@ async function saveToCloud(exId, totalSets, exName, exType, btnEvent) {
         const checked = document.getElementById(`check-${exId}-${i}`).checked; 
         if (checked) {
             if (exType === 'tiempo') {
-                let m = document.getElementById(`min-${exId}-${i}`).value || 0;
-                let s = document.getElementById(`seg-${exId}-${i}`).value || 0;
-                let totalSecs = (parseInt(m) * 60) + parseInt(s);
+                let m = document.getElementById(`min-${exId}-${i}`).value || 0; let s = document.getElementById(`seg-${exId}-${i}`).value || 0; let totalSecs = (parseInt(m) * 60) + parseInt(s);
                 if(totalSecs > 0) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: 0, reps: 0, time_seconds: totalSecs, exercise_type: 'tiempo', set_number: i, log_date: dateString }); }
             } else {
-                let w = document.getElementById(`peso-${exId}-${i}`).value;
-                let r = document.getElementById(`reps-${exId}-${i}`).value;
+                let w = document.getElementById(`peso-${exId}-${i}`).value; let r = document.getElementById(`reps-${exId}-${i}`).value;
                 if(w && r) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: parseFloat(w), reps: parseInt(r), time_seconds: 0, exercise_type: 'carga', set_number: i, log_date: dateString }); }
             }
         } 
     }
-    
     if(logs.length === 0) { const originalText = btnText.innerText; btn.classList.add('bg-red-600'); btnText.innerText = "MARCÁ 1 SERIE MÍNIMO"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = originalText; }, 2000); return; } btnText.innerText = "GUARDANDO...";
-    try { await supabaseClient.from('workout_logs').delete().eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', dateString); await supabaseClient.from('workout_logs').insert(logs); btn.classList.replace('bg-custom-primary', 'bg-green-600'); btnText.innerText = "¡GUARDADO!"; const evoContainer = document.getElementById(`evo-container-${exId}`); if(!evoContainer.classList.contains('hidden')) loadEvolucion(exId, exName, exType, true); setTimeout(() => { btn.classList.replace('bg-green-600', 'bg-custom-primary'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); showToast("¡Entrenamiento registrado!"); playSuccess(); } catch (e) { btn.classList.add('bg-red-600'); btnText.innerText = "ERROR"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); }
+    try { await supabaseClient.from('workout_logs').delete().eq('user_id', currentUserId).eq('exercise_name', exName).eq('log_date', dateString); await supabaseClient.from('workout_logs').insert(logs); btn.classList.replace('bg-custom-primary', 'bg-green-600'); btnText.innerText = "¡GUARDADO!"; const evoContainer = document.getElementById(`evo-container-${exId}`); if(!evoContainer.classList.contains('hidden')) loadEvolucion(exId, exName, exType, true); setTimeout(() => { btn.classList.replace('bg-green-600', 'bg-custom-primary'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); showToast("¡Entrenamiento registrado!"); } catch (e) { btn.classList.add('bg-red-600'); btnText.innerText = "ERROR"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = "GUARDAR SESIÓN"; }, 2000); }
 }
 
 async function loadEvolucion(exId, exName, exType, forceReload = false) {
@@ -689,70 +699,30 @@ async function loadEvolucion(exId, exName, exType, forceReload = false) {
         data.forEach(log => { 
             const [year, month, day] = log.log_date.split('-'); const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }); 
             if (!groupedData[dateStr]) groupedData[dateStr] = { maxStat: 0, totalStat: 0, totalSets: 0, sets: [], rawDate: log.log_date }; 
-            
-            if (exType === 'tiempo') { 
-                if (log.time_seconds > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.time_seconds; 
-                groupedData[dateStr].totalStat += log.time_seconds;
-            } else { 
-                if (log.weight > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.weight; 
-                groupedData[dateStr].totalStat += log.reps;
-            }
-            
-            groupedData[dateStr].totalSets += 1;
-            groupedData[dateStr].sets.push(log); 
+            if (exType === 'tiempo') { if (log.time_seconds > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.time_seconds; groupedData[dateStr].totalStat += log.time_seconds; } 
+            else { if (log.weight > groupedData[dateStr].maxStat) groupedData[dateStr].maxStat = log.weight; groupedData[dateStr].totalStat += log.reps; }
+            groupedData[dateStr].totalSets += 1; groupedData[dateStr].sets.push(log); 
         }); 
-        
-        window.currentHistory[safeExId] = groupedData; 
-        const dates = Object.keys(groupedData); 
-        const chartDataMax = dates.map(d => groupedData[d].maxStat); 
-        const chartDataAvg = dates.map(d => Math.round((groupedData[d].totalStat / groupedData[d].totalSets) * 10) / 10); 
-        
+        window.currentHistory[safeExId] = groupedData; const dates = Object.keys(groupedData); const chartDataMax = dates.map(d => groupedData[d].maxStat); const chartDataAvg = dates.map(d => Math.round((groupedData[d].totalStat / groupedData[d].totalSets) * 10) / 10); 
         let tableRows = ''; const reversedDates = [...dates].reverse(); 
-        
         reversedDates.forEach(date => { 
             const dayData = groupedData[date]; dayData.sets.sort((a,b) => a.set_number - b.set_number); 
             const badges = dayData.sets.map(s => {
                 if (exType === 'tiempo') { return `<span class="inline-block bg-[#262626] border border-[#333] text-xs px-2 py-1 rounded text-custom-textMuted whitespace-nowrap mb-1 mr-1"><strong class="text-white">${formatTime(s.time_seconds)}</strong></span>`; }
                 else { return `<span class="inline-block bg-[#262626] border border-[#333] text-xs px-2 py-1 rounded text-custom-textMuted whitespace-nowrap mb-1 mr-1"><strong class="text-white">${s.weight}kg</strong> x ${s.reps}</span>`; }
             }).join(''); 
-            
             tableRows += `<tr class="border-b border-custom-border hover:bg-[#171717] transition-colors"><td class="py-3 px-3 text-sm font-bold text-custom-primary whitespace-nowrap align-middle">${date}</td><td class="py-3 px-2 align-middle w-full">${badges}</td><td class="py-3 px-3 align-middle text-right space-x-1 whitespace-nowrap"><button type="button" onclick="promptEditLog('${safeExId}', '${safeExName}', '${date}', '${exType}')" class="p-1.5 bg-[#262626] rounded text-custom-textMuted hover:text-white transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button><button type="button" onclick="promptDeleteLog('${safeExName}', '${dayData.rawDate}', '${safeExId}', '${exType}')" class="p-1.5 bg-red-500/10 rounded text-red-500 hover:bg-red-500 hover:text-white transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></td></tr>`; 
         }); 
         
         const chartTitle1 = exType === 'tiempo' ? 'Tiempo Máximo (Segundos)' : 'Carga Máxima (Kilos)';
         const chartTitle2 = exType === 'tiempo' ? 'Promedio de Tiempo (Seg)' : 'Promedio de Repeticiones';
 
-        container.innerHTML = `
-        <div class="mb-6 relative">
-            <div class="flex overflow-x-auto snap-x-mandatory custom-scroll gap-4 pb-2" id="carousel-${safeExId}">
-                <div class="min-w-full snap-center">
-                    <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle1} <span class="text-[8px] font-normal lowercase">(Deslizá ->)</span></h4>
-                    <div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart1-${safeExId}"></canvas></div>
-                </div>
-                <div class="min-w-full snap-center">
-                    <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle2}</h4>
-                    <div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart2-${safeExId}"></canvas></div>
-                </div>
-            </div>
-            <button onclick="analyzeProgress('${safeExId}', '${safeExName}', '${exType}')" class="w-full mt-2 bg-gradient-to-r from-purple-600/20 to-blue-500/20 border border-purple-500/30 text-purple-400 hover:text-white hover:bg-purple-500/40 py-3 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 text-sm">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                Analizar Progreso con IA
-            </button>
-        </div>
-        <div>
-            <h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">Historial</h4>
-            <div class="overflow-x-auto rounded-xl border border-custom-border bg-[#0a0a0a]"><table class="w-full text-left border-collapse"><thead class="bg-[#171717]"><tr class="border-b border-custom-border text-custom-textMuted text-[10px] uppercase tracking-widest"><th class="py-3 px-3 font-bold">Día</th><th class="py-3 px-2 font-bold">Series</th><th class="py-3 px-3 font-bold text-right">Acción</th></tr></thead><tbody>${tableRows}</tbody></table></div>
-        </div>`; 
+        container.innerHTML = `<div class="mb-6 relative"><div class="flex overflow-x-auto snap-x-mandatory custom-scroll gap-4 pb-2" id="carousel-${safeExId}"><div class="min-w-full snap-center"><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle1} <span class="text-[8px] font-normal lowercase">(Deslizá ->)</span></h4><div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart1-${safeExId}"></canvas></div></div><div class="min-w-full snap-center"><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">${chartTitle2}</h4><div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative"><canvas id="chart2-${safeExId}"></canvas></div></div></div><button onclick="analyzeProgress('${safeExId}', '${safeExName}', '${exType}')" class="w-full mt-2 bg-gradient-to-r from-purple-600/20 to-blue-500/20 border border-purple-500/30 text-purple-400 hover:text-white hover:bg-purple-500/40 py-3 rounded-xl font-bold transition-all shadow-lg flex items-center justify-center gap-2 text-sm"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>Analizar Progreso con IA</button></div><div><h4 class="text-[10px] font-black text-custom-textMuted mb-3 uppercase tracking-[0.2em]">Historial</h4><div class="overflow-x-auto rounded-xl border border-custom-border bg-[#0a0a0a]"><table class="w-full text-left border-collapse"><thead class="bg-[#171717]"><tr class="border-b border-custom-border text-custom-textMuted text-[10px] uppercase tracking-widest"><th class="py-3 px-3 font-bold">Día</th><th class="py-3 px-2 font-bold">Series</th><th class="py-3 px-3 font-bold text-right">Acción</th></tr></thead><tbody>${tableRows}</tbody></table></div></div>`; 
         container.classList.remove('hidden'); 
         
-        if (window.myCharts[safeExId + '-1']) window.myCharts[safeExId + '-1'].destroy(); 
-        if (window.myCharts[safeExId + '-2']) window.myCharts[safeExId + '-2'].destroy(); 
-        
-        const ctx1 = document.getElementById(`chart1-${safeExId}`).getContext('2d'); 
-        window.myCharts[safeExId + '-1'] = new Chart(ctx1, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle1, data: chartDataMax, borderColor: '#F54927', backgroundColor: 'rgba(245, 73, 39, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#F54927', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
-        
-        const ctx2 = document.getElementById(`chart2-${safeExId}`).getContext('2d'); 
-        window.myCharts[safeExId + '-2'] = new Chart(ctx2, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle2, data: chartDataAvg, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#3b82f6', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
+        if (window.myCharts[safeExId + '-1']) window.myCharts[safeExId + '-1'].destroy(); if (window.myCharts[safeExId + '-2']) window.myCharts[safeExId + '-2'].destroy(); 
+        const ctx1 = document.getElementById(`chart1-${safeExId}`).getContext('2d'); window.myCharts[safeExId + '-1'] = new Chart(ctx1, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle1, data: chartDataMax, borderColor: '#F54927', backgroundColor: 'rgba(245, 73, 39, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#F54927', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
+        const ctx2 = document.getElementById(`chart2-${safeExId}`).getContext('2d'); window.myCharts[safeExId + '-2'] = new Chart(ctx2, { type: 'line', data: { labels: dates, datasets: [{ label: chartTitle2, data: chartDataAvg, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 3, tension: 0.4, pointRadius: 4, pointBackgroundColor: '#0a0a0a', pointBorderColor: '#3b82f6', pointBorderWidth: 2, fill: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } }); 
 
         btn.innerText = "OCULTAR PROGRESO"; btn.classList.replace('border-custom-border', 'border-custom-primary'); btn.classList.replace('text-custom-textMuted', 'text-white'); 
     } catch(err) { btn.innerText = "ERROR"; setTimeout(() => { btn.innerText = "VER PROGRESO"; }, 2000); }
@@ -769,37 +739,13 @@ function promptEditLog(exId, exName, dateStr, exType) {
     
     dayData.sets.forEach(s => { 
         if(exType === 'tiempo') {
-            let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60;
-            let padM = m.toString().padStart(2, '0'); let padSeg = seg.toString().padStart(2, '0');
-            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]">
-                <span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span>
-                <div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2">
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-m-${s.id}" value="${padM}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=2){ let n=document.getElementById('edit-s-${s.id}'); n.focus(); if(this.value.length>2){ n.value=this.value.slice(2,4); } this.value=this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
-                    <span class="text-custom-textMuted font-bold mx-1 pb-1">:</span>
-                    <input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-s-${s.id}" value="${padSeg}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>2) this.value=this.value.slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
-                </div>
-            </div>`;
+            let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60; let padM = m.toString().padStart(2, '0'); let padSeg = seg.toString().padStart(2, '0');
+            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2"><input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-m-${s.id}" value="${padM}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=2){ let n=document.getElementById('edit-s-${s.id}'); n.focus(); if(this.value.length>2){ n.value=this.value.slice(2,4); } this.value=this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"><span class="text-custom-textMuted font-bold mx-1 pb-1">:</span><input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-s-${s.id}" value="${padSeg}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>2) this.value=this.value.slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"></div></div>`;
         } else {
             html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center gap-2"><input type="number" id="edit-w-${s.id}" value="${s.weight}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">kg</span><span class="text-custom-textMuted mx-1">x</span><input type="number" id="edit-r-${s.id}" value="${s.reps}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">rep</span></div></div>`; 
         }
     }); 
     
     document.getElementById('edit-log-sets-container').innerHTML = html; const btn = document.getElementById('btn-save-edit'); const msgBox = document.getElementById('edit-error-msg'); 
-    btn.onclick = async () => { 
-        btn.innerText = "Actualizando..."; btn.disabled = true; msgBox.classList.add('hidden'); 
-        try { 
-            for(let s of dayData.sets) { 
-                if(exType === 'tiempo') {
-                    let m = document.getElementById(`edit-m-${s.id}`).value || 0; let seg = document.getElementById(`edit-s-${s.id}`).value || 0;
-                    let t = (parseInt(m)*60) + parseInt(seg);
-                    await supabaseClient.from('workout_logs').update({ time_seconds: t }).eq('id', s.id);
-                } else {
-                    let w = document.getElementById(`edit-w-${s.id}`).value; let r = document.getElementById(`edit-r-${s.id}`).value; 
-                    await supabaseClient.from('workout_logs').update({ weight: parseFloat(w), reps: parseInt(r) }).eq('id', s.id); 
-                }
-            } 
-            closeAllModals(); loadEvolucion(safeExId, safeExName, exType, true); 
-        } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = "Actualizar Datos"; btn.disabled = false; } 
-    }; 
-    openModal('modal-edit-log');
+    btn.onclick = async () => { btn.innerText = "Actualizando..."; btn.disabled = true; msgBox.classList.add('hidden'); try { for(let s of dayData.sets) { if(exType === 'tiempo') { let m = document.getElementById(`edit-m-${s.id}`).value || 0; let seg = document.getElementById(`edit-s-${s.id}`).value || 0; let t = (parseInt(m)*60) + parseInt(seg); await supabaseClient.from('workout_logs').update({ time_seconds: t }).eq('id', s.id); } else { let w = document.getElementById(`edit-w-${s.id}`).value; let r = document.getElementById(`edit-r-${s.id}`).value; await supabaseClient.from('workout_logs').update({ weight: parseFloat(w), reps: parseInt(r) }).eq('id', s.id); } } closeAllModals(); loadEvolucion(safeExId, safeExName, exType, true); } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = "Actualizar Datos"; btn.disabled = false; } }; openModal('modal-edit-log');
 }
