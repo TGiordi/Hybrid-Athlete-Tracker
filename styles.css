@@ -1,6 +1,6 @@
-/* ========================================== */
-/* 💅 ESTILOS CSS PERSONALIZADOS (HAT)        */
-/* ========================================== */
+/* ==========================================
+      💅 ESTILOS CSS PERSONALIZADOS (HAT)        
+   ========================================== */
 
 body { background-color: #0a0a0a; color: #F8FAFC; min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
 .tab-btn.active { border-bottom: 3px solid #F54927; color: white; font-weight: 800; }
