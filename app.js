@@ -12,6 +12,10 @@ const REDIRECT_URL = "https://tgiordi.github.io/Hybrid-Athlete-Tracker/";
 let supabaseClient = null; let currentUserId = null; let isSignUp = false; let currentActiveDay = 'lunes'; let currentEditExerciseId = null; let currentAIPrompt = ""; let exerciseToCopy = null;
 window.myCharts = {}; window.currentHistory = {}; window.currentDayExercises = []; window.chatHistory = [];
 
+// Variables Cronómetro
+let timerInterval = null;
+let timerSecondsLeft = 0;
+
 function escapeHTML(str) {
     if (!str) return '';
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -28,36 +32,6 @@ function showToast(message) {
     }, 2500);
 }
 
-// NUEVO: Efecto visual de Token ultra sutil y universal
-function animateTokenLoss() {
-    const badgeContainer = document.getElementById('credit-badge');
-    const badgeText = document.getElementById('ai-credit-count');
-    if(!badgeText || badgeText.innerHTML.includes('infin')) return;
-
-    // Latido sutil en el contenedor
-    badgeContainer.style.transition = 'all 0.3s';
-    badgeContainer.style.transform = 'scale(1.1)';
-    badgeContainer.style.borderColor = '#c084fc'; // purple-400
-    badgeContainer.style.backgroundColor = 'rgba(168, 85, 247, 0.3)';
-    
-    setTimeout(() => {
-        badgeContainer.style.transform = 'scale(1)';
-        badgeContainer.style.borderColor = '';
-        badgeContainer.style.backgroundColor = '';
-    }, 300);
-
-    // Texto flotante
-    const rect = badgeContainer.getBoundingClientRect();
-    const animEl = document.createElement('div');
-    animEl.className = 'fixed text-purple-400 font-bold text-sm z-[9999] pointer-events-none token-anim';
-    animEl.innerText = '-1 ⚡';
-    animEl.style.left = `${rect.left + (rect.width / 2) - 10}px`;
-    animEl.style.top = `${rect.top}px`;
-    document.body.appendChild(animEl);
-
-    setTimeout(() => animEl.remove(), 1000);
-}
-
 function formatTime(totalSeconds) {
     if(!totalSeconds) return "0s";
     let m = Math.floor(totalSeconds / 60);
@@ -67,9 +41,17 @@ function formatTime(totalSeconds) {
     return `${s}s`;
 }
 
+// Cierre de menús flotantes
 document.addEventListener('click', (e) => {
     if (!e.target.closest('.ex-menu-container')) {
         document.querySelectorAll('.ex-dropdown').forEach(el => el.classList.add('hidden'));
+    }
+});
+
+// NUEVO: Cerrar modal haciendo clic en la parte oscura
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeAllModals();
     }
 });
 
@@ -132,6 +114,87 @@ function toggleFabMenu() {
 
 function closeFabAndRun(callback) { toggleFabMenu(); callback(); }
 
+// --- SOPORTE TÉCNICO ---
+async function submitSupportTicket() {
+    const msg = document.getElementById('support-text').value.trim();
+    if(!msg) return;
+    const btn = document.getElementById('btn-submit-support');
+    btn.disabled = true; btn.innerText = "Enviando...";
+    try {
+        const { error } = await supabaseClient.from('support_tickets').insert([{ user_id: currentUserId, message: msg }]);
+        if(error) throw error;
+        document.getElementById('support-text').value = '';
+        document.getElementById('support-text').classList.add('hidden');
+        btn.classList.add('hidden');
+        document.getElementById('support-msg-feedback').innerText = "¡Recibimos tu mensaje! El equipo lo revisará pronto.";
+        document.getElementById('support-msg-feedback').classList.remove('hidden');
+        setTimeout(() => { closeAllModals(); document.getElementById('support-text').classList.remove('hidden'); btn.classList.remove('hidden'); document.getElementById('support-msg-feedback').classList.add('hidden'); btn.innerText = "Enviar Reporte"; btn.disabled = false; }, 3000);
+    } catch(e) { alert("Error: " + e.message); btn.innerText = "Enviar Reporte"; btn.disabled = false; }
+}
+
+// --- CRONÓMETRO ---
+function openTimerModal() {
+    document.getElementById('timer-min').value = '';
+    document.getElementById('timer-seg').value = '';
+    resetTimer();
+    openModal('modal-timer');
+}
+
+function toggleTimer() {
+    const btn = document.getElementById('btn-timer-start');
+    if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+        btn.innerText = "Reanudar";
+        btn.classList.replace('bg-orange-600', 'bg-green-600');
+        document.getElementById('timer-countdown').classList.remove('timer-pulse');
+    } else {
+        if(timerSecondsLeft <= 0) {
+            let m = parseInt(document.getElementById('timer-min').value) || 0;
+            let s = parseInt(document.getElementById('timer-seg').value) || 0;
+            timerSecondsLeft = (m * 60) + s;
+            if(timerSecondsLeft <= 0) return;
+            document.getElementById('timer-inputs').classList.add('hidden');
+            document.getElementById('timer-display').classList.remove('hidden');
+        }
+        btn.innerText = "Pausar";
+        btn.classList.replace('bg-green-600', 'bg-orange-600');
+        updateTimerDisplay();
+        timerInterval = setInterval(() => {
+            timerSecondsLeft--;
+            updateTimerDisplay();
+            if(timerSecondsLeft <= 0) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                document.getElementById('timer-countdown').classList.add('timer-pulse');
+                btn.innerText = "Iniciar";
+                btn.classList.replace('bg-orange-600', 'bg-green-600');
+                if (navigator.vibrate) navigator.vibrate([500, 200, 500]); // Vibra si el celu lo permite
+                showToast("¡Descanso Terminado!");
+            }
+        }, 1000);
+    }
+}
+
+function resetTimer() {
+    if(timerInterval) clearInterval(timerInterval);
+    timerInterval = null;
+    timerSecondsLeft = 0;
+    document.getElementById('timer-inputs').classList.remove('hidden');
+    document.getElementById('timer-display').classList.add('hidden');
+    document.getElementById('timer-countdown').classList.remove('timer-pulse');
+    const btn = document.getElementById('btn-timer-start');
+    btn.innerText = "Iniciar";
+    btn.classList.remove('bg-orange-600'); btn.classList.add('bg-green-600');
+}
+
+function updateTimerDisplay() {
+    let m = Math.floor(timerSecondsLeft / 60).toString().padStart(2, '0');
+    let s = (timerSecondsLeft % 60).toString().padStart(2, '0');
+    document.getElementById('timer-countdown').innerText = `${m}:${s}`;
+}
+
+// --- AUTENTICACIÓN ---
 function updateAuthUI() { 
     const modal = document.getElementById('modal-auth'); const title = document.getElementById('auth-title'); const btn = document.getElementById('btn-auth-action'); const toggleMsg = document.getElementById('auth-toggle-msg'); const closeBtn = document.getElementById('close-auth-btn'); const eyeBtn = document.getElementById('eye-btn'); const forgotPass = document.getElementById('forgot-password-container'); const inputs = [document.getElementById('auth-email'), document.getElementById('auth-password')];
     if(isSignUp) { modal.classList.replace('bg-custom-card', 'bg-custom-primary'); modal.classList.replace('border-custom-border', 'border-[#d43e20]'); title.innerText = "Crear Nueva Cuenta"; inputs.forEach(inp => { inp.className = "w-full bg-[#171717] border border-[#262626] p-3 pr-12 rounded-xl outline-none focus:border-white text-white placeholder-white/50 transition-all"; }); eyeBtn.className = "absolute inset-y-0 right-0 px-4 flex items-center text-white/50 hover:text-white transition-colors cursor-pointer"; btn.innerText = "Registrarme"; btn.className = "w-full bg-[#171717] text-white py-3 rounded-xl font-bold hover:bg-black border border-black/50 transition-colors shadow-lg"; toggleMsg.innerHTML = "O <span onclick='toggleAuthMode()' class='cursor-pointer font-extrabold underline hover:text-black transition-colors'>ingresá a tu cuenta acá</span>"; toggleMsg.className = "text-center text-sm text-white mt-4 transition-colors font-medium"; closeBtn.className = "mt-8 w-full text-[10px] text-white/80 uppercase tracking-[0.3em] font-bold hover:text-white transition-colors"; forgotPass.classList.add('hidden'); } 
@@ -183,15 +246,116 @@ function loadDashboardView(email) {
     document.getElementById('auth-controls').classList.add('hidden'); document.getElementById('user-controls').classList.remove('hidden');
     document.getElementById('user-controls').classList.add('flex'); document.getElementById('user-display').innerText = email;
     document.getElementById('fab-container').classList.remove('hidden'); document.getElementById('fab-container').classList.add('flex');
+    document.getElementById('fab-options').classList.add('pointer-events-none');
     closeAllModals(); updateCreditsDisplay(); setTimeout(() => { changeDay('lunes'); }, 100);
 }
 async function handleSignOut() { if (supabaseClient) await supabaseClient.auth.signOut(); location.reload(); }
+
+function animateTokenLoss() {
+    const badgeContainer = document.getElementById('credit-badge');
+    const badgeText = document.getElementById('ai-credit-count');
+    if(!badgeText || badgeText.innerHTML.includes('infin')) return;
+
+    badgeContainer.style.transition = 'all 0.3s';
+    badgeContainer.style.transform = 'scale(1.1)';
+    badgeContainer.style.borderColor = '#c084fc';
+    badgeContainer.style.backgroundColor = 'rgba(168, 85, 247, 0.3)';
+    setTimeout(() => { badgeContainer.style.transform = 'scale(1)'; badgeContainer.style.borderColor = ''; badgeContainer.style.backgroundColor = ''; }, 300);
+
+    const rect = badgeContainer.getBoundingClientRect();
+    const animEl = document.createElement('div');
+    animEl.className = 'fixed text-purple-400 font-bold text-sm z-[9999] pointer-events-none token-anim';
+    animEl.innerText = '-1 ⚡';
+    animEl.style.left = `${rect.left + (rect.width / 2) - 10}px`;
+    animEl.style.top = `${rect.top}px`;
+    document.body.appendChild(animEl);
+    setTimeout(() => animEl.remove(), 1000);
+}
 
 async function updateCreditsDisplay() {
     try { const { data, error } = await supabaseClient.from('profiles').select('ai_credits, has_infinite_credits').eq('id', currentUserId).single();
         if(data) { document.getElementById('ai-credit-count').innerHTML = data.has_infinite_credits ? '<span class="text-lg leading-none flex items-center justify-center translate-y-[1px]">&infin;</span>' : data.ai_credits; } 
         else { document.getElementById('ai-credit-count').innerText = "10"; }
     } catch(e) { document.getElementById('ai-credit-count').innerText = "10"; }
+}
+
+// --- GUARDAR Y CARGAR RUTINAS SEMANALES ---
+async function openRoutinesModal() {
+    openModal('modal-routines');
+    const list = document.getElementById('saved-routines-list');
+    list.innerHTML = '<div class="text-center text-xs text-custom-textMuted py-4">Buscando rutinas...</div>';
+    try {
+        const { data, error } = await supabaseClient.from('saved_routines').select('id, routine_name').eq('user_id', currentUserId).order('created_at', { ascending: false });
+        if(error) throw error;
+        if(data.length === 0) { list.innerHTML = '<div class="text-center text-xs text-custom-textMuted py-4">No tenés rutinas guardadas.</div>'; return; }
+        
+        let html = '';
+        data.forEach(r => {
+            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]">
+                <span class="text-sm font-bold text-white">${escapeHTML(r.routine_name)}</span>
+                <div class="flex gap-2">
+                    <button onclick="loadRoutine('${r.id}')" class="text-xs bg-custom-primary text-white px-3 py-1.5 rounded-lg font-bold hover:opacity-80">Cargar</button>
+                    <button onclick="deleteSavedRoutine('${r.id}')" class="text-xs border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white px-2 py-1.5 rounded-lg transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                </div>
+            </div>`;
+        });
+        list.innerHTML = html;
+    } catch(e) { list.innerHTML = `<div class="text-xs text-red-500">Error: ${e.message}</div>`; }
+}
+
+function promptSaveRoutine() {
+    closeAllModals();
+    document.getElementById('routine-save-name').value = '';
+    openModal('modal-save-routine');
+}
+
+async function saveRoutine() {
+    const name = document.getElementById('routine-save-name').value.trim();
+    if(!name) { alert("Escribí un nombre para la rutina."); return; }
+    
+    // Obtenemos tooooodos los ejercicios actuales del usuario
+    const { data: exercises, error } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId);
+    if(error) { alert("Error al leer rutina: " + error.message); return; }
+    if(exercises.length === 0) { alert("No tenés ejercicios para guardar."); return; }
+
+    try {
+        const { error: saveError } = await supabaseClient.from('saved_routines').insert([{ user_id: currentUserId, routine_name: name, routine_data: exercises }]);
+        if(saveError) throw saveError;
+        showToast("¡Rutina Semanal Guardada!");
+        openRoutinesModal();
+    } catch(e) { alert("Error al guardar: " + e.message); }
+}
+
+async function loadRoutine(savedId) {
+    if(!confirm("¿Seguro querés cargar esta rutina? Reemplazará tu semana actual.")) return;
+    try {
+        const { data, error } = await supabaseClient.from('saved_routines').select('routine_data').eq('id', savedId).single();
+        if(error) throw error;
+        
+        // Borramos la actual
+        await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
+        
+        // Insertamos la nueva limpiando el ID viejo
+        const newExercises = data.routine_data.map(ex => {
+            delete ex.id;
+            delete ex.created_at;
+            ex.user_id = currentUserId; // Por seguridad
+            return ex;
+        });
+        
+        const { error: insertError } = await supabaseClient.from('user_routines').insert(newExercises);
+        if(insertError) throw insertError;
+        
+        closeAllModals();
+        showToast("¡Rutina Cargada Exitosamente!");
+        changeDay(currentActiveDay);
+    } catch(e) { alert("Error al cargar: " + e.message); }
+}
+
+async function deleteSavedRoutine(savedId) {
+    if(!confirm("¿Borrar esta rutina guardada?")) return;
+    await supabaseClient.from('saved_routines').delete().eq('id', savedId);
+    openRoutinesModal();
 }
 
 function formatMarkdown(text) { if (!text) return ''; let formatted = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>'); formatted = formatted.replace(/\n/g, '<br>'); return formatted; }
@@ -201,7 +365,10 @@ async function processAIPrompt() {
     const userPrompt = document.getElementById('ai-prompt').value; const msgBox = document.getElementById('ai-error-msg');
     if(!userPrompt) { msgBox.innerText = "Escribí tu objetivo para que el Coach Inteligente arme la rutina."; msgBox.classList.remove('hidden'); return; }
     try { const { count, error } = await supabaseClient.from('user_routines').select('*', { count: 'exact', head: true }).eq('user_id', currentUserId);
-        if (error) throw error; currentAIPrompt = userPrompt; if (count > 0) openModal('modal-confirm-ai-overwrite'); else proceedWithAIGeneration();
+        if (error) throw error; 
+        // NUEVO: Le pedimos a la IA que incluya tiempos de descanso
+        currentAIPrompt = userPrompt + ". MUY IMPORTANTE: Incluye los tiempos de descanso entre series (ej: 60s) adentro del campo 'target_reps'."; 
+        if (count > 0) openModal('modal-confirm-ai-overwrite'); else proceedWithAIGeneration();
     } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); }
 }
 
@@ -215,13 +382,7 @@ async function proceedWithAIGeneration() {
         await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId);
         const exercisesToInsert = routineData.map((ex, index) => { const cleanDay = ex.day_of_week.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim(); return { user_id: currentUserId, day_of_week: cleanDay, exercise_name: ex.exercise_name, sets: ex.sets, target_reps: ex.target_reps, has_video: false, youtube_url: "", has_image: false, image_url: "", order_index: index }; });
         const { error: dbError } = await supabaseClient.from('user_routines').insert(exercisesToInsert); if(dbError) throw new Error(dbError.message);
-        
-        // ANIMACIÓN DE CRÉDITO AL GENERAR RUTINA
-        if(data.remaining_credits !== undefined) { 
-            const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); 
-            if(!hasInf) { document.getElementById('ai-credit-count').innerText = data.remaining_credits; animateTokenLoss(); }
-        }
-        
+        if(data.remaining_credits !== undefined) { const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); if(!hasInf) { document.getElementById('ai-credit-count').innerText = data.remaining_credits; animateTokenLoss(); } }
         document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); openModal('modal-ai-success');
     } catch(e) { document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); openModal('modal-ai-coach'); document.getElementById('ai-error-msg').innerText = "Detalle: " + e.message; document.getElementById('ai-error-msg').classList.remove('hidden'); }
 }
@@ -236,42 +397,19 @@ function renderChat() {
     window.chatHistory.forEach(msg => { const isUser = msg.role === 'user'; const html = `<div class="${isUser ? 'chat-bubble-user' : 'chat-bubble-ai'}">${formatMarkdown(escapeHTML(msg.parts[0].text))}</div>`; container.innerHTML += html; }); container.scrollTop = container.scrollHeight;
 }
 
-window.askCoachAbout = function(exName) {
-    closeAllModals();
-    openChatModal();
-    const input = document.getElementById('chat-input');
-    input.value = `Mi duda con el ejercicio ${exName} es: `;
-    input.focus();
-};
+window.askCoachAbout = function(exName) { closeAllModals(); openChatModal(); const input = document.getElementById('chat-input'); input.value = `Mi duda con el ejercicio ${exName} es: `; input.focus(); };
 
 window.analyzeProgress = function(exId, exName, exType) {
-    const history = window.currentHistory[exId];
-    if(!history) return;
-    const dates = Object.keys(history); 
-    
-    if (dates.length < 3) {
-        showToast("⚠️ Entrená al menos 3 veces para activar el análisis IA.");
-        return;
-    }
-    
+    const history = window.currentHistory[exId]; if(!history) return; const dates = Object.keys(history); 
+    if (dates.length < 3) { showToast("⚠️ Entrená al menos 3 veces para activar el análisis IA."); return; }
     let dataStr = "";
     dates.forEach(d => {
-        const max = history[d].maxStat;
-        const avg = history[d].totalStat / history[d].totalSets;
-        if(exType === 'tiempo') {
-            dataStr += `Fecha: ${d} | Max: ${formatTime(max)} | Promedio: ${formatTime(avg)}\n`;
-        } else {
-            dataStr += `Fecha: ${d} | Peso Max: ${max}kg | Promedio Reps: ${avg.toFixed(1)}\n`;
-        }
+        const max = history[d].maxStat; const avg = history[d].totalStat / history[d].totalSets;
+        if(exType === 'tiempo') { dataStr += `Fecha: ${d} | Max: ${formatTime(max)} | Promedio: ${formatTime(avg)}\n`; } 
+        else { dataStr += `Fecha: ${d} | Peso Max: ${max}kg | Promedio Reps: ${avg.toFixed(1)}\n`; }
     });
-
     const prompt = `Actúa como mi Coach Deportivo. Analiza mi evolución en el ejercicio "${exName}". Aquí están mis datos ordenados por fecha:\n\n${dataStr}\nDame una devolución técnica y motivadora de 1 o 2 párrafos cortos. Dime si vengo mejorando o si estoy estancado. No saludes al principio.`;
-    
-    closeAllModals();
-    openChatModal();
-    const input = document.getElementById('chat-input');
-    input.value = prompt;
-    sendChatMessage(); 
+    closeAllModals(); openChatModal(); const input = document.getElementById('chat-input'); input.value = prompt; sendChatMessage(); 
 };
 
 async function sendChatMessage() {
@@ -283,12 +421,7 @@ async function sendChatMessage() {
         const { data, error } = await supabaseClient.functions.invoke('coach', { headers: { Authorization: `Bearer ${session.access_token}` }, body: { action: 'chat', history: window.chatHistory } });
         if(error) throw new Error(error.message); if(data && data.error) throw new Error(data.error);
         const aiReply = data.response.candidates[0].content.parts[0].text; window.chatHistory.push({ role: 'model', parts: [{ text: aiReply }] }); localStorage.setItem(`hat_chat_${currentUserId}`, JSON.stringify(window.chatHistory));
-        
-        // ANIMACIÓN DE CRÉDITO AL USAR CHAT / ANALISTA
-        if(data.remaining_credits !== undefined) { 
-            const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); 
-            if(!hasInf) { document.getElementById('ai-credit-count').innerText = data.remaining_credits; animateTokenLoss(); }
-        }
+        if(data.remaining_credits !== undefined) { const hasInf = document.getElementById('ai-credit-count').innerHTML.includes('infin'); if(!hasInf) { document.getElementById('ai-credit-count').innerText = data.remaining_credits; animateTokenLoss(); } }
     } catch(e) { window.chatHistory.push({ role: 'model', parts: [{ text: `❌ Error: ${e.message}` }] }); } finally { renderChat(); btn.disabled = false; btn.innerHTML = '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>'; }
 }
 
@@ -384,7 +517,6 @@ async function changeDay(day, event) {
             <div class="bg-custom-card p-6 rounded-3xl border border-custom-border shadow-xl flex flex-col relative group" data-ex-id="${safeId}">
                 
                 <div class="absolute top-4 right-4 flex items-center gap-2 z-30 ex-menu-container">
-                    
                     <div class="relative">
                         <button onclick="toggleExMenu('${safeId}')" class="p-2 bg-[#262626] rounded-lg text-custom-textMuted hover:text-white transition-colors shadow-lg" title="Opciones">
                             <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>
@@ -421,7 +553,6 @@ async function changeDay(day, event) {
                             <path d="M21 12h-6" /><path d="M18 9l3 3-3 3" />
                         </svg>
                     </div>
-
                 </div>
                 
                 <h3 class="text-xl font-bold mb-1 text-white uppercase italic tracking-tighter pr-28 break-words">${safeExName}</h3>
