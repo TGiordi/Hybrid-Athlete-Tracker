@@ -985,299 +985,258 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL ESTILO HAT) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - MEJORADO PARA DATOS GRANDES) ---
 // =========================================================================
+// PARCHE SEGURO: Reemplazar solo esta función en app.js
 window.exportUserDataPDF = async function() {
     window.playPop();
-    // Mostramos un modal de carga porque esto lleva unos segundos
-    document.getElementById('loading-title').innerText = "Generando Reporte...";
-    document.getElementById('loading-desc').innerText = "Estamos armando tu PDF profesional con gráficos y rutinas. No cierres la ventana.";
+    // Mostramos loader con mensaje de "Paso a Paso"
+    document.getElementById('loading-title').innerText = "Generando Reporte (Paso a Paso)...";
+    document.getElementById('loading-desc').innerText = "Estamos procesando tu historial extenso de entrenamiento para un PDF profesional. Esto puede tardar, no cierres la ventana.";
     document.getElementById('ai-loading-overlay').classList.remove('hidden');
     document.getElementById('ai-loading-overlay').classList.add('flex');
 
+    // Variable para limpieza forzosa en try...finally
+    let temporaryContainer = null;
+
     try {
-        // 1. Recopilar todos los datos de Supabase
+        // 1. Recopilar datos (mismo que antes)
         const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).order('day_of_week', { ascending: true }).order('order_index', { ascending: true });
-        const { data: logs } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: true }); // Ascendente para los gráficos
-        const { data: sessions } = await supabaseClient.from('workout_sessions').select('*').eq('user_id', currentUserId).order('session_date', { ascending: false });
+        const { data: logs } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: true }); // Ascendente para gráficos
+        const filename = `HAT_Reporte_${document.getElementById('user-display').innerText.split('@')[0]}_${new Date().toISOString().slice(0,10)}.pdf`;
 
-        // 2. Crear un contenedor HTML oculto para armar el diseño del PDF
-        const element = document.createElement('div');
-        element.style.fontFamily = "'Montserrat', sans-serif";
-        element.style.width = "800px"; // Ancho fijo para consistencia en el PDF
-        element.style.color = "#FFFFFF";
-        element.style.backgroundColor = "#000000"; // Fondo negro puro para el PDF
-
-        // --- DEFINICIÓN DE ESTILOS CSS (Réplica de HAT) ---
+        // --- CSS PURO ESTILO HAT (Asegurado sin Tailwind para evitar choques en canvas invisibles) ---
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
-                * { box-sizing: border-box; font-family: 'Montserrat', sans-serif; }
-                .pdf-page { padding: 40px; background-color: #000000; page-break-after: always; }
-                .pdf-header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #262626; padding-bottom: 20px; }
-                .hat-logo { font-weight: 900; font-style: italic; font-size: 32px; color: #FFFFFF; letter-spacing: -2px; }
-                .hat-logo span { color: #F54927; }
-                .report-title { font-size: 18px; font-weight: 700; color: #94A3B8; text-transform: uppercase; tracking: 2px; margin-top: 5px; }
-                
-                h2 { font-size: 24px; font-weight: 900; font-style: italic; text-transform: uppercase; color: #FFFFFF; letter-spacing: -1px; margin-bottom: 20px; display: flex; items-center gap: 10px;}
-                h2 span { color: #F54927; }
-                
-                /* Estilos Rutina */
-                .day-section { margin-bottom: 30px; page-break-inside: avoid; }
-                .day-title { font-size: 14px; font-weight: 700; color: #F54927; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F54927;}
-                .ex-card { bg-color: #171717; border: 1px solid #262626; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; items-center; }
-                .ex-name { font-weight: 700; color: #FFFFFF; font-size: 15px; }
-                .ex-target { color: #94A3B8; font-size: 12px; font-weight: 700; text-transform: uppercase; }
-
-                /* Estilos Historial/Gráficos */
-                .ex-history-section { margin-bottom: 50px; page-break-inside: avoid; border-top: 1px solid #262626; padding-top: 30px;}
-                .chart-box { background-color: #0a0a0a; border: 1px solid #262626; border-radius: 16px; padding: 15px; margin-bottom: 15px; height: 220px; width: 100%;}
-                .log-table { width: 100%; border-collapse: collapse; font-size: 12px; bg-color: #0a0a0a; border-radius: 8px; overflow: hidden; border: 1px solid #262626;}
-                .log-table th { background-color: #171717; color: #94A3B8; font-weight: 700; text-transform: uppercase; text-align: left; padding: 10px; border-bottom: 1px solid #262626;}
-                .log-table td { color: #FFFFFF; padding: 10px; border-bottom: 1px solid #171717;}
-                .log-table tr:last-child td { border-bottom: none; }
-                .badge { background-color: #262626; color: #FFFFFF; font-weight: 700; padding: 3px 6px; border-radius: 4px; font-size: 11px; margin-right: 3px;}
-                
-                .footer { text-align: center; color: #404040; font-size: 10px; margin-top: 40px; }
+                .hat-pdf-page {
+                    font-family: 'Montserrat', sans-serif !important;
+                    color: #FFFFFF !important;
+                    background-color: #000000 !important;
+                    width: 793px !important; /* Ancho exacto A4 a 96dpi */
+                    min-height: 1122px !important; /* Alto exacto A4 */
+                    padding: 40px !important;
+                    box-sizing: border-box !important;
+                    margin: 0 !important;
+                    position: relative !important;
+                }
+                .hat-pdf-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #262626; padding-bottom: 15px; }
+                .hat-pdf-logo { font-weight: 900; font-style: italic; font-size: 32px; letter-spacing: -2px; color: #FFFFFF; }
+                .hat-pdf-logo span { color: #F54927; }
+                .pdf-report-title { font-size: 16px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 2px; }
+                h2.pdf-sec-title { font-size: 20px; font-weight: 900; font-style: italic; text-transform: uppercase; margin-bottom: 15px; color: #FFFFFF; }
+                h2.pdf-sec-title span { color: #F54927; margin-right: 8px; }
+                .pdf-day-title { font-size: 14px; font-weight: 700; color: #F54927; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 8px; border-left: 3px solid #F54927; padding-left: 10px; margin-top: 20px; }
+                .pdf-ex-card { background-color: #171717; border: 1px solid #262626; padding: 12px; border-radius: 10px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid; }
+                .pdf-ex-name { font-weight: 700; font-size: 14px; color: #FFFFFF !important; }
+                .pdf-ex-target { color: #94A3B8; font-size: 11px; text-transform: uppercase; font-weight: 700; margin-top: 2px;}
+                .pdf-ex-sets { color: #FFFFFF !important; font-weight: 900; font-style: italic; font-size: 24px; letter-spacing: -1px; text-align: right; }
+                .pdf-ex-sets span { font-size: 10px; font-weight: 400; color: #94A3B8; font-style: normal; margin-left: 3px; }
+                .pdf-hist-section { margin-top: 30px; border-top: 1px solid #262626; padding-top: 20px; page-break-inside: avoid; }
+                .pdf-hist-ex-name { font-size: 16px; color: #F54927; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 10px; }
+                .pdf-chart-box { background-color: #0a0a0a; border: 1px solid #262626; border-radius: 12px; padding: 10px; margin-bottom: 10px; height: 200px; width: 100%; }
+                .pdf-log-table { width: 100%; border-collapse: collapse; font-size: 11px; border: 1px solid #262626; background-color: #0a0a0a; border-radius: 8px; overflow: hidden; }
+                .pdf-log-table th { background-color: #171717; color: #94A3B8; padding: 8px; text-align: left; text-transform: uppercase; font-weight: 700;}
+                .pdf-log-table td { color: #FFFFFF !important; padding: 8px; border-bottom: 1px solid #171717; }
+                .pdf-log-table tr:last-child td { border-bottom: none; }
+                .pdf-badge { background-color: #262626; color: #FFFFFF !important; padding: 3px 6px; border-radius: 4px; font-weight: 700; font-size: 10px; margin-right: 3px; display: inline-block; margin-bottom: 2px;}
+                .pdf-footer { text-align: center; color: #404040; font-size: 10px; position: absolute; bottom: 30px; left: 0; width: 100%; }
             </style>
         `;
 
-// =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL ESTILO HAT) ---
-// =========================================================================
-window.exportUserDataPDF = async function() {
-    window.playPop();
-    document.getElementById('loading-title').innerText = "Generando Reporte...";
-    document.getElementById('loading-desc').innerText = "Estamos armando tu PDF profesional con gráficos y rutinas. Esto tomará unos segundos...";
-    document.getElementById('ai-loading-overlay').classList.remove('hidden');
-    document.getElementById('ai-loading-overlay').classList.add('flex');
+        // 2. Inicializar Worker de html2pdf
+        const worker = html2pdf();
+        
+        // Configuración base segura
+        const opt = {
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#000000' },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        worker.set(opt);
 
-    // 1. Crear un contenedor oculto fuera de la pantalla
-    const element = document.createElement('div');
-    element.id = "pdf-export-container";
-    element.style.position = "absolute";
-    element.style.left = "-9999px"; 
-    element.style.top = "0";
+        // Contenedor temporal oculto en el body (requerido por Chart.js para dibujar)
+        temporaryContainer = document.createElement('div');
+        temporaryContainer.style.position = 'fixed'; temporaryContainer.style.left = '-2000px'; temporaryContainer.style.top = '0';
+        document.body.appendChild(temporaryContainer);
 
-    try {
-        const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).order('day_of_week', { ascending: true }).order('order_index', { ascending: true });
-        const { data: logs } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: true }); 
-        const userEmail = document.getElementById('user-display').innerText || 'Atleta';
-
-        // --- CSS PURO (Sin Tailwind para que el PDF lo lea perfecto) ---
-        const styles = `
-            <style>
-                @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
-                .pdf-wrapper { font-family: 'Montserrat', sans-serif; background-color: #0a0a0a; color: #ffffff; width: 800px; padding: 40px; box-sizing: border-box; }
-                .pdf-header { text-align: center; border-bottom: 2px solid #262626; padding-bottom: 20px; margin-bottom: 30px; }
-                .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; }
-                .hat-logo span { color: #F54927; }
-                .report-title { font-size: 16px; font-weight: 700; color: #94A3B8; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px; }
-                .report-subtitle { color: #404040; font-size: 12px; margin-top: 8px; }
-                h2 { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; color: #ffffff; margin-bottom: 20px; }
-                h2 span { color: #F54927; margin-right: 8px; }
-                .day-title { font-size: 14px; font-weight: 700; color: #F54927; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F54927; margin-top: 25px; }
-                .ex-card { background-color: #171717; border: 1px solid #262626; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
-                .ex-name { font-weight: 700; font-size: 15px; }
-                .ex-target { color: #94A3B8; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-top: 4px; }
-                .ex-sets { text-align: right; font-weight: 700; font-size: 20px; }
-                .ex-sets span { font-size: 12px; color: #94A3B8; font-weight: 400; margin-left: 4px; }
-                .history-card { margin-top: 40px; page-break-inside: avoid; border-top: 1px solid #262626; padding-top: 25px; }
-                .history-title { font-size: 18px; color: #F54927; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 15px; }
-                .chart-box { background-color: #171717; border: 1px solid #262626; border-radius: 12px; padding: 15px; margin-bottom: 15px; width: 100%; height: 220px; }
-                .log-table { width: 100%; border-collapse: collapse; font-size: 12px; background-color: #171717; border-radius: 8px; border: 1px solid #262626; overflow: hidden; }
-                .log-table th { background-color: #262626; color: #94A3B8; padding: 10px; text-align: left; text-transform: uppercase; }
-                .log-table td { padding: 10px; border-bottom: 1px solid #262626; color: #ffffff; }
-                .log-table tr:last-child td { border-bottom: none; }
-                .badge { background-color: #262626; padding: 4px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid #333; }
-                .footer { text-align: center; color: #404040; font-size: 10px; margin-top: 50px; }
-            </style>
-        `;
-
-        let htmlContent = `
+        // =========================================================================
+        // PÁGINA 1: RUTINA DETALLADA
+        // =========================================================================
+        const page1 = document.createElement('div');
+        page1.className = 'hat-pdf-page';
+        let page1Html = `
             ${styles}
-            <div class="pdf-wrapper">
-                <div class="pdf-header">
-                    <div class="hat-logo"><span>H</span>AT</div>
-                    <div class="report-title">Reporte de Alto Rendimiento</div>
-                    <div class="report-subtitle">Atleta: ${userEmail} | Generado: ${new Date().toLocaleDateString('es-AR')}</div>
-                </div>
-                <h2><span>01</span> Rutina Semanal Detallada</h2>
+            <div class="hat-pdf-header">
+                <div class="hat-pdf-logo"><span>H</span>AT</div>
+                <div class="pdf-report-title">Reporte de Alto Rendimiento</div>
+            </div>
+            <h2 class="pdf-sec-title"><span>01</span> Rutina Semanal Detallada</h2>
         `;
-
         if (routines && routines.length > 0) {
             let currentDay = "";
             routines.forEach(ex => {
                 if (ex.day_of_week !== currentDay) {
                     currentDay = ex.day_of_week;
-                    htmlContent += `<div class="day-title">${currentDay}</div>`;
+                    page1Html += `<div class="pdf-day-title">${currentDay}</div>`;
                 }
-                htmlContent += `
-                    <div class="ex-card">
-                        <div>
-                            <div class="ex-name">${escapeHTML(ex.exercise_name)}</div>
-                            <div class="ex-target">Objetivo: ${escapeHTML(ex.target_reps)}</div>
-                        </div>
-                        <div class="ex-sets">${ex.sets}<span>sets</span></div>
+                page1Html += `
+                    <div class="pdf-ex-card">
+                        <div><div class="pdf-ex-name">${escapeHTML(ex.exercise_name)}</div><div class="pdf-ex-target">Objetivo: ${escapeHTML(ex.target_reps)}</div></div>
+                        <div class="pdf-ex-sets">${ex.sets}<span>sets</span></div>
                     </div>
                 `;
             });
-        } else {
-            htmlContent += `<p style="color: #94A3B8; text-align: center;">No hay rutina configurada.</p>`;
-        }
+        } else { page1Html += `<p style="color: #94A3B8; text-align: center;">Sin rutina semanal.</p>`; }
+        page1Html += `<div class="pdf-footer">HAT © 2026 | hybrid Athlete Tracker</div>`;
+        page1.innerHTML = page1Html;
+        temporaryContainer.appendChild(page1);
         
-        // Espaciador para la siguiente sección
-        htmlContent += `<div style="height: 40px;"></div><h2><span>02</span> Evolución y Progreso Visual</h2>`;
+        // Añadir al worker y procesar Página 1
+        await worker.from(page1).toPdf().get('pdf');
+        
+        // Limpieza de Página 1 inmediata
+        page1.innerHTML = '';
+        temporaryContainer.innerHTML = ''; 
 
-        const chartConfigs = []; // Array para guardar las configuraciones de los gráficos
-
+        // =========================================================================
+        // PÁGINAS N: HISTORIAL DETALLADO POR EJERCICIO (Iterativo por Página)
+        // =========================================================================
         if (logs && logs.length > 0) {
+            
+            // Agrupamos logs por ejercicio
             const groupedLogs = {};
             logs.forEach(l => {
                 if (!groupedLogs[l.exercise_name]) groupedLogs[l.exercise_name] = { type: l.exercise_type, data: [] };
                 groupedLogs[l.exercise_name].data.push(l);
             });
 
-            for (const exName in groupedLogs) {
-                const exLogs = groupedLogs[exName];
-                const type = exLogs.type;
-                // ID seguro para el canvas
-                const safeCanvasId = `canvas-${exName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "-")}`;
+            let firstExerciseHistory = true;
 
+            // Loop iterativo: UN EJERCICIO = UNA PÁGINA INDIVIDUAL
+            for (const exName in groupedLogs) {
+                const exLogsData = groupedLogs[exName];
+                const type = exLogsData.type;
+                // ID seguro y único para el canvas
+                const safeCanvasId = `canvas-pdf-${exName.replace(/\s+/g, '-')}`;
+
+                const exPage = document.createElement('div');
+                exPage.className = 'hat-pdf-page';
+                
+                let exPageHtml = `
+                    ${styles}
+                    <div class="hat-pdf-header">
+                        <div class="hat-pdf-logo"><span>H</span>AT</div>
+                        <div class="pdf-report-title">Historial Individual de Progreso</div>
+                    </div>
+                `;
+                
+                // Ponemos el header de la sección 02 solo en el primer ejercicio del historial
+                if(firstExerciseHistory) {
+                    exPageHtml += `
+                        <h2 class="pdf-sec-title"><span>02</span> Evolución y Progreso Visual</h2>
+                        <div style="margin-bottom: 20px; color: #94A3B8; font-size: 12px; text-align: center; border: 1px solid #262626; padding: 10px; border-radius: 8px;">Este apartado incluye gráficos diarios de tu carga máxima o tiempo máximo para cada ejercicio que has realizado.</div>
+                    `;
+                    firstExerciseHistory = false;
+                }
+                
+                exPageHtml += `
+                    <div class="pdf-hist-section" style="border-top: none; padding-top: 0;">
+                        <div class="pdf-hist-ex-name">${escapeHTML(exName)}</div>
+                        <div class="pdf-chart-box"><canvas id="${safeCanvasId}"></canvas></div>
+                        <table class="pdf-log-table">
+                            <thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>
+                            <tbody>
+                `;
+
+                // Procesamos datos diarios para el gráfico y tabla
                 const chartGroupedData = {};
-                exLogs.data.forEach(log => {
+                exLogsData.data.forEach(log => {
                     const [year, month, day] = log.log_date.split('-');
                     const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
                     if (!chartGroupedData[dateStr]) chartGroupedData[dateStr] = { maxStat: 0, sets: [] };
-                    
-                    if (type === 'tiempo') {
-                        if (log.time_seconds > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.time_seconds;
-                    } else {
-                        if (log.weight > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.weight;
-                    }
+                    if (type === 'tiempo') { if (log.time_seconds > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.time_seconds; } 
+                    else { if (log.weight > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.weight; }
                     chartGroupedData[dateStr].sets.push(log);
                 });
 
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
-                htmlContent += `
-                    <div class="history-card">
-                        <div class="history-title">${escapeHTML(exName)}</div>
-                        <div class="chart-box"><canvas id="${safeCanvasId}"></canvas></div>
-                        <table class="log-table">
-                            <thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>
-                            <tbody>
-                `;
-
+                // Filas de la tabla (reversas)
                 [...dates].reverse().forEach(date => {
-                    const dayData = chartGroupedData[date];
-                    dayData.sets.sort((a,b) => a.set_number - b.set_number);
-                    
+                    const dayData = chartGroupedData[date]; dayData.sets.sort((a,b) => a.set_number - b.set_number);
                     const badges = dayData.sets.map(s => {
-                        if (type === 'tiempo') {
-                            let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60;
-                            return `<span class="badge">${m}m ${seg}s</span>`;
-                        } else {
-                            return `<span class="badge">${s.weight}kg x ${s.reps}</span>`;
-                        }
+                        if (type === 'tiempo') { let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60; return `<span class="pdf-badge">${m}m ${seg}s</span>`; } 
+                        else { return `<span class="pdf-badge"><strong>${s.weight}kg</strong> x ${s.reps}</span>`; }
                     }).join('');
-
                     let totalDur = dayData.sets[0].exercise_duration || 0;
                     let durText = totalDur > 0 ? `${Math.floor(totalDur/60)}m ${totalDur%60}s` : '-';
-
-                    htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="color:#94A3B8;">${durText}</td><td>${badges}</td></tr>`;
+                    exPageHtml += `<tr><td style="font-weight:700;">${date}</td><td style="color:#94A3B8;">${durText}</td><td>${badges}</td></tr>`;
                 });
 
-                htmlContent += `</tbody></table></div>`;
+                exPageHtml += `</tbody></table></div><div class="pdf-footer">Generado por Hybrid Athlete Tracker | Página de Historial Individual</div>`;
+                exPage.innerHTML = exPageHtml;
+                
+                temporaryContainer.appendChild(exPage);
 
-                // Guardamos la config para dibujarlo DESPUÉS de insertar el HTML
-                chartConfigs.push({
-                    id: safeCanvasId,
-                    type: type,
-                    labels: dates,
-                    data: maxData
+                // DIBUJAR EL GRÁFICO AHORA (Específico para este canvas)
+                const ctx = document.getElementById(safeCanvasId).getContext('2d');
+                const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [{
+                            data: maxData,
+                            borderColor: '#F54927', // Rojo HAT
+                            backgroundColor: 'rgba(245, 73, 39, 0.05)',
+                            borderWidth: 2, tension: 0.3, pointRadius: 2, fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: false, // Fijo en el canvas para evitar deformaciones
+                        maintainAspectRatio: false,
+                        animation: false, // APAGADO para captura instantánea
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: '#171717' }, ticks: { color: '#94A3B8', font: {size: 8} }, title: {display: true, text: titleY, color: '#94A3B8', font: {size: 8}} },
+                            x: { grid: { display: false }, ticks: { color: '#94A3B8', font: {size: 8} } }
+                        }
+                    }
                 });
+
+                // Pequeña espera para asegurar renderizado de Chart.js
+                await new Promise(r => setTimeout(r, 150));
+
+                // Añadir página al worker stream y procesarla
+                await worker.addPage().from(exPage).toContainer();
+                
+                // LIMPIEZA INMEDIATA: Borramos este ejercicio de la memoria del navegador
+                exPage.innerHTML = '';
+                temporaryContainer.innerHTML = ''; 
+                exPage.remove();
             }
-        } else {
-            htmlContent += `<p style="color: #94A3B8; text-align: center;">No hay historial de progreso disponible.</p>`;
         }
 
-        htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker</div></div>`;
-
-        // 2. Insertamos todo el HTML de golpe
-        element.innerHTML = htmlContent;
-        document.body.appendChild(element);
-
-        // 3. Dibujamos los gráficos uno por uno en los canvas que acabamos de inyectar
-        chartConfigs.forEach(config => {
-            const ctx = document.getElementById(config.id).getContext('2d');
-            const titleY = config.type === 'tiempo' ? 'Segundos' : 'Kilogramos';
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: config.labels,
-                    datasets: [{
-                        data: config.data,
-                        borderColor: '#F54927',
-                        backgroundColor: 'rgba(245, 73, 39, 0.05)',
-                        borderWidth: 2,
-                        tension: 0.3,
-                        pointRadius: 3,
-                        fill: true
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false, // Crucial apagar animación para capturar el PDF al instante
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: { grid: { color: '#262626' }, ticks: { color: '#94A3B8', font: {size: 10} }, title: {display: true, text: titleY, color: '#94A3B8', font: {size: 10}} },
-                        x: { grid: { display: false }, ticks: { color: '#94A3B8', font: {size: 10} } }
-                    }
-                }
-            });
-        });
-
-        // Esperamos un momento mínimo para asegurar que los gráficos se terminen de pintar
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        // 4. Configuración segura de Html2Pdf
-        const opt = {
-            margin:       [10, 0, 10, 0], // top, right, bottom, left
-            filename:     `HAT_Reporte_${new Date().toISOString().slice(0,10)}.pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { 
-                scale: 2, // Nitidez
-                useCORS: true, 
-                backgroundColor: '#0a0a0a',
-                logging: false // Evita llenar la consola
-            },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        };
-
-        // 5. Convertir a PDF y descargar
-        await html2pdf().set(opt).from(element).save();
+        // 5. Finalizar y Descargar el archivo compilado
+        await worker.save(filename);
 
         window.showToast("¡Reporte descargado exitosamente!");
         window.playVictory();
 
     } catch (error) {
-        console.error("Error al generar PDF:", error);
-        window.showToast("❌ Hubo un problema al generar el PDF.");
+        console.error("Error al generar PDF iterativo:", error);
+        window.showToast("❌ Falló la generación del PDF profesional. Es posible que el historial sea demasiado grande para tu dispositivo.");
     } finally {
-        // 6. LIMPIEZA OBLIGATORIA: Borramos el contenedor oculto para que no se pegue abajo
-        const containerToRemove = document.getElementById('pdf-export-container');
-        if (containerToRemove) {
-            containerToRemove.remove();
-        }
+        // LIMPIEZA TOTAL OBLIGATORIA (Pase lo que pase, limpiamos el DOM)
+        if (temporaryContainer) temporaryContainer.remove();
         document.getElementById('ai-loading-overlay').classList.add('hidden');
         document.getElementById('ai-loading-overlay').classList.remove('flex');
     }
 };
 
-window.exportUserData = window.exportUserDataPDF; // Para que no falle si quedó el nombre viejo en el HTML
+window.exportUserData = window.exportUserDataPDF; // Para compatibilidad si quedó el nombre viejo en el HTML
 
 // =========================================================================
 // EXPORTACIÓN GLOBAL 
