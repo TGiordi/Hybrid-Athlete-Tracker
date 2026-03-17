@@ -1010,3 +1010,19 @@ window.saveToCloud = saveToCloud;
 window.loadEvolucion = loadEvolucion;
 window.promptDeleteLog = promptDeleteLog;
 window.promptEditLog = promptEditLog;
+
+window.showMessage = function(text, isError = true) { 
+    const msgBox = document.getElementById('auth-message'); 
+    if(!msgBox) return;
+    msgBox.innerHTML = text; 
+    
+    // Cambiamos mt-4 por mb-4 para empujar los inputs hacia abajo suavemente
+    msgBox.className = "mb-4 p-3 rounded-xl text-sm font-bold text-center border transition-all block";
+    
+    if(isError) { 
+        msgBox.classList.add('bg-[#171717]', 'text-red-500', 'border-red-500/30'); 
+    } else { 
+        msgBox.classList.add('bg-[#171717]', 'text-green-500', 'border-green-500/30'); 
+    } 
+    msgBox.classList.remove('hidden');
+};
