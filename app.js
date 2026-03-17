@@ -984,45 +984,254 @@ function promptEditLog(exId, exName, dateStr, exType) {
     openModal('modal-edit-log');
 }
 
-// --- EXPORTACIÓN DE DATOS ---
-window.exportUserData = async function() {
+// =========================================================================
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL ESTILO HAT) ---
+// =========================================================================
+window.exportUserDataPDF = async function() {
     window.playPop();
-    window.showToast("Recopilando datos para exportar...");
+    // Mostramos un modal de carga porque esto lleva unos segundos
+    document.getElementById('loading-title').innerText = "Generando Reporte...";
+    document.getElementById('loading-desc').innerText = "Estamos armando tu PDF profesional con gráficos y rutinas. No cierres la ventana.";
+    document.getElementById('ai-loading-overlay').classList.remove('hidden');
+    document.getElementById('ai-loading-overlay').classList.add('flex');
 
     try {
-        // 1. Buscamos la rutina actual
-        const { data: routines, error: err1 } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId);
-        if (err1) throw err1;
+        // 1. Recopilar todos los datos de Supabase
+        const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).order('day_of_week', { ascending: true }).order('order_index', { ascending: true });
+        const { data: logs } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: true }); // Ascendente para los gráficos
+        const { data: sessions } = await supabaseClient.from('workout_sessions').select('*').eq('user_id', currentUserId).order('session_date', { ascending: false });
 
-        // 2. Buscamos el historial de ejercicios
-        const { data: logs, error: err2 } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: false });
-        if (err2) throw err2;
+        // 2. Crear un contenedor HTML oculto para armar el diseño del PDF
+        const element = document.createElement('div');
+        element.style.fontFamily = "'Montserrat', sans-serif";
+        element.style.width = "800px"; // Ancho fijo para consistencia en el PDF
+        element.style.color = "#FFFFFF";
+        element.style.backgroundColor = "#000000"; // Fondo negro puro para el PDF
 
-        // 3. Buscamos el historial de tiempos globales
-        const { data: sessions, error: err3 } = await supabaseClient.from('workout_sessions').select('*').eq('user_id', currentUserId).order('session_date', { ascending: false });
-        if (err3) throw err3;
+        // --- DEFINICIÓN DE ESTILOS CSS (Réplica de HAT) ---
+        const styles = `
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
+                * { box-sizing: border-box; font-family: 'Montserrat', sans-serif; }
+                .pdf-page { padding: 40px; background-color: #000000; page-break-after: always; }
+                .pdf-header { text-align: center; margin-bottom: 40px; border-bottom: 2px solid #262626; padding-bottom: 20px; }
+                .hat-logo { font-weight: 900; font-style: italic; font-size: 32px; color: #FFFFFF; letter-spacing: -2px; }
+                .hat-logo span { color: #F54927; }
+                .report-title { font-size: 18px; font-weight: 700; color: #94A3B8; text-transform: uppercase; tracking: 2px; margin-top: 5px; }
+                
+                h2 { font-size: 24px; font-weight: 900; font-style: italic; text-transform: uppercase; color: #FFFFFF; letter-spacing: -1px; margin-bottom: 20px; display: flex; items-center gap: 10px;}
+                h2 span { color: #F54927; }
+                
+                /* Estilos Rutina */
+                .day-section { margin-bottom: 30px; page-break-inside: avoid; }
+                .day-title { font-size: 14px; font-weight: 700; color: #F54927; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F54927;}
+                .ex-card { bg-color: #171717; border: 1px solid #262626; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; items-center; }
+                .ex-name { font-weight: 700; color: #FFFFFF; font-size: 15px; }
+                .ex-target { color: #94A3B8; font-size: 12px; font-weight: 700; text-transform: uppercase; }
 
-        // 4. Armamos el paquete
-        const exportData = {
-            generado_en: new Date().toISOString(),
-            rutina_actual: routines,
-            historial_ejercicios: logs,
-            entrenamientos_completados: sessions
+                /* Estilos Historial/Gráficos */
+                .ex-history-section { margin-bottom: 50px; page-break-inside: avoid; border-top: 1px solid #262626; padding-top: 30px;}
+                .chart-box { background-color: #0a0a0a; border: 1px solid #262626; border-radius: 16px; padding: 15px; margin-bottom: 15px; height: 220px; width: 100%;}
+                .log-table { width: 100%; border-collapse: collapse; font-size: 12px; bg-color: #0a0a0a; border-radius: 8px; overflow: hidden; border: 1px solid #262626;}
+                .log-table th { background-color: #171717; color: #94A3B8; font-weight: 700; text-transform: uppercase; text-align: left; padding: 10px; border-bottom: 1px solid #262626;}
+                .log-table td { color: #FFFFFF; padding: 10px; border-bottom: 1px solid #171717;}
+                .log-table tr:last-child td { border-bottom: none; }
+                .badge { background-color: #262626; color: #FFFFFF; font-weight: 700; padding: 3px 6px; border-radius: 4px; font-size: 11px; margin-right: 3px;}
+                
+                .footer { text-align: center; color: #404040; font-size: 10px; margin-top: 40px; }
+            </style>
+        `;
+
+        // --- CONSTRUCCIÓN DEL CONTENIDO HTML ---
+        
+        // Cabecera (Página 1)
+        let htmlContent = `
+            ${styles}
+            <div class="pdf-page">
+                <div class="pdf-header">
+                    <div class="hat-logo"><span>H</span>AT</div>
+                    <div class="report-title">Reporte de Alto Rendimiento</div>
+                    <div style="color: #404040; font-size: 12px; mt-5">Atleta: ${document.getElementById('user-display').innerText} | Generado: ${new Date().toLocaleDateString('es-AR')}</div>
+                </div>
+                
+                <h2><span>01</span> Rutina Semanal Detallada</h2>
+        `;
+
+        // 3. Sección Rutina (Página 1)
+        if (routines && routines.length > 0) {
+            let currentDay = "";
+            routines.forEach(ex => {
+                if (ex.day_of_week !== currentDay) {
+                    currentDay = ex.day_of_week;
+                    htmlContent += `
+                        <div class="day-section">
+                            <div class="day-title">${currentDay}</div>
+                    `;
+                }
+                htmlContent += `
+                    <div class="ex-card">
+                        <div>
+                            <div class="ex-name">${escapeHTML(ex.exercise_name)}</div>
+                            <div class="ex-target">Objetivo: ${escapeHTML(ex.target_reps)}</div>
+                        </div>
+                        <div style="text-align: right; color: #FFFFFF; font-weight: 700; font-size: 20px;">${ex.sets}<span style="font-size: 12px; color: #94A3B8; font-weight: 400; ml-1">sets</span></div>
+                    </div>
+                `;
+                // Cerramos el div de día si el siguiente es distinto o es el último
+                const index = routines.indexOf(ex);
+                if (index === routines.length - 1 || routines[index+1].day_of_week !== currentDay) {
+                    htmlContent += `</div>`; // cierra day-section
+                }
+            });
+        } else {
+            htmlContent += `<p style="color: #94A3B8; text-align: center;">No hay rutina configurada.</p>`;
+        }
+        
+        htmlContent += `<div class="footer">Hybrid Athlete Tracker - tgiordi.github.io/Hybrid-Athlete-Tracker/</div></div>`; // Cierra página 1
+
+        // 4. Sección Gráficos e Historial (Páginas siguientes)
+        if (logs && logs.length > 0) {
+            htmlContent += `<div class="pdf-page"><h2><span>02</span> Evolución y Progreso Visual</h2>`;
+
+            // Agrupamos logs por ejercicio
+            const groupedLogs = {};
+            logs.forEach(l => {
+                if (!groupedLogs[l.exercise_name]) groupedLogs[l.exercise_name] = { type: l.exercise_type, data: [] };
+                groupedLogs[l.exercise_name].data.push(l);
+            });
+
+            // Iteramos ejercicio por ejercicio para crear gráficos y tablas
+            for (const exName in groupedLogs) {
+                const exLogs = groupedLogs[exName];
+                const type = exLogs.type;
+                const safeCanvasId = `canvas-${exName.replace(/\s+/g, '-')}`;
+
+                // Procesamos datos para el gráfico (diario)
+                const chartGroupedData = {};
+                exLogs.data.forEach(log => {
+                    const [year, month, day] = log.log_date.split('-');
+                    const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+                    if (!chartGroupedData[dateStr]) chartGroupedData[dateStr] = { maxStat: 0, sets: [] };
+                    
+                    if (type === 'tiempo') {
+                        if (log.time_seconds > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.time_seconds;
+                    } else {
+                        if (log.weight > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.weight;
+                    }
+                    chartGroupedData[dateStr].sets.push(log);
+                });
+
+                const dates = Object.keys(chartGroupedData);
+                const maxData = dates.map(d => chartGroupedData[d].maxStat);
+
+                // Armamos el HTML del ejercicio
+                htmlContent += `
+                    <div class="ex-history-section">
+                        <div class="ex-name" style="font-size: 18px; margin-bottom: 15px; color: #F54927; font-style: italic; text-transform: uppercase;">${escapeHTML(exName)}</div>
+                        
+                        <div class="chart-box">
+                            <canvas id="${safeCanvasId}"></canvas>
+                        </div>
+
+                        <table class="log-table">
+                            <thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>
+                            <tbody>
+                `;
+
+                // Filas de la tabla (reversas)
+                [...dates].reverse().forEach(date => {
+                    const dayData = chartGroupedData[date];
+                    dayData.sets.sort((a,b) => a.set_number - b.set_number);
+                    
+                    const badges = dayData.sets.map(s => {
+                        if (type === 'tiempo') {
+                            let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60;
+                            return `<span class="badge">${m}m ${seg}s</span>`;
+                        } else {
+                            return `<span class="badge"><strong>${s.weight}kg</strong> x ${s.reps}</span>`;
+                        }
+                    }).join('');
+
+                    let totalDur = dayData.sets[0].exercise_duration || 0;
+                    let durText = totalDur > 0 ? `${Math.floor(totalDur/60)}m ${totalDur%60}s` : '-';
+
+                    htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="color:#94A3B8;">${durText}</td><td>${badges}</td></tr>`;
+                });
+
+                htmlContent += `</tbody></table></div>`; // Cierra sección de ejercicio
+
+                // Inyectamos el HTML al elemento temporal para poder renderizar el gráfico Chart.js ANTES del PDF
+                element.innerHTML = htmlContent; 
+                document.body.appendChild(element); // Necesario para que Chart.js funcione
+
+                // Renderizamos el gráfico en el canvas oculto
+                const ctx = document.getElementById(safeCanvasId).getContext('2d');
+                const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
+                
+                // Configuración Chart.js simplificada para el PDF
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [{
+                            data: maxData,
+                            borderColor: '#F54927', // Rojo HAT
+                            backgroundColor: 'rgba(245, 73, 39, 0.05)',
+                            borderWidth: 2,
+                            tension: 0.3,
+                            pointRadius: 2,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: false, // Importante para el tamaño fijo en el PDF
+                        maintainAspectRatio: false,
+                        animation: false, // Desactivar animaciones para el PDF
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: '#171717' }, ticks: { color: '#404040', font: {size: 8} }, title: {display: true, text: titleY, color: '#404040', font: {size: 8}} },
+                            x: { grid: { display: false }, ticks: { color: '#404040', font: {size: 8} } }
+                        }
+                    }
+                });
+                
+                // Recuperamos el HTML actualizado (con el canvas ya dibujado) para el siguiente ciclo
+                htmlContent = element.innerHTML;
+            }
+            htmlContent += `<div class="footer">Hybrid Athlete Tracker - Fin del Historial Visual</div></div>`; // Cierra página gráficos
+        }
+
+        // --- GENERACIÓN DEL PDF FINAL ---
+        
+        // Configuración de html2pdf
+        const opt = {
+            margin: 0,
+            filename: `HAT_Reporte_${document.getElementById('user-display').innerText.split('@')[0]}_${new Date().toISOString().slice(0,10)}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { 
+                scale: 2, // Mayor escala = mayor nitidez
+                letterRendering: true, 
+                backgroundColor: '#000000', // Fondo negro puro
+                scrollY: 0
+            },
+            jsPDF: { unit: 'px', format: [800, 'auto'], orientation: 'portrait' } // Ancho fijo coincidente con el CSS
         };
 
-        // 5. Creamos y descargamos el archivo JSON
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", "Mis_Datos_HAT.json");
-        document.body.appendChild(downloadAnchorNode); 
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
+        // Ejecutar la conversión y descarga
+        await html2pdf().set(opt).from(element).save();
 
-        window.showToast("¡Exportación completada con éxito!");
+        // Limpieza y feedback
+        document.body.removeChild(element);
+        window.showToast("¡Reporte PDF descargado!");
+        window.playVictory();
+
     } catch (error) {
-        console.error("Error exportando datos:", error);
-        window.showToast("Hubo un error al exportar los datos.");
+        console.error("Error exportando PDF:", error);
+        window.showToast("Hubo un error al generar el PDF profesional.");
+    } finally {
+        // Ocultar modal de carga
+        document.getElementById('ai-loading-overlay').classList.add('hidden');
+        document.getElementById('ai-loading-overlay').classList.remove('flex');
     }
 };
 
