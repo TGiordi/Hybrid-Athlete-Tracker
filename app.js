@@ -168,38 +168,94 @@ function toggleFabMenu() {
 function closeFabAndRun(callbackFunction) { toggleFabMenu(); setTimeout(() => { if(typeof callbackFunction === 'function') callbackFunction(); }, 150); }
 
 // --- TIEMPO GLOBAL DE ENTRENAMIENTO ---
-function startGlobalWorkout() {
-    playVictory(); document.getElementById('btn-start-workout').classList.add('hidden'); document.getElementById('global-workout-timer').classList.remove('hidden');
-    if(!localStorage.getItem('hat_workout_start')) { localStorage.setItem('hat_workout_start', Date.now().toString()); globalSeconds = 0; }
-    updateGlobalTimerDisplay();
+window.startGlobalWorkout = function() {
+    window.playVictory(); 
+    document.getElementById('btn-start-workout').classList.add('hidden'); 
+    document.getElementById('global-workout-timer').classList.remove('hidden');
+    
+    if(!localStorage.getItem('hat_workout_start')) { 
+        localStorage.setItem('hat_workout_start', Date.now().toString()); 
+        globalSeconds = 0; 
+    }
+    window.updateGlobalTimerDisplay();
+    
     if(globalTimerInterval) clearInterval(globalTimerInterval);
-    globalTimerInterval = setInterval(() => { const startTime = parseInt(localStorage.getItem('hat_workout_start') || Date.now()); globalSeconds = Math.floor((Date.now() - startTime) / 1000); if (globalSeconds >= MAX_TIMER_SECONDS) { globalSeconds = MAX_TIMER_SECONDS; showToast("⚠️ Límite de 24h alcanzado."); } updateGlobalTimerDisplay(); }, 1000);
-}
+    
+    globalTimerInterval = setInterval(() => { 
+        const startTime = parseInt(localStorage.getItem('hat_workout_start') || Date.now()); 
+        globalSeconds = Math.floor((Date.now() - startTime) / 1000); 
+        
+        if (globalSeconds >= MAX_TIMER_SECONDS) {
+            globalSeconds = MAX_TIMER_SECONDS;
+            window.showToast("⚠️ Límite de 24h alcanzado.");
+        }
+        window.updateGlobalTimerDisplay(); 
+    }, 1000);
+};
 
-function updateGlobalTimerDisplay() {
-    let h = Math.floor(globalSeconds / 3600).toString().padStart(2, '0'); let m = Math.floor((globalSeconds % 3600) / 60).toString().padStart(2, '0'); let s = (globalSeconds % 60).toString().padStart(2, '0');
-    const display = document.getElementById('global-timer-display'); if(display) display.innerText = `${h}:${m}:${s}`;
-}
+window.updateGlobalTimerDisplay = function() {
+    let h = Math.floor(globalSeconds / 3600).toString().padStart(2, '0'); 
+    let m = Math.floor((globalSeconds % 3600) / 60).toString().padStart(2, '0'); 
+    let s = (globalSeconds % 60).toString().padStart(2, '0');
+    const display = document.getElementById('global-timer-display'); 
+    if(display) display.innerText = `${h}:${m}:${s}`;
+};
 
-function promptStopGlobalWorkout() { openModal('modal-confirm-stop-workout'); }
+// Doble enlace para evitar fallos de HTML
+window.promptStopGlobalWorkout = function() { window.openModal('modal-confirm-stop-workout'); };
+window.stopGlobalWorkout = window.promptStopGlobalWorkout; 
 
-async function confirmStopGlobalWorkout() {
-    clearInterval(globalTimerInterval); globalTimerInterval = null;
-    document.getElementById('global-workout-timer').classList.add('hidden'); document.getElementById('btn-start-workout').classList.remove('hidden');
-    const today = new Date(); const dateString = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
-    try { await supabaseClient.from('workout_sessions').insert([{ user_id: currentUserId, session_date: dateString, duration_seconds: globalSeconds }]); closeAllModals(); showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(globalSeconds)}`); playVictory(); } catch(e) { console.error("Error guardando sesión global:", e); }
-    localStorage.removeItem('hat_workout_start'); globalSeconds = 0;
-}
+window.confirmStopGlobalWorkout = async function() {
+    // 1. Frenamos el reloj inmediatamente
+    if(globalTimerInterval) {
+        clearInterval(globalTimerInterval); 
+        globalTimerInterval = null;
+    }
+    
+    const today = new Date(); 
+    const dateString = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
+    
+    try {
+        await supabaseClient.from('workout_sessions').insert([{ 
+            user_id: currentUserId, 
+            session_date: dateString, 
+            duration_seconds: globalSeconds 
+        }]);
+        window.showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(globalSeconds)}`); 
+        window.playVictory();
+    } catch(e) { 
+        console.error("Error guardando sesión global:", e); 
+        window.showToast("Hubo un error al guardar la sesión.");
+    } finally {
+        // 2. Siempre limpiamos la pantalla, pase lo que pase
+        document.getElementById('global-workout-timer').classList.add('hidden'); 
+        document.getElementById('btn-start-workout').classList.remove('hidden');
+        localStorage.removeItem('hat_workout_start'); 
+        globalSeconds = 0;
+        window.closeAllModals(); 
+    }
+};
 
-function resumeGlobalWorkoutIfActive() {
+window.resumeGlobalWorkoutIfActive = function() {
     const savedStart = localStorage.getItem('hat_workout_start');
     if (savedStart) {
         globalSeconds = Math.floor((Date.now() - parseInt(savedStart)) / 1000);
-        if (globalSeconds >= MAX_TIMER_SECONDS) globalSeconds = MAX_TIMER_SECONDS;
-        document.getElementById('btn-start-workout').classList.add('hidden'); document.getElementById('global-workout-timer').classList.remove('hidden'); updateGlobalTimerDisplay();
-        globalTimerInterval = setInterval(() => { const startTime = parseInt(localStorage.getItem('hat_workout_start') || Date.now()); globalSeconds = Math.floor((Date.now() - startTime) / 1000); if (globalSeconds >= MAX_TIMER_SECONDS) globalSeconds = MAX_TIMER_SECONDS; updateGlobalTimerDisplay(); }, 1000);
+        if (globalSeconds >= MAX_TIMER_SECONDS) {
+            globalSeconds = MAX_TIMER_SECONDS;
+        }
+        
+        document.getElementById('btn-start-workout').classList.add('hidden'); 
+        document.getElementById('global-workout-timer').classList.remove('hidden');
+        window.updateGlobalTimerDisplay();
+        
+        globalTimerInterval = setInterval(() => { 
+            const startTime = parseInt(localStorage.getItem('hat_workout_start') || Date.now()); 
+            globalSeconds = Math.floor((Date.now() - startTime) / 1000); 
+            if (globalSeconds >= MAX_TIMER_SECONDS) globalSeconds = MAX_TIMER_SECONDS;
+            window.updateGlobalTimerDisplay(); 
+        }, 1000);
     }
-}
+};
 
 // --- GESTOR LOCAL DE TIEMPOS DE EJERCICIO ---
 function getExTimerState(exId) { let timers = JSON.parse(localStorage.getItem('hat_ex_timers') || '{}'); return timers[exId] || { running: false, acc: 0, lastStart: 0 }; }
