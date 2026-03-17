@@ -984,6 +984,48 @@ function promptEditLog(exId, exName, dateStr, exType) {
     openModal('modal-edit-log');
 }
 
+// --- EXPORTACIÓN DE DATOS ---
+window.exportUserData = async function() {
+    window.playPop();
+    window.showToast("Recopilando datos para exportar...");
+
+    try {
+        // 1. Buscamos la rutina actual
+        const { data: routines, error: err1 } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId);
+        if (err1) throw err1;
+
+        // 2. Buscamos el historial de ejercicios
+        const { data: logs, error: err2 } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: false });
+        if (err2) throw err2;
+
+        // 3. Buscamos el historial de tiempos globales
+        const { data: sessions, error: err3 } = await supabaseClient.from('workout_sessions').select('*').eq('user_id', currentUserId).order('session_date', { ascending: false });
+        if (err3) throw err3;
+
+        // 4. Armamos el paquete
+        const exportData = {
+            generado_en: new Date().toISOString(),
+            rutina_actual: routines,
+            historial_ejercicios: logs,
+            entrenamientos_completados: sessions
+        };
+
+        // 5. Creamos y descargamos el archivo JSON
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "Mis_Datos_HAT.json");
+        document.body.appendChild(downloadAnchorNode); 
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+
+        window.showToast("¡Exportación completada con éxito!");
+    } catch (error) {
+        console.error("Error exportando datos:", error);
+        window.showToast("Hubo un error al exportar los datos.");
+    }
+};
+
 // =========================================================================
 // EXPORTACIÓN GLOBAL 
 // =========================================================================
