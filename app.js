@@ -985,23 +985,30 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - ALTA RESILIENCIA) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - BAJO CONSUMO DE RAM) ---
 // =========================================================================
 window.exportUserDataPDF = async function() {
     window.playPop();
-    document.getElementById('loading-title').innerText = "Generando Reporte...";
-    document.getElementById('loading-desc').innerText = "Procesando el historial. Si tenés muchos datos, esto tomará unos segundos. Por favor aguardá...";
+    document.getElementById('loading-title').innerText = "Compilando Reporte...";
+    document.getElementById('loading-desc').innerText = "Procesando gráficos estáticos para ahorrar memoria. Esto tomará unos segundos...";
     document.getElementById('ai-loading-overlay').classList.remove('hidden');
     document.getElementById('ai-loading-overlay').classList.add('flex');
 
     const containerId = 'pdf-export-container-safe';
-    // Limpiamos cualquier intento previo que haya quedado colgado
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    // Contenedor principal: visibility hidden preserva el tamaño real para Chart.js sin que moleste en pantalla
+    // 1. Contenedor del PDF (Fuera de pantalla)
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = "position: absolute; top: 0; left: 0; width: 800px; background-color: #000000; z-index: -9999; visibility: hidden;";
+    element.style.cssText = "position: absolute; top: 0; left: -9999px; width: 800px; background-color: #000000;";
+
+    // 2. Lienzo (Canvas) temporal único para dibujar gráficos sin saturar la RAM
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.id = "temp-chart-renderer";
+    tempCanvas.width = 720; // Ancho ajustado al PDF
+    tempCanvas.height = 220; // Alto de los gráficos
+    tempCanvas.style.cssText = "position: absolute; top: 0; left: -9999px;";
+    document.body.appendChild(tempCanvas);
 
     try {
         const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).order('day_of_week', { ascending: true }).order('order_index', { ascending: true });
@@ -1009,7 +1016,7 @@ window.exportUserDataPDF = async function() {
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
         const filename = `HAT_Reporte_${userEmail.split('@')[0]}_${new Date().toISOString().slice(0,10)}.pdf`;
 
-        // CSS Estricto preparado para paginación
+        // CSS Estricto
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
@@ -1029,12 +1036,13 @@ window.exportUserDataPDF = async function() {
                 .ex-sets { text-align: right; font-weight: 700; font-size: 20px; }
                 .ex-sets span { font-size: 12px; color: #94A3B8; font-weight: 400; margin-left: 4px; }
                 
-                /* Clases especiales para cortes de página */
-                .html2pdf__page-break { page-break-before: always; height: 0; border: none; margin: 0; padding: 0; }
+                .page-break { page-break-before: always; border-top: none; padding-top: 40px; }
                 .history-card { margin-top: 20px; margin-bottom: 30px; page-break-inside: avoid; background-color: #000000; }
-                
                 .history-title { font-size: 18px; color: #F54927; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 15px; }
-                .chart-box { background-color: #0a0a0a; border: 1px solid #262626; border-radius: 12px; padding: 15px; margin-bottom: 15px; width: 100%; height: 220px; }
+                
+                /* Estilo de la imagen que reemplaza al gráfico interactivo */
+                .chart-img { width: 100%; height: auto; border: 1px solid #262626; border-radius: 12px; margin-bottom: 15px; display: block; background-color: #0a0a0a; }
+                
                 .log-table { width: 100%; border-collapse: collapse; font-size: 12px; background-color: #0a0a0a; border-radius: 8px; border: 1px solid #262626; overflow: hidden; }
                 .log-table th { background-color: #171717; color: #94A3B8; padding: 10px; text-align: left; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid #262626;}
                 .log-table td { padding: 10px; border-bottom: 1px solid #171717; color: #ffffff; }
@@ -1055,7 +1063,6 @@ window.exportUserDataPDF = async function() {
                 <h2><span>01</span> Rutina Semanal Detallada</h2>
         `;
 
-        // SECCIÓN 1: RUTINA
         if (routines && routines.length > 0) {
             let currentDay = "";
             routines.forEach(ex => {
@@ -1077,10 +1084,7 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: #94A3B8; text-align: center;">No hay rutina configurada.</p>`;
         }
 
-        // SECCIÓN 2: HISTORIAL (Corte forzado al motor PDF)
-        htmlContent += `<div class="html2pdf__page-break"></div><h2><span>02</span> Evolución y Progreso Visual</h2>`;
-
-        const chartConfigs = [];
+        htmlContent += `<div class="page-break"><h2><span>02</span> Evolución y Progreso Visual</h2></div>`;
 
         if (logs && logs.length > 0) {
             const groupedLogs = {};
@@ -1089,10 +1093,10 @@ window.exportUserDataPDF = async function() {
                 groupedLogs[l.exercise_name].data.push(l);
             });
 
+            // 3. Iteramos ejercicios y fabricamos IMÁGENES de los gráficos
             for (const exName in groupedLogs) {
                 const exLogs = groupedLogs[exName];
                 const type = exLogs.type;
-                const safeCanvasId = `canvas-pdf-${exName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "-")}`;
 
                 const chartGroupedData = {};
                 exLogs.data.forEach(log => {
@@ -1111,10 +1115,50 @@ window.exportUserDataPDF = async function() {
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
+                // Configuramos el canvas oculto
+                const ctx = tempCanvas.getContext('2d');
+                ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                // Fondo oscuro para que la foto no quede negra transparente
+                ctx.fillStyle = '#0a0a0a'; 
+                ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
+
+                // Dibujamos
+                const tempChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [{
+                            data: maxData,
+                            borderColor: '#F54927',
+                            backgroundColor: 'rgba(245, 73, 39, 0.05)',
+                            borderWidth: 3, tension: 0.3, pointRadius: 3, fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: false, // Fundamental para evitar parpadeos
+                        animation: false, // Instantáneo
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: '#262626' }, ticks: { color: '#94A3B8', font: {size: 11} }, title: {display: true, text: titleY, color: '#94A3B8', font: {size: 11}} },
+                            x: { grid: { display: false }, ticks: { color: '#94A3B8', font: {size: 11} } }
+                        }
+                    }
+                });
+
+                // Esperamos 50ms para asegurar el trazado
+                await new Promise(r => setTimeout(r, 50));
+                
+                // Sacamos la FOTO en formato PNG y destruimos el gráfico de la memoria
+                const chartImageBase64 = tempCanvas.toDataURL('image/png', 1.0);
+                tempChart.destroy(); 
+
+                // Armamos la tabla, pero usamos una <IMG> en vez del canvas
                 htmlContent += `
                     <div class="history-card">
                         <div class="history-title">${escapeHTML(exName)}</div>
-                        <div class="chart-box"><canvas id="${safeCanvasId}"></canvas></div>
+                        <img src="${chartImageBase64}" class="chart-img" />
                         <table class="log-table">
                             <thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>
                             <tbody>
@@ -1123,7 +1167,6 @@ window.exportUserDataPDF = async function() {
                 [...dates].reverse().forEach(date => {
                     const dayData = chartGroupedData[date];
                     dayData.sets.sort((a,b) => a.set_number - b.set_number);
-                    
                     const badges = dayData.sets.map(s => {
                         if (type === 'tiempo') {
                             let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60;
@@ -1135,12 +1178,9 @@ window.exportUserDataPDF = async function() {
 
                     let totalDur = dayData.sets[0].exercise_duration || 0;
                     let durText = totalDur > 0 ? `${Math.floor(totalDur/60)}m ${totalDur%60}s` : '-';
-
                     htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="color:#94A3B8;">${durText}</td><td>${badges}</td></tr>`;
                 });
-
                 htmlContent += `</tbody></table></div>`;
-                chartConfigs.push({ id: safeCanvasId, type: type, labels: dates, data: maxData });
             }
         } else {
             htmlContent += `<p style="color: #94A3B8; text-align: center;">No hay historial de progreso disponible.</p>`;
@@ -1148,50 +1188,18 @@ window.exportUserDataPDF = async function() {
 
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker</div></div>`;
 
-        // 3. Montar en el DOM
+        // 4. Inyectar HTML ya con las imágenes estáticas (consumo de RAM minúsculo)
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
-        // 4. Dibujar gráficos con micro-pausas para evitar bloqueos del navegador
-        for (const config of chartConfigs) {
-            const canvasEl = document.getElementById(config.id);
-            if(canvasEl) {
-                const ctx = canvasEl.getContext('2d');
-                const titleY = config.type === 'tiempo' ? 'Segundos' : 'Kilogramos';
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: config.labels,
-                        datasets: [{
-                            data: config.data,
-                            borderColor: '#F54927',
-                            backgroundColor: 'rgba(245, 73, 39, 0.05)',
-                            borderWidth: 2, tension: 0.3, pointRadius: 3, fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        animation: false, // Fundamental desactivar la animación
-                        plugins: { legend: { display: false } },
-                        scales: {
-                            y: { grid: { color: '#262626' }, ticks: { color: '#94A3B8', font: {size: 10} }, title: {display: true, text: titleY, color: '#94A3B8', font: {size: 10}} },
-                            x: { grid: { display: false }, ticks: { color: '#94A3B8', font: {size: 10} } }
-                        }
-                    }
-                });
-            }
-            await new Promise(r => setTimeout(r, 20)); // Respiro de memoria
-        }
+        await new Promise(resolve => setTimeout(resolve, 300));
 
-        // Pausa final antes de "sacar la foto"
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // 5. Motor de PDF equilibrado (Menos resolución para asegurar que pase en historiales grandes)
+        // 5. Configuración de html2pdf
         const opt = {
-            margin:       [20, 0, 20, 0], 
+            margin:       [10, 0, 10, 0], 
             filename:     filename,
-            image:        { type: 'jpeg', quality: 0.95 },
-            html2canvas:  { scale: 1.5, useCORS: true, backgroundColor: '#000000', logging: false },
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#000000', logging: false },
             jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'], avoid: '.history-card' }
         };
@@ -1203,11 +1211,10 @@ window.exportUserDataPDF = async function() {
 
     } catch (error) {
         console.error("Error al generar PDF:", error);
-        window.showMessage("❌ Error: El reporte es demasiado grande. Intentá borrar registros antiguos.", true);
+        window.showMessage("❌ Error: El historial es demasiado grande para tu dispositivo.", true);
     } finally {
-        // 6. Limpieza Obligatoria garantizada
-        const containerToRemove = document.getElementById(containerId);
-        if (containerToRemove) containerToRemove.remove();
+        if (document.getElementById(containerId)) document.getElementById(containerId).remove();
+        if (tempCanvas) tempCanvas.remove(); // Borramos el lienzo de fotos
         
         document.getElementById('ai-loading-overlay').classList.add('hidden');
         document.getElementById('ai-loading-overlay').classList.remove('flex');
