@@ -9,41 +9,65 @@ const SUPABASE_URL = "https://kqmkseiwgdzwzmtqdcxk.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtxbWtzZWl3Z2R6d3ptdHFkY3hrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzMyMzQ0NTMsImV4cCI6MjA4ODgxMDQ1M30.b3kQ8JSYaMCrRdgxoyek6xXF4Hhv_9H8edEN4c7oF8U";
 const REDIRECT_URL = "https://tgiordi.github.io/Hybrid-Athlete-Tracker/";
 
-let supabaseClient = null; let currentUserId = null; let isSignUp = false; let currentActiveDay = 'lunes'; let currentEditExerciseId = null; let currentAIPrompt = ""; let exerciseToCopy = null;
-let pendingSavedRoutineId = null; let pendingDeleteSessionId = null;
-window.myCharts = {}; window.currentHistory = {}; window.currentDayExercises = []; window.chatHistory = [];
+let supabaseClient = null; 
+let currentUserId = null; 
+let isSignUp = false; 
+let currentActiveDay = 'lunes'; 
+let currentEditExerciseId = null; 
+let currentAIPrompt = ""; 
+let exerciseToCopy = null;
+let pendingSavedRoutineId = null; 
+let pendingDeleteSessionId = null;
+
+window.myCharts = {}; 
+window.currentHistory = {}; 
+window.currentDayExercises = []; 
+window.chatHistory = [];
 
 // --- VARIABLES DE TIEMPO ---
-let timerInterval = null; let timerSecondsLeft = 0;
-let globalTimerInterval = null; let globalSeconds = 0;
-window.exerciseTimers = {}; 
+let timerInterval = null; 
+let timerSecondsLeft = 0;
+let globalTimerInterval = null; 
+let globalSeconds = 0;
+
+// Máximo de 24 horas en segundos
+const MAX_TIMER_SECONDS = 86400; 
 
 // ÍCONOS SVG LIMPIOS PARA LOS BOTONES
 const SVG_PLAY = `<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`;
 const SVG_PAUSE = `<svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>`;
 const SVG_RESET = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>`;
 
-// --- MOTOR DE SONIDO MEJORADO ---
+// --- MOTOR DE SONIDO (WEB AUDIO API) ---
 let audioCtx = null;
-function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } }
-document.addEventListener('click', initAudio, {once: true}); document.addEventListener('touchstart', initAudio, {once: true});
+function initAudio() { 
+    if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } 
+}
+document.addEventListener('click', initAudio, {once: true}); 
+document.addEventListener('touchstart', initAudio, {once: true});
 
 function playTone(freq, type, duration, vol=0.05) {
     if(!audioCtx) return;
     if(audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
-    osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    const osc = audioCtx.createOscillator(); 
+    const gain = audioCtx.createGain();
+    osc.type = type; 
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
     gain.gain.setValueAtTime(vol, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.start(); osc.stop(audioCtx.currentTime + duration);
+    osc.connect(gain); 
+    gain.connect(audioCtx.destination);
+    osc.start(); 
+    osc.stop(audioCtx.currentTime + duration);
 }
 function playTap() { playTone(1200, 'sine', 0.05, 0.015); } 
 function playPop() { playTone(900, 'triangle', 0.08, 0.02); } 
 function playAlarm() {
     if(!audioCtx) return;
     const notes = [523.25, 659.25, 783.99, 1046.50]; 
-    for(let j=0; j<3; j++) { notes.forEach((freq, i) => { setTimeout(() => playTone(freq, 'square', 0.1, 0.05), (j * 600) + (i * 100)); }); }
+    for(let j=0; j<3; j++) { 
+        notes.forEach((freq, i) => { setTimeout(() => playTone(freq, 'square', 0.1, 0.05), (j * 600) + (i * 100)); }); 
+    }
 }
 function playVictory() {
     if(!audioCtx) return;
@@ -53,81 +77,163 @@ function playVictory() {
 
 function escapeHTML(str) { return !str ? '' : String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;'); }
 function showToast(message) {
-    const toast = document.getElementById('toast-notification'); document.getElementById('toast-msg').innerText = message;
-    toast.classList.remove('bottom-[-100px]', 'opacity-0'); toast.classList.add('bottom-10', 'opacity-100');
-    setTimeout(() => { toast.classList.add('bottom-[-100px]', 'opacity-0'); toast.classList.remove('bottom-10', 'opacity-100'); }, 3000);
+    const toast = document.getElementById('toast-notification'); 
+    document.getElementById('toast-msg').innerText = message;
+    toast.classList.remove('bottom-[-100px]', 'opacity-0'); 
+    toast.classList.add('bottom-10', 'opacity-100');
+    setTimeout(() => { 
+        toast.classList.add('bottom-[-100px]', 'opacity-0'); 
+        toast.classList.remove('bottom-10', 'opacity-100'); 
+    }, 3000);
 }
 function formatTime(totalSeconds) {
     if(!totalSeconds) return "0s";
-    let m = Math.floor(totalSeconds / 60); let s = Math.round(totalSeconds % 60);
-    if(m > 0 && s > 0) return `${m}m ${s}s`; if(m > 0) return `${m}m`; return `${s}s`;
+    let h = Math.floor(totalSeconds / 3600);
+    let m = Math.floor((totalSeconds % 3600) / 60); 
+    let s = Math.round(totalSeconds % 60);
+    if(h > 0) return `${h}h ${m}m`;
+    if(m > 0 && s > 0) return `${m}m ${s}s`; 
+    if(m > 0) return `${m}m`; 
+    return `${s}s`;
 }
 
 // --- CLICS AFUERA ---
 document.addEventListener('click', (e) => {
-    if (!e.target.closest('.ex-menu-container')) { document.querySelectorAll('.ex-dropdown').forEach(el => el.classList.add('hidden')); }
-    const fabContainer = document.getElementById('fab-container'); const fabOptions = document.getElementById('fab-options');
-    if (fabContainer && !e.target.closest('#fab-container') && !fabOptions.classList.contains('opacity-0')) { toggleFabMenu(); }
+    if (!e.target.closest('.ex-menu-container')) { 
+        document.querySelectorAll('.ex-dropdown').forEach(el => el.classList.add('hidden')); 
+    }
+    const fabContainer = document.getElementById('fab-container'); 
+    const fabOptions = document.getElementById('fab-options');
+    if (fabContainer && !e.target.closest('#fab-container') && !fabOptions.classList.contains('opacity-0')) { 
+        toggleFabMenu(); 
+    }
 });
-document.getElementById('modal-overlay').addEventListener('click', function(e) { if (e.target === this) closeAllModals(); });
+document.getElementById('modal-overlay').addEventListener('click', function(e) { 
+    if (e.target === this) closeAllModals(); 
+});
 
 // --- DRAG & DROP DEL MINI TIMER ---
 const miniTimer = document.getElementById('mini-timer-widget');
-let isDraggingTimer = false; let startX, startY, initialX, initialY;
+let isDraggingTimer = false; 
+let startX, startY, initialX, initialY;
 function timerDragStart(e) {
     if(e.target.closest('button')) return; 
     isDraggingTimer = true;
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-    const rect = miniTimer.getBoundingClientRect(); startX = clientX; startY = clientY; initialX = rect.left; initialY = rect.top; miniTimer.style.transition = 'none';
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX; 
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const rect = miniTimer.getBoundingClientRect(); 
+    startX = clientX; startY = clientY; 
+    initialX = rect.left; initialY = rect.top; 
+    miniTimer.style.transition = 'none';
 }
 function timerDragMove(e) {
-    if(!isDraggingTimer) return; e.preventDefault(); 
-    const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    if(!isDraggingTimer) return; 
+    e.preventDefault(); 
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX; 
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     const dx = clientX - startX; const dy = clientY - startY;
-    miniTimer.style.left = `${initialX + dx}px`; miniTimer.style.top = `${initialY + dy}px`; miniTimer.style.bottom = 'auto'; miniTimer.style.right = 'auto'; miniTimer.style.transform = 'none';
+    miniTimer.style.left = `${initialX + dx}px`; 
+    miniTimer.style.top = `${initialY + dy}px`; 
+    miniTimer.style.bottom = 'auto'; 
+    miniTimer.style.right = 'auto'; 
+    miniTimer.style.transform = 'none';
 }
 function timerDragEnd(e) {
-    if(!isDraggingTimer) return; isDraggingTimer = false; miniTimer.style.transition = 'all 0.3s ease';
-    const rect = miniTimer.getBoundingClientRect(); const screenWidth = window.innerWidth;
-    if (rect.left + rect.width / 2 < screenWidth / 2) { miniTimer.style.left = '16px'; } else { miniTimer.style.left = `${screenWidth - rect.width - 16}px`; }
+    if(!isDraggingTimer) return; 
+    isDraggingTimer = false; 
+    miniTimer.style.transition = 'all 0.3s ease';
+    const rect = miniTimer.getBoundingClientRect(); 
+    const screenWidth = window.innerWidth;
+    if (rect.left + rect.width / 2 < screenWidth / 2) { 
+        miniTimer.style.left = '16px'; 
+    } else { 
+        miniTimer.style.left = `${screenWidth - rect.width - 16}px`; 
+    }
     if(rect.top < 80) miniTimer.style.top = '80px';
     if(rect.top > window.innerHeight - 100) miniTimer.style.top = `${window.innerHeight - 100}px`;
 }
-if(miniTimer) { miniTimer.addEventListener('mousedown', timerDragStart); window.addEventListener('mousemove', timerDragMove); window.addEventListener('mouseup', timerDragEnd); miniTimer.addEventListener('touchstart', timerDragStart, {passive: false}); window.addEventListener('touchmove', timerDragMove, {passive: false}); window.addEventListener('touchend', timerDragEnd); }
+if(miniTimer) { 
+    miniTimer.addEventListener('mousedown', timerDragStart); 
+    window.addEventListener('mousemove', timerDragMove); 
+    window.addEventListener('mouseup', timerDragEnd); 
+    miniTimer.addEventListener('touchstart', timerDragStart, {passive: false}); 
+    window.addEventListener('touchmove', timerDragMove, {passive: false}); 
+    window.addEventListener('touchend', timerDragEnd); 
+}
 
 // --- INICIALIZACIÓN ---
 document.addEventListener('DOMContentLoaded', async () => {
     setTimeout(typeWriter, 500); 
-    if (typeof Chart !== 'undefined') { Chart.defaults.font.family = "'Montserrat', sans-serif"; Chart.defaults.color = '#94A3B8'; }
+    if (typeof Chart !== 'undefined') { 
+        Chart.defaults.font.family = "'Montserrat', sans-serif"; 
+        Chart.defaults.color = '#94A3B8'; 
+    }
     document.getElementById('auth-password')?.addEventListener('keypress', function (e) { if (e.key === 'Enter') handleAuth(); });
     document.getElementById('new-password-input')?.addEventListener('keypress', function (e) { if (e.key === 'Enter') saveNewPassword(); });
     document.getElementById('chat-input')?.addEventListener('keypress', function (e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
     document.getElementById('timer-min')?.addEventListener('keypress', function (e) { if (e.key === 'Enter') toggleTimer(); });
     document.getElementById('timer-seg')?.addEventListener('keypress', function (e) { if (e.key === 'Enter') toggleTimer(); });
     document.getElementById('routine-save-name')?.addEventListener('keypress', function (e) { if (e.key === 'Enter') saveRoutine(); });
-    ['new-ex-name', 'new-ex-sets', 'new-ex-reps'].forEach(id => { document.getElementById(id)?.addEventListener('keypress', e => { if(e.key === 'Enter') saveExercise(); }); });
+    ['new-ex-name', 'new-ex-sets', 'new-ex-reps'].forEach(id => { 
+        document.getElementById(id)?.addEventListener('keypress', e => { if(e.key === 'Enter') saveExercise(); }); 
+    });
 
     try {
         if (window.supabase) {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
             let isRecovering = window.location.hash.includes('type=recovery');
-            if (isRecovering) { openModal('modal-new-pwd'); } 
-            else { const { data: { session } } = await supabaseClient.auth.getSession(); if(session) { currentUserId = session.user.id; loadDashboardView(session.user.email); } }
+            if (isRecovering) { 
+                openModal('modal-new-pwd'); 
+            } else { 
+                const { data: { session } } = await supabaseClient.auth.getSession(); 
+                if(session) { 
+                    currentUserId = session.user.id; 
+                    loadDashboardView(session.user.email); 
+                } 
+            }
             supabaseClient.auth.onAuthStateChange((event, session) => {
-                if (event === 'PASSWORD_RECOVERY') { isRecovering = true; openModal('modal-new-pwd'); } 
-                else if (event === 'SIGNED_IN' && session) { setTimeout(() => { if(!isRecovering && !currentUserId) { currentUserId = session.user.id; loadDashboardView(session.user.email); } }, 500); }
-                else if (event === 'SIGNED_OUT') { currentUserId = null; location.reload(); }
+                if (event === 'PASSWORD_RECOVERY') { 
+                    isRecovering = true; 
+                    openModal('modal-new-pwd'); 
+                } else if (event === 'SIGNED_IN' && session) { 
+                    setTimeout(() => { 
+                        if(!isRecovering && !currentUserId) { 
+                            currentUserId = session.user.id; 
+                            loadDashboardView(session.user.email); 
+                        } 
+                    }, 500); 
+                } else if (event === 'SIGNED_OUT') { 
+                    currentUserId = null; 
+                    location.reload(); 
+                }
             });
         }
     } catch(e) { console.error(e); }
 });
 
-function typeWriter() { const el = document.getElementById("typewriter-text"); if(!el) return; if (typeIndex < subtitleText.length) { el.innerHTML += subtitleText.charAt(typeIndex); typeIndex++; setTimeout(typeWriter, 20); } else { el.classList.remove('typewriter-cursor'); } }
+function typeWriter() { 
+    const el = document.getElementById("typewriter-text"); 
+    if(!el) return; 
+    if (typeIndex < subtitleText.length) { 
+        el.innerHTML += subtitleText.charAt(typeIndex); 
+        typeIndex++; 
+        setTimeout(typeWriter, 20); 
+    } else { 
+        el.classList.remove('typewriter-cursor'); 
+    } 
+}
 
 function openModal(modalId) {
     playPop();
-    const overlay = document.getElementById('modal-overlay'); overlay.classList.remove('hidden'); overlay.classList.add('flex');
-    document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); const targetModal = document.getElementById(modalId); if(targetModal) targetModal.classList.remove('hidden'); document.body.style.overflow = 'hidden';
+    const overlay = document.getElementById('modal-overlay'); 
+    overlay.classList.remove('hidden'); 
+    overlay.classList.add('flex');
+    
+    document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); 
+    const targetModal = document.getElementById(modalId); 
+    if(targetModal) targetModal.classList.remove('hidden'); 
+    document.body.style.overflow = 'hidden';
+    
     if(modalId === 'modal-auth') { isSignUp = false; updateAuthUI(); document.getElementById('auth-password').type = 'password'; }
     if(modalId === 'modal-edit-log') document.getElementById('edit-error-msg')?.classList.add('hidden');
     if(modalId === 'modal-exercise') document.getElementById('ex-error-msg')?.classList.add('hidden');
@@ -136,73 +242,178 @@ function openModal(modalId) {
 
 function closeAllModals() {
     playPop();
-    const overlay = document.getElementById('modal-overlay'); overlay.classList.add('hidden'); overlay.classList.remove('flex');
-    document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); document.body.style.overflow = 'auto'; window.location.hash = ''; 
-    if (timerSecondsLeft > 0) { const miniWidget = document.getElementById('mini-timer-widget'); miniWidget.classList.remove('translate-x-[-150%]', 'opacity-0', 'hidden'); miniWidget.classList.add('translate-x-0', 'opacity-100'); }
+    const overlay = document.getElementById('modal-overlay'); 
+    overlay.classList.add('hidden'); 
+    overlay.classList.remove('flex');
+    
+    document.querySelectorAll('.modal-content').forEach(m => m.classList.add('hidden')); 
+    document.body.style.overflow = 'auto'; 
+    window.location.hash = ''; 
+    
+    if (timerSecondsLeft > 0) { 
+        const miniWidget = document.getElementById('mini-timer-widget'); 
+        miniWidget.classList.remove('translate-x-[-150%]', 'opacity-0', 'hidden'); 
+        miniWidget.classList.add('translate-x-0', 'opacity-100'); 
+    }
 }
 
 function toggleFabMenu() {
     playTap();
-    const options = document.getElementById('fab-options'); const icon = document.getElementById('fab-icon');
-    if (options.classList.contains('opacity-0')) { options.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none'); icon.style.transform = 'rotate(45deg)'; } 
-    else { options.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none'); icon.style.transform = 'rotate(0deg)'; }
+    const options = document.getElementById('fab-options'); 
+    const icon = document.getElementById('fab-icon');
+    if (options.classList.contains('opacity-0')) { 
+        options.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none'); 
+        icon.style.transform = 'rotate(45deg)'; 
+    } else { 
+        options.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none'); 
+        icon.style.transform = 'rotate(0deg)'; 
+    }
 }
 function closeFabAndRun(callback) { toggleFabMenu(); callback(); }
 
 // --- TIEMPO GLOBAL DE ENTRENAMIENTO ---
 window.startGlobalWorkout = function() {
-    playVictory(); document.getElementById('btn-start-workout').classList.add('hidden'); document.getElementById('global-workout-timer').classList.remove('hidden');
-    if(!localStorage.getItem('hat_workout_start')) { localStorage.setItem('hat_workout_start', Date.now().toString()); globalSeconds = 0; }
+    playVictory(); 
+    document.getElementById('btn-start-workout').classList.add('hidden'); 
+    document.getElementById('global-workout-timer').classList.remove('hidden');
+    
+    if(!localStorage.getItem('hat_workout_start')) { 
+        localStorage.setItem('hat_workout_start', Date.now().toString()); 
+        globalSeconds = 0; 
+    }
     updateGlobalTimerDisplay();
+    
     if(globalTimerInterval) clearInterval(globalTimerInterval);
-    globalTimerInterval = setInterval(() => { const startTime = parseInt(localStorage.getItem('hat_workout_start') || Date.now()); globalSeconds = Math.floor((Date.now() - startTime) / 1000); updateGlobalTimerDisplay(); }, 1000);
+    
+    globalTimerInterval = setInterval(() => { 
+        const startTime = parseInt(localStorage.getItem('hat_workout_start') || Date.now()); 
+        globalSeconds = Math.floor((Date.now() - startTime) / 1000); 
+        
+        if (globalSeconds >= MAX_TIMER_SECONDS) {
+            globalSeconds = MAX_TIMER_SECONDS;
+            showToast("⚠️ Límite de 24h alcanzado.");
+        }
+        updateGlobalTimerDisplay(); 
+    }, 1000);
 };
 
 function updateGlobalTimerDisplay() {
-    let h = Math.floor(globalSeconds / 3600).toString().padStart(2, '0'); let m = Math.floor((globalSeconds % 3600) / 60).toString().padStart(2, '0'); let s = (globalSeconds % 60).toString().padStart(2, '0');
-    const display = document.getElementById('global-timer-display'); if(display) display.innerText = `${h}:${m}:${s}`;
+    let h = Math.floor(globalSeconds / 3600).toString().padStart(2, '0'); 
+    let m = Math.floor((globalSeconds % 3600) / 60).toString().padStart(2, '0'); 
+    let s = (globalSeconds % 60).toString().padStart(2, '0');
+    const display = document.getElementById('global-timer-display'); 
+    if(display) display.innerText = `${h}:${m}:${s}`;
 }
 
-window.stopGlobalWorkout = function() { openModal('modal-confirm-stop-workout'); };
+window.stopGlobalWorkout = function() { 
+    openModal('modal-confirm-stop-workout'); 
+};
 
 window.confirmStopGlobalWorkout = async function() {
-    clearInterval(globalTimerInterval); globalTimerInterval = null;
-    document.getElementById('global-workout-timer').classList.add('hidden'); document.getElementById('btn-start-workout').classList.remove('hidden');
-    const today = new Date(); const dateString = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
+    clearInterval(globalTimerInterval); 
+    globalTimerInterval = null;
+    
+    document.getElementById('global-workout-timer').classList.add('hidden'); 
+    document.getElementById('btn-start-workout').classList.remove('hidden');
+    
+    const today = new Date(); 
+    const dateString = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
+    
     try {
         await supabaseClient.from('workout_sessions').insert([{ user_id: currentUserId, session_date: dateString, duration_seconds: globalSeconds }]);
-        closeAllModals(); showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(globalSeconds)}`); playVictory();
+        closeAllModals(); 
+        showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(globalSeconds)}`); 
+        playVictory();
     } catch(e) { console.error("Error guardando sesión global:", e); }
-    localStorage.removeItem('hat_workout_start'); globalSeconds = 0;
+    
+    localStorage.removeItem('hat_workout_start'); 
+    globalSeconds = 0;
 };
 
 function resumeGlobalWorkoutIfActive() {
     const savedStart = localStorage.getItem('hat_workout_start');
     if (savedStart) {
         globalSeconds = Math.floor((Date.now() - parseInt(savedStart)) / 1000);
-        document.getElementById('btn-start-workout').classList.add('hidden'); document.getElementById('global-workout-timer').classList.remove('hidden');
+        if (globalSeconds >= MAX_TIMER_SECONDS) {
+            globalSeconds = MAX_TIMER_SECONDS;
+        }
+        
+        document.getElementById('btn-start-workout').classList.add('hidden'); 
+        document.getElementById('global-workout-timer').classList.remove('hidden');
         updateGlobalTimerDisplay();
-        globalTimerInterval = setInterval(() => { const startTime = parseInt(localStorage.getItem('hat_workout_start') || Date.now()); globalSeconds = Math.floor((Date.now() - startTime) / 1000); updateGlobalTimerDisplay(); }, 1000);
+        
+        globalTimerInterval = setInterval(() => { 
+            const startTime = parseInt(localStorage.getItem('hat_workout_start') || Date.now()); 
+            globalSeconds = Math.floor((Date.now() - startTime) / 1000); 
+            if (globalSeconds >= MAX_TIMER_SECONDS) globalSeconds = MAX_TIMER_SECONDS;
+            updateGlobalTimerDisplay(); 
+        }, 1000);
     }
+}
+
+// --- GESTOR LOCAL DE TIEMPOS DE EJERCICIO ---
+function getExTimerState(exId) {
+    let timers = JSON.parse(localStorage.getItem('hat_ex_timers') || '{}');
+    return timers[exId] || { running: false, acc: 0, lastStart: 0 };
+}
+function saveExTimerState(exId, state) {
+    let timers = JSON.parse(localStorage.getItem('hat_ex_timers') || '{}');
+    timers[exId] = state;
+    localStorage.setItem('hat_ex_timers', JSON.stringify(timers));
+}
+function clearExTimerState(exId) {
+    let timers = JSON.parse(localStorage.getItem('hat_ex_timers') || '{}');
+    delete timers[exId];
+    localStorage.setItem('hat_ex_timers', JSON.stringify(timers));
+}
+function getExCurrentSeconds(exId) {
+    let state = getExTimerState(exId);
+    let secs = state.acc;
+    if (state.running) {
+        secs += Math.floor((Date.now() - state.lastStart) / 1000);
+    }
+    if (secs > MAX_TIMER_SECONDS) secs = MAX_TIMER_SECONDS;
+    return secs;
 }
 
 // --- CRONÓMETRO INDIVIDUAL POR EJERCICIO ---
 window.toggleExTimer = function(exId) {
     playTap();
-    if(!window.exerciseTimers[exId]) window.exerciseTimers[exId] = { seconds: 0, interval: null };
+    
+    if(!window.exerciseTimers[exId]) window.exerciseTimers[exId] = { interval: null };
     const t = window.exerciseTimers[exId];
     const btn = document.getElementById(`btn-extimer-${exId}`);
     const display = document.getElementById(`display-extimer-${exId}`);
     
-    if(t.interval) {
-        clearInterval(t.interval); t.interval = null;
-        btn.innerHTML = SVG_PLAY; btn.classList.replace('text-green-400', 'text-orange-400');
+    let state = getExTimerState(exId);
+    
+    if(state.running) {
+        // Pausar
+        if(t.interval) clearInterval(t.interval); 
+        t.interval = null;
+        
+        state.acc += Math.floor((Date.now() - state.lastStart) / 1000);
+        state.running = false;
+        saveExTimerState(exId, state);
+        
+        btn.innerHTML = SVG_PLAY; 
+        btn.classList.replace('text-green-400', 'text-orange-400');
     } else {
-        btn.innerHTML = SVG_PAUSE; btn.classList.replace('text-orange-400', 'text-green-400');
+        // Iniciar
+        state.running = true;
+        state.lastStart = Date.now();
+        saveExTimerState(exId, state);
+        
+        btn.innerHTML = SVG_PAUSE; 
+        btn.classList.replace('text-orange-400', 'text-green-400');
         if(!btn.classList.contains('text-green-400')) btn.classList.add('text-green-400');
+        
         t.interval = setInterval(() => {
-            t.seconds++;
-            let m = Math.floor(t.seconds / 60).toString().padStart(2, '0'); let s = (t.seconds % 60).toString().padStart(2, '0');
+            let currentSecs = getExCurrentSeconds(exId);
+            if (currentSecs >= MAX_TIMER_SECONDS) currentSecs = MAX_TIMER_SECONDS;
+            
+            let m = Math.floor(currentSecs / 60).toString().padStart(2, '0'); 
+            let s = (currentSecs % 60).toString().padStart(2, '0');
             display.innerText = `${m}:${s}`;
         }, 1000);
     }
@@ -210,56 +421,142 @@ window.toggleExTimer = function(exId) {
 
 window.resetExTimer = function(exId) {
     playPop();
-    if(!window.exerciseTimers[exId]) return;
-    clearInterval(window.exerciseTimers[exId].interval); window.exerciseTimers[exId] = { seconds: 0, interval: null };
+    if(window.exerciseTimers[exId] && window.exerciseTimers[exId].interval) {
+        clearInterval(window.exerciseTimers[exId].interval);
+    }
+    window.exerciseTimers[exId] = { interval: null };
+    clearExTimerState(exId);
+    
     document.getElementById(`display-extimer-${exId}`).innerText = "00:00";
     const btn = document.getElementById(`btn-extimer-${exId}`);
-    btn.innerHTML = SVG_PLAY; btn.classList.replace('text-green-400', 'text-orange-400');
+    btn.innerHTML = SVG_PLAY; 
+    btn.classList.replace('text-green-400', 'text-orange-400');
     if(btn.classList.contains('text-green-400')) btn.classList.replace('text-green-400', 'text-orange-400');
 };
 
-// --- CRONÓMETRO DE DESCANSO ---
+// Se llama cuando se renderiza la UI para restaurar visualmente los timers de ejercicio
+function resumeExTimerIfActive(exId) {
+    let state = getExTimerState(exId);
+    if (!state) return;
+    
+    let currentSecs = getExCurrentSeconds(exId);
+    if (currentSecs > 0) {
+        if(!window.exerciseTimers[exId]) window.exerciseTimers[exId] = { interval: null };
+        const t = window.exerciseTimers[exId];
+        const display = document.getElementById(`display-extimer-${exId}`);
+        const btn = document.getElementById(`btn-extimer-${exId}`);
+        
+        let m = Math.floor(currentSecs / 60).toString().padStart(2, '0'); 
+        let s = (currentSecs % 60).toString().padStart(2, '0');
+        if(display) display.innerText = `${m}:${s}`;
+        
+        if (state.running) {
+            btn.innerHTML = SVG_PAUSE; 
+            btn.classList.replace('text-orange-400', 'text-green-400');
+            if(!btn.classList.contains('text-green-400')) btn.classList.add('text-green-400');
+            
+            t.interval = setInterval(() => {
+                let curr = getExCurrentSeconds(exId);
+                let mins = Math.floor(curr / 60).toString().padStart(2, '0'); 
+                let secs = (curr % 60).toString().padStart(2, '0');
+                if(display) display.innerText = `${mins}:${secs}`;
+            }, 1000);
+        } else {
+            btn.innerHTML = SVG_PLAY; 
+            btn.classList.replace('text-green-400', 'text-orange-400');
+        }
+    }
+}
+
+// --- CRONÓMETRO DE DESCANSO GENERAL ---
 function openTimerModal() {
-    document.getElementById('mini-timer-widget').classList.add('translate-x-[-150%]', 'opacity-0'); document.getElementById('mini-timer-widget').classList.remove('translate-x-0', 'opacity-100');
-    if (timerSecondsLeft === 0) { document.getElementById('timer-min').value = ''; document.getElementById('timer-seg').value = ''; document.getElementById('timer-inputs').classList.remove('hidden'); document.getElementById('timer-display').classList.add('hidden'); } 
-    else { document.getElementById('timer-inputs').classList.add('hidden'); document.getElementById('timer-display').classList.remove('hidden'); }
+    document.getElementById('mini-timer-widget').classList.add('translate-x-[-150%]', 'opacity-0'); 
+    document.getElementById('mini-timer-widget').classList.remove('translate-x-0', 'opacity-100');
+    
+    if (timerSecondsLeft === 0) { 
+        document.getElementById('timer-min').value = ''; 
+        document.getElementById('timer-seg').value = ''; 
+        document.getElementById('timer-inputs').classList.remove('hidden'); 
+        document.getElementById('timer-display').classList.add('hidden'); 
+    } else { 
+        document.getElementById('timer-inputs').classList.add('hidden'); 
+        document.getElementById('timer-display').classList.remove('hidden'); 
+    }
     openModal('modal-timer');
 }
 
 function toggleTimer() {
     playTap();
-    const btn = document.getElementById('btn-timer-start'); const btnMini = document.getElementById('btn-mini-play');
+    const btn = document.getElementById('btn-timer-start'); 
+    const btnMini = document.getElementById('btn-mini-play');
+    
     if (timerInterval) {
         clearInterval(timerInterval); timerInterval = null;
         btn.innerText = "Reanudar"; btn.classList.replace('bg-orange-600', 'bg-green-600');
-        btnMini.classList.replace('bg-orange-600', 'bg-green-500'); btnMini.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-        document.getElementById('timer-countdown').classList.remove('timer-pulse'); document.getElementById('mini-timer-countdown').classList.remove('timer-pulse');
+        btnMini.classList.replace('bg-orange-600', 'bg-green-500'); 
+        btnMini.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+        document.getElementById('timer-countdown').classList.remove('timer-pulse'); 
+        document.getElementById('mini-timer-countdown').classList.remove('timer-pulse');
     } else {
         if(timerSecondsLeft <= 0) {
-            let m = parseInt(document.getElementById('timer-min').value) || 0; let s = parseInt(document.getElementById('timer-seg').value) || 0; timerSecondsLeft = (m * 60) + s;
+            let m = parseInt(document.getElementById('timer-min').value) || 0; 
+            let s = parseInt(document.getElementById('timer-seg').value) || 0; 
+            timerSecondsLeft = (m * 60) + s;
             if(timerSecondsLeft <= 0) return;
-            document.getElementById('timer-inputs').classList.add('hidden'); document.getElementById('timer-display').classList.remove('hidden');
+            document.getElementById('timer-inputs').classList.add('hidden'); 
+            document.getElementById('timer-display').classList.remove('hidden');
         }
         btn.innerText = "Pausar"; btn.classList.replace('bg-green-600', 'bg-orange-600');
-        btnMini.classList.replace('bg-green-500', 'bg-orange-600'); btnMini.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>';
+        btnMini.classList.replace('bg-green-500', 'bg-orange-600'); 
+        btnMini.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>';
+        
         updateTimerDisplay();
+        
         timerInterval = setInterval(() => {
-            timerSecondsLeft--; updateTimerDisplay();
+            timerSecondsLeft--; 
+            updateTimerDisplay();
+            
             if(timerSecondsLeft <= 10 && timerSecondsLeft > 0) { playTap(); }
-            if(timerSecondsLeft <= 0) { stopTimer(); playAlarm(); if (navigator.vibrate) navigator.vibrate([500, 200, 500]); showToast("¡Descanso Terminado!"); }
+            if(timerSecondsLeft <= 0) { 
+                stopTimer(); playAlarm(); 
+                if (navigator.vibrate) navigator.vibrate([500, 200, 500]); 
+                showToast("¡Descanso Terminado!"); 
+            }
         }, 1000);
     }
 }
 
 function stopTimer() {
-    if(timerInterval) clearInterval(timerInterval); timerInterval = null; timerSecondsLeft = 0;
-    document.getElementById('timer-inputs').classList.remove('hidden'); document.getElementById('timer-display').classList.add('hidden'); document.getElementById('timer-countdown').classList.remove('timer-pulse');
-    const btn = document.getElementById('btn-timer-start'); btn.innerText = "Iniciar"; btn.classList.remove('bg-orange-600'); btn.classList.add('bg-green-600');
-    const miniWidget = document.getElementById('mini-timer-widget'); miniWidget.classList.add('translate-x-[-150%]', 'opacity-0'); miniWidget.classList.remove('translate-x-0', 'opacity-100'); document.getElementById('mini-timer-countdown').classList.remove('timer-pulse');
+    if(timerInterval) clearInterval(timerInterval); 
+    timerInterval = null; timerSecondsLeft = 0;
+    document.getElementById('timer-inputs').classList.remove('hidden'); 
+    document.getElementById('timer-display').classList.add('hidden'); 
+    document.getElementById('timer-countdown').classList.remove('timer-pulse');
+    
+    const btn = document.getElementById('btn-timer-start'); 
+    btn.innerText = "Iniciar"; btn.classList.remove('bg-orange-600'); btn.classList.add('bg-green-600');
+    
+    const miniWidget = document.getElementById('mini-timer-widget'); 
+    miniWidget.classList.add('translate-x-[-150%]', 'opacity-0'); 
+    miniWidget.classList.remove('translate-x-0', 'opacity-100'); 
+    document.getElementById('mini-timer-countdown').classList.remove('timer-pulse');
 }
 
-function hideMiniTimer(stopAsWell = false) { const miniWidget = document.getElementById('mini-timer-widget'); miniWidget.classList.add('translate-x-[-150%]', 'opacity-0'); miniWidget.classList.remove('translate-x-0', 'opacity-100'); if (stopAsWell) stopTimer(); }
-function updateTimerDisplay() { let m = Math.floor(timerSecondsLeft / 60).toString().padStart(2, '0'); let s = (timerSecondsLeft % 60).toString().padStart(2, '0'); let txt = `${m}:${s}`; document.getElementById('timer-countdown').innerText = txt; document.getElementById('mini-timer-countdown').innerText = txt; }
+function hideMiniTimer(stopAsWell = false) { 
+    const miniWidget = document.getElementById('mini-timer-widget'); 
+    miniWidget.classList.add('translate-x-[-150%]', 'opacity-0'); 
+    miniWidget.classList.remove('translate-x-0', 'opacity-100'); 
+    if (stopAsWell) stopTimer(); 
+}
+
+function updateTimerDisplay() { 
+    let m = Math.floor(timerSecondsLeft / 60).toString().padStart(2, '0'); 
+    let s = (timerSecondsLeft % 60).toString().padStart(2, '0'); 
+    let txt = `${m}:${s}`; 
+    document.getElementById('timer-countdown').innerText = txt; 
+    document.getElementById('mini-timer-countdown').innerText = txt; 
+}
+
 
 // --- AUTH UI ---
 function updateAuthUI() { 
@@ -281,69 +578,95 @@ async function handleAuth() {
     } catch (err) { let errorTxt = err.message; if (errorTxt.includes("Invalid login credentials")) errorTxt = "Email o contraseña incorrectos."; if (errorTxt.includes("already registered")) errorTxt = "Este email ya tiene cuenta."; showMessage(errorTxt, true); } 
     finally { btn.innerText = isSignUp ? "Registrarme" : "Iniciar Sesión"; btn.disabled = false; }
 }
+
 async function handleResetPassword() {
-    const email = document.getElementById('auth-email').value; if(!email) return showMessage("Ingresá tu email arriba y presioná este botón.", true); const btn = document.getElementById('btn-auth-action'); btn.innerText = "Enviando..."; btn.disabled = true;
-    try { const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: REDIRECT_URL }); if (error) throw error; showMessage("Si el email está registrado, te llegará un link para cambiar la contraseña.", false); } catch (err) { showMessage("Error: " + err.message, true); } finally { btn.innerText = "Iniciar Sesión"; btn.disabled = false; }
+    const email = document.getElementById('auth-email').value; if(!email) return showMessage("Ingresá tu email arriba y presioná este botón.", true);
+    const btn = document.getElementById('btn-auth-action'); btn.innerText = "Enviando..."; btn.disabled = true;
+    try { const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: REDIRECT_URL }); if (error) throw error; showMessage("Si el email está registrado, te llegará un link para cambiar la contraseña.", false);
+    } catch (err) { showMessage("Error: " + err.message, true); } finally { btn.innerText = "Iniciar Sesión"; btn.disabled = false; }
 }
+
 async function saveNewPassword() {
     const newPwd = document.getElementById('new-password-input').value; const msgBox = document.getElementById('new-pwd-message'); const btn = document.getElementById('btn-save-pwd');
     if(newPwd.length < 6) { msgBox.innerText = "Mínimo 6 caracteres."; msgBox.classList.remove('hidden'); return; }
     btn.innerText = "Guardando..."; btn.disabled = true;
     try {
-        const { error } = await supabaseClient.auth.updateUser({ password: newPwd }); if (error) throw error; window.location.hash = ''; closeAllModals(); const { data: { session } } = await supabaseClient.auth.getSession();
+        const { error } = await supabaseClient.auth.updateUser({ password: newPwd }); if (error) throw error;
+        window.location.hash = ''; closeAllModals(); const { data: { session } } = await supabaseClient.auth.getSession();
         if(session) { currentUserId = session.user.id; loadDashboardView(session.user.email); }
-    } catch(e) { const errStr = String(e.message || "").toLowerCase(); if (errStr.includes("different from the old password") || errStr.includes("different from the original")) { msgBox.innerText = "❌ La nueva contraseña no puede ser igual a la anterior."; } else { msgBox.innerText = "El link ha caducado o hubo un error. Volvé a pedir el correo."; } msgBox.classList.remove('hidden'); btn.innerText = "Guardar y Entrar"; btn.disabled = false; }
+    } catch(e) {
+        const errStr = String(e.message || "").toLowerCase();
+        if (errStr.includes("different from the old password") || errStr.includes("different from the original")) { msgBox.innerText = "❌ La nueva contraseña no puede ser igual a la anterior."; } 
+        else { msgBox.innerText = "El link ha caducado o hubo un error. Volvé a pedir el correo."; }
+        msgBox.classList.remove('hidden'); btn.innerText = "Guardar y Entrar"; btn.disabled = false; 
+    }
 }
 
-function loadDashboardView(email) {
-    document.getElementById('view-landing').classList.add('hidden'); document.getElementById('view-app').classList.remove('hidden');
-    document.getElementById('auth-controls').classList.add('hidden'); document.getElementById('user-controls').classList.remove('hidden'); document.getElementById('user-controls').classList.add('flex'); document.getElementById('user-display').innerText = email;
-    document.getElementById('fab-container').classList.remove('hidden'); document.getElementById('fab-container').classList.add('flex'); document.getElementById('fab-options').classList.add('pointer-events-none'); document.getElementById('btn-start-workout').classList.remove('hidden');
-    resumeGlobalWorkoutIfActive(); closeAllModals(); updateCreditsDisplay(); setTimeout(() => { changeDay('lunes'); }, 100);
-}
-async function handleSignOut() { if (supabaseClient) await supabaseClient.auth.signOut(); location.reload(); }
-
-function animateTokenLoss() {
-    const badgeContainer = document.getElementById('credit-badge'); const badgeText = document.getElementById('ai-credit-count');
-    if(!badgeText || badgeText.innerHTML.includes('infin')) return;
-    badgeContainer.style.transition = 'all 0.3s'; badgeContainer.style.transform = 'scale(1.1)'; badgeContainer.style.borderColor = '#c084fc'; badgeContainer.style.backgroundColor = 'rgba(168, 85, 247, 0.3)'; setTimeout(() => { badgeContainer.style.transform = 'scale(1)'; badgeContainer.style.borderColor = ''; badgeContainer.style.backgroundColor = ''; }, 300);
-    const rect = badgeContainer.getBoundingClientRect(); const animEl = document.createElement('div'); animEl.className = 'fixed text-purple-400 font-bold text-sm z-[9999] pointer-events-none token-anim'; animEl.innerText = '-1 ⚡'; animEl.style.left = `${rect.left + (rect.width / 2) - 10}px`; animEl.style.top = `${rect.top}px`; document.body.appendChild(animEl); setTimeout(() => animEl.remove(), 1000);
-}
 async function updateCreditsDisplay() {
-    try { const { data, error } = await supabaseClient.from('profiles').select('ai_credits, has_infinite_credits').eq('id', currentUserId).single(); if(data) { document.getElementById('ai-credit-count').innerHTML = data.has_infinite_credits ? '<span class="text-lg leading-none flex items-center justify-center translate-y-[1px]">&infin;</span>' : data.ai_credits; } else { document.getElementById('ai-credit-count').innerText = "10"; } } catch(e) { document.getElementById('ai-credit-count').innerText = "10"; }
+    try { const { data, error } = await supabaseClient.from('profiles').select('ai_credits, has_infinite_credits').eq('id', currentUserId).single();
+        if(data) { document.getElementById('ai-credit-count').innerHTML = data.has_infinite_credits ? '<span class="text-lg leading-none flex items-center justify-center translate-y-[1px]">&infin;</span>' : data.ai_credits; } 
+        else { document.getElementById('ai-credit-count').innerText = "10"; }
+    } catch(e) { document.getElementById('ai-credit-count').innerText = "10"; }
 }
 
 // --- ESTADÍSTICAS GLOBALES ---
 async function openGlobalStats() {
     openModal('modal-global-stats');
-    const container = document.getElementById('global-stats-container'); container.innerHTML = '<div class="text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando métricas...</div>';
+    const container = document.getElementById('global-stats-container');
+    container.innerHTML = '<div class="text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando métricas...</div>';
+    
     try {
         const { data, error } = await supabaseClient.from('workout_sessions').select('id, session_date, duration_seconds').eq('user_id', currentUserId).order('session_date', { ascending: true });
         if(error) throw error;
         if(data.length === 0) { container.innerHTML = `<p class="text-custom-textMuted text-sm text-center">Aún no hay entrenamientos registrados.</p>`; return; }
+        
         const grouped = {};
-        data.forEach(d => { if(!grouped[d.session_date]) grouped[d.session_date] = { totalSecs: 0, ids: [] }; grouped[d.session_date].totalSecs += d.duration_seconds; grouped[d.session_date].ids.push(d.id); });
-        const dates = Object.keys(grouped); const durations = dates.map(d => Math.round(grouped[d].totalSecs / 60)); 
+        data.forEach(d => {
+            if(!grouped[d.session_date]) grouped[d.session_date] = { totalSecs: 0, ids: [] };
+            grouped[d.session_date].totalSecs += d.duration_seconds;
+            grouped[d.session_date].ids.push(d.id);
+        });
+
+        const dates = Object.keys(grouped);
+        const durations = dates.map(d => Math.round(grouped[d].totalSecs / 60)); 
+        
         let htmlList = `<div class="mt-6 border-t border-custom-border pt-4 max-h-[30vh] overflow-y-auto custom-scroll pr-2 space-y-2">`;
         [...dates].reverse().forEach(d => {
             let firstId = grouped[d].ids[0];
-            htmlList += `<div class="flex justify-between items-center bg-[#0a0a0a] p-3 rounded-lg border border-[#262626]"><span class="text-sm font-bold text-white">${d}</span><div class="flex items-center gap-3"><span class="text-xs text-custom-textMuted">${formatTime(grouped[d].totalSecs)}</span><button onclick="promptDeleteSession('${firstId}')" class="text-red-500 hover:text-white hover:bg-red-500 p-1.5 rounded-md transition-colors" title="Eliminar registro"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></div></div>`;
+            htmlList += `<div class="flex justify-between items-center bg-[#0a0a0a] p-3 rounded-lg border border-[#262626]">
+                <span class="text-sm font-bold text-white">${d}</span>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs text-custom-textMuted">${formatTime(grouped[d].totalSecs)}</span>
+                    <button onclick="promptDeleteSession('${firstId}')" class="text-red-500 hover:text-white hover:bg-red-500 p-1.5 rounded-md transition-colors" title="Eliminar registro"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                </div>
+            </div>`;
         });
         htmlList += `</div>`;
+
         container.innerHTML = `<div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative mb-2"><canvas id="chart-global-time"></canvas></div>` + htmlList;
         const ctx = document.getElementById('chart-global-time').getContext('2d');
         new Chart(ctx, { type: 'bar', data: { labels: dates, datasets: [{ label: 'Minutos de Entrenamiento', data: durations, backgroundColor: 'rgba(20, 184, 166, 0.8)', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } });
+        
     } catch(e) { container.innerHTML = `<div class="text-xs text-red-500">Error: ${e.message}</div>`; }
 }
+
 function promptDeleteSession(id) {
-    pendingDeleteSessionId = id; closeAllModals(); openModal('modal-confirm-delete-session');
+    pendingDeleteSessionId = id; 
+    closeAllModals(); 
+    openModal('modal-confirm-delete-session');
+    
     document.getElementById('btn-confirm-delete-session').onclick = async () => {
-        const btn = document.getElementById('btn-confirm-delete-session'); btn.innerText = "Borrando..."; btn.disabled = true;
-        try { await supabaseClient.from('workout_sessions').delete().eq('id', pendingDeleteSessionId); openGlobalStats(); } catch(e) { showToast("Error: " + e.message); } finally { btn.innerText = "Sí, Borrar"; btn.disabled = false; }
+        const btn = document.getElementById('btn-confirm-delete-session'); 
+        btn.innerText = "Borrando..."; btn.disabled = true;
+        try { 
+            await supabaseClient.from('workout_sessions').delete().eq('id', pendingDeleteSessionId); 
+            openGlobalStats(); 
+        } catch(e) { showToast("Error: " + e.message); } 
+        finally { btn.innerText = "Sí, Borrar"; btn.disabled = false; }
     };
 }
 
-// --- RUTINAS ---
+// --- RUTINAS GUARDADAS ---
 async function openRoutinesModal() {
     openModal('modal-routines'); const list = document.getElementById('saved-routines-list'); list.innerHTML = '<div class="text-center text-xs text-custom-textMuted py-4">Buscando rutinas...</div>';
     try {
@@ -411,6 +734,7 @@ async function proceedWithAIGeneration() {
         document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); openModal('modal-ai-success');
     } catch(e) { document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); openModal('modal-ai-coach'); document.getElementById('ai-error-msg').innerText = "Detalle: " + e.message; document.getElementById('ai-error-msg').classList.remove('hidden'); }
 }
+
 function openChatModal() { const savedChat = localStorage.getItem(`hat_chat_${currentUserId}`); if(savedChat) { window.chatHistory = JSON.parse(savedChat); } else { window.chatHistory = []; } renderChat(); openModal('modal-ai-chat'); }
 function promptClearChat() { closeAllModals(); openModal('modal-confirm-clear-chat'); }
 function cancelClearChat() { closeAllModals(); openModal('modal-ai-chat'); }
@@ -461,10 +785,12 @@ async function changeDay(day, event) {
         exercises.forEach(ex => {
             const safeExName = escapeHTML(ex.exercise_name); const safeId = escapeHTML(ex.id); const exType = ex.exercise_type || 'carga';
             
-            if(!window.exerciseTimers[safeId]) window.exerciseTimers[safeId] = { seconds: 0, interval: null };
-            let tDisplay = formatTime(window.exerciseTimers[safeId].seconds);
-            let tIcon = window.exerciseTimers[safeId].interval ? SVG_PAUSE : SVG_PLAY;
-            let tColor = window.exerciseTimers[safeId].interval ? 'text-orange-400' : 'text-green-400';
+            // Reanudación de timers guardados en localStorage
+            let currentExSecs = getExCurrentSeconds(safeId);
+            let state = getExTimerState(safeId);
+            let tDisplay = formatTime(currentExSecs);
+            let tIcon = state.running ? SVG_PAUSE : SVG_PLAY;
+            let tColor = state.running ? 'text-orange-400' : 'text-green-400';
 
             let setsHtml = ''; 
             for(let i=1; i<=ex.sets; i++) { 
@@ -505,7 +831,7 @@ async function changeDay(day, event) {
                     <div class="flex items-center justify-center gap-4 w-full">
                         <span class="text-3xl font-black text-white tracking-widest w-24 text-center" id="display-extimer-${safeId}">${tDisplay}</span>
                         <div class="flex gap-2">
-                            <button onclick="resetExTimer('${safeId}')" class="flex items-center justify-center w-12 h-12 bg-[#171717] border border-[#262626] rounded-xl text-red-500 hover:bg-red-500/10 transition-colors" title="Limpiar a Cero">${SVG_RESET}</button>
+                            <button onclick="resetExTimer('${safeId}')" class="flex items-center justify-center w-12 h-12 bg-[#171717] border border-[#262626] rounded-xl text-red-500 hover:bg-red-500/10 transition-colors" title="Limpiar y Reiniciar a Cero">${SVG_RESET}</button>
                             <button onclick="toggleExTimer('${safeId}')" id="btn-extimer-${safeId}" class="flex items-center justify-center w-12 h-12 bg-[#171717] border border-[#262626] rounded-xl ${tColor} hover:bg-[#262626] transition-colors" title="Play/Pausa">${tIcon}</button>
                         </div>
                     </div>
@@ -527,6 +853,9 @@ async function changeDay(day, event) {
                 await Promise.all(promises);
             }
         });
+        
+        // Reanudar los timers de esta vista
+        exercises.forEach(ex => resumeExTimerIfActive(ex.id));
 
     } catch(e) { container.innerHTML = `<div class="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 text-center text-red-500 py-10 font-bold">Error al cargar rutinas: ${e.message}</div>`; }
 }
@@ -549,11 +878,11 @@ async function saveExercise() {
 
 async function saveToCloud(exId, totalSets, exName, exType, btnEvent) {
     const btn = btnEvent.currentTarget; const btnText = btn.querySelector('.btn-text'); let logs = []; const today = new Date(); const dateString = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
-    let exTotalSeconds = 0;
-    if(window.exerciseTimers[exId]) {
-        if(window.exerciseTimers[exId].interval) { clearInterval(window.exerciseTimers[exId].interval); window.exerciseTimers[exId].interval = null; document.getElementById(`btn-extimer-${exId}`).innerHTML = SVG_PLAY; document.getElementById(`btn-extimer-${exId}`).classList.replace('text-green-400', 'text-orange-400'); }
-        exTotalSeconds = window.exerciseTimers[exId].seconds;
-    }
+    
+    // Frenar cronometro y obtener el tiempo final
+    let exTotalSeconds = getExCurrentSeconds(exId);
+    resetExTimer(exId); 
+    
     for(let i=1; i<=totalSets; i++) { 
         const checked = document.getElementById(`check-${exId}-${i}`).checked; 
         if (checked) {
@@ -616,28 +945,59 @@ function promptDeleteLog(exName, rawDate, exId, exType) {
 
 function promptEditLog(exId, exName, dateStr, exType) {
     const safeExId = escapeHTML(exId); const safeExName = escapeHTML(exName);
-    const dayData = window.currentHistory[exId][dateStr]; document.getElementById('edit-log-title').innerText = `Corregir ${dateStr}`; let html = ''; 
+    const dayData = window.currentHistory[exId][dateStr]; 
+    document.getElementById('edit-log-title').innerText = `Corregir ${dateStr}`; 
+    
+    let html = ''; 
+    let durM = Math.floor(dayData.duration / 60).toString().padStart(2, '0');
+    let durS = (dayData.duration % 60).toString().padStart(2, '0');
+
+    // NUEVO: Input para modificar o borrar a 0 la Duración Total del Ejercicio
+    html += `
+        <div class="mb-4 bg-[#171717] p-3 rounded-xl border border-[#262626]">
+            <span class="text-xs font-bold text-custom-textMuted uppercase block mb-2">Duración Total del Ejercicio</span>
+            <div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2 w-24">
+                <input type="text" inputmode="numeric" id="edit-dur-m" value="${durM}" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
+                <span class="text-custom-textMuted font-bold mx-1 pb-1">:</span>
+                <input type="text" inputmode="numeric" id="edit-dur-s" value="${durS}" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0">
+            </div>
+            <p class="text-[10px] text-custom-textMuted mt-1 mt-2">Ponelo en 00:00 si querés borrarlo del gráfico.</p>
+        </div>
+        <div class="space-y-3 mb-2">
+    `;
+
     dayData.sets.forEach(s => { 
         if(exType === 'tiempo') {
             let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60; let padM = m.toString().padStart(2, '0'); let padSeg = seg.toString().padStart(2, '0');
-            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2"><input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-m-${s.id}" value="${padM}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>=2){ let n=document.getElementById('edit-s-${s.id}'); n.focus(); if(this.value.length>2){ n.value=this.value.slice(2,4); } this.value=this.value.slice(0,2); }" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"><span class="text-custom-textMuted font-bold mx-1 pb-1">:</span><input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-s-${s.id}" value="${padSeg}" oninput="this.value=this.value.replace(/[^0-9]/g,''); if(this.value.length>2) this.value=this.value.slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"></div></div>`;
+            html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center bg-[#0a0a0a] border border-[#333] rounded-lg focus-within:border-custom-primary transition-colors overflow-hidden h-[36px] px-2"><input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-m-${s.id}" value="${padM}" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"><span class="text-custom-textMuted font-bold mx-1 pb-1">:</span><input type="text" inputmode="numeric" pattern="[0-9]*" id="edit-s-${s.id}" value="${padSeg}" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,2);" class="w-[35px] h-full bg-transparent text-white text-center text-base font-bold outline-none appearance-none p-0"></div></div>`;
         } else {
             html += `<div class="flex items-center justify-between bg-[#171717] p-3 rounded-xl border border-[#262626]"><span class="text-xs font-bold text-custom-primary uppercase tracking-wider w-12">Set ${s.set_number}</span><div class="flex items-center gap-2"><input type="number" id="edit-w-${s.id}" value="${s.weight}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">kg</span><span class="text-custom-textMuted mx-1">x</span><input type="number" id="edit-r-${s.id}" value="${s.reps}" class="w-16 bg-[#0a0a0a] border border-[#333] rounded-lg text-center text-white py-1.5 font-bold outline-none focus:border-custom-primary"><span class="text-[10px] text-custom-textMuted">rep</span></div></div>`; 
         }
     }); 
-    document.getElementById('edit-log-sets-container').innerHTML = html; const btn = document.getElementById('btn-save-edit'); const msgBox = document.getElementById('edit-error-msg'); 
+    
+    html += `</div>`;
+    
+    document.getElementById('edit-log-sets-container').innerHTML = html; 
+    const btn = document.getElementById('btn-save-edit'); 
+    const msgBox = document.getElementById('edit-error-msg'); 
+    
     btn.onclick = async () => { 
         btn.innerText = "Actualizando..."; btn.disabled = true; msgBox.classList.add('hidden'); 
         try { 
+            let dM = parseInt(document.getElementById('edit-dur-m').value) || 0;
+            let dS = parseInt(document.getElementById('edit-dur-s').value) || 0;
+            let newDuration = (dM * 60) + dS;
+
             for(let s of dayData.sets) { 
                 if(exType === 'tiempo') {
                     let m = document.getElementById(`edit-m-${s.id}`).value || 0; let seg = document.getElementById(`edit-s-${s.id}`).value || 0; let t = (parseInt(m)*60) + parseInt(seg);
-                    await supabaseClient.from('workout_logs').update({ time_seconds: t }).eq('id', s.id);
+                    await supabaseClient.from('workout_logs').update({ time_seconds: t, exercise_duration: newDuration }).eq('id', s.id);
                 } else {
                     let w = document.getElementById(`edit-w-${s.id}`).value; let r = document.getElementById(`edit-r-${s.id}`).value; 
-                    await supabaseClient.from('workout_logs').update({ weight: parseFloat(w), reps: parseInt(r) }).eq('id', s.id); 
+                    await supabaseClient.from('workout_logs').update({ weight: parseFloat(w), reps: parseInt(r), exercise_duration: newDuration }).eq('id', s.id); 
                 }
-            } closeAllModals(); loadEvolucion(safeExId, safeExName, exType, true); 
+            } 
+            closeAllModals(); loadEvolucion(safeExId, safeExName, exType, true); 
         } catch(e) { msgBox.innerText = e.message; msgBox.classList.remove('hidden'); } finally { btn.innerText = "Actualizar Datos"; btn.disabled = false; } 
     }; 
     openModal('modal-edit-log');
