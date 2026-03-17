@@ -985,27 +985,23 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - MÉTODO ROBUSTO) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - ALTA RESILIENCIA) ---
 // =========================================================================
 window.exportUserDataPDF = async function() {
     window.playPop();
     document.getElementById('loading-title').innerText = "Generando Reporte...";
-    document.getElementById('loading-desc').innerText = "Procesando el historial para el PDF. Por favor, no cierres esta ventana...";
+    document.getElementById('loading-desc').innerText = "Procesando el historial. Si tenés muchos datos, esto tomará unos segundos. Por favor aguardá...";
     document.getElementById('ai-loading-overlay').classList.remove('hidden');
     document.getElementById('ai-loading-overlay').classList.add('flex');
 
     const containerId = 'pdf-export-container-safe';
-    // Limpiar restos de intentos anteriores por si acaso
+    // Limpiamos cualquier intento previo que haya quedado colgado
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    // Contenedor principal (Fuera de pantalla)
+    // Contenedor principal: visibility hidden preserva el tamaño real para Chart.js sin que moleste en pantalla
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.position = "absolute";
-    element.style.left = "-9999px"; 
-    element.style.top = "0";
-    element.style.width = "800px"; // Ancho fijo estricto
-    element.style.backgroundColor = "#000000"; // Fondo negro
+    element.style.cssText = "position: absolute; top: 0; left: 0; width: 800px; background-color: #000000; z-index: -9999; visibility: hidden;";
 
     try {
         const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).order('day_of_week', { ascending: true }).order('order_index', { ascending: true });
@@ -1013,7 +1009,7 @@ window.exportUserDataPDF = async function() {
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
         const filename = `HAT_Reporte_${userEmail.split('@')[0]}_${new Date().toISOString().slice(0,10)}.pdf`;
 
-        // CSS Estricto para cortes de página naturales
+        // CSS Estricto preparado para paginación
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
@@ -1033,8 +1029,8 @@ window.exportUserDataPDF = async function() {
                 .ex-sets { text-align: right; font-weight: 700; font-size: 20px; }
                 .ex-sets span { font-size: 12px; color: #94A3B8; font-weight: 400; margin-left: 4px; }
                 
-                /* Reglas de Corte de Página para el PDF */
-                .page-break { page-break-before: always; border-top: none; padding-top: 40px; }
+                /* Clases especiales para cortes de página */
+                .html2pdf__page-break { page-break-before: always; height: 0; border: none; margin: 0; padding: 0; }
                 .history-card { margin-top: 20px; margin-bottom: 30px; page-break-inside: avoid; background-color: #000000; }
                 
                 .history-title { font-size: 18px; color: #F54927; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 15px; }
@@ -1081,8 +1077,8 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: #94A3B8; text-align: center;">No hay rutina configurada.</p>`;
         }
 
-        // SECCIÓN 2: HISTORIAL (CON SALTO DE PÁGINA OBLIGATORIO)
-        htmlContent += `<div class="page-break"><h2><span>02</span> Evolución y Progreso Visual</h2></div>`;
+        // SECCIÓN 2: HISTORIAL (Corte forzado al motor PDF)
+        htmlContent += `<div class="html2pdf__page-break"></div><h2><span>02</span> Evolución y Progreso Visual</h2>`;
 
         const chartConfigs = [];
 
@@ -1115,7 +1111,6 @@ window.exportUserDataPDF = async function() {
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
-                // La clase "history-card" tiene "page-break-inside: avoid" para no cortar gráficos a la mitad
                 htmlContent += `
                     <div class="history-card">
                         <div class="history-title">${escapeHTML(exName)}</div>
@@ -1145,7 +1140,6 @@ window.exportUserDataPDF = async function() {
                 });
 
                 htmlContent += `</tbody></table></div>`;
-
                 chartConfigs.push({ id: safeCanvasId, type: type, labels: dates, data: maxData });
             }
         } else {
@@ -1154,12 +1148,12 @@ window.exportUserDataPDF = async function() {
 
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker</div></div>`;
 
-        // 3. Renderizar en el DOM oculto
+        // 3. Montar en el DOM
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
-        // 4. Dibujar todos los gráficos de Chart.js
-        chartConfigs.forEach(config => {
+        // 4. Dibujar gráficos con micro-pausas para evitar bloqueos del navegador
+        for (const config of chartConfigs) {
             const canvasEl = document.getElementById(config.id);
             if(canvasEl) {
                 const ctx = canvasEl.getContext('2d');
@@ -1172,16 +1166,12 @@ window.exportUserDataPDF = async function() {
                             data: config.data,
                             borderColor: '#F54927',
                             backgroundColor: 'rgba(245, 73, 39, 0.05)',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            pointRadius: 3,
-                            fill: true
+                            borderWidth: 2, tension: 0.3, pointRadius: 3, fill: true
                         }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        animation: false, // CLAVE: Desactivar animación
+                        responsive: true, maintainAspectRatio: false,
+                        animation: false, // Fundamental desactivar la animación
                         plugins: { legend: { display: false } },
                         scales: {
                             y: { grid: { color: '#262626' }, ticks: { color: '#94A3B8', font: {size: 10} }, title: {display: true, text: titleY, color: '#94A3B8', font: {size: 10}} },
@@ -1190,18 +1180,20 @@ window.exportUserDataPDF = async function() {
                     }
                 });
             }
-        });
+            await new Promise(r => setTimeout(r, 20)); // Respiro de memoria
+        }
 
-        // Esperar renderizado completo
-        await new Promise(resolve => setTimeout(resolve, 800));
+        // Pausa final antes de "sacar la foto"
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        // 5. Configuración de html2pdf (Un solo flujo)
+        // 5. Motor de PDF equilibrado (Menos resolución para asegurar que pase en historiales grandes)
         const opt = {
-            margin:       0,
+            margin:       [20, 0, 20, 0], 
             filename:     filename,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#000000', logging: false },
-            jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' } // Formato A4 a proporción
+            image:        { type: 'jpeg', quality: 0.95 },
+            html2canvas:  { scale: 1.5, useCORS: true, backgroundColor: '#000000', logging: false },
+            jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'], avoid: '.history-card' }
         };
 
         await html2pdf().set(opt).from(element).save();
@@ -1211,9 +1203,9 @@ window.exportUserDataPDF = async function() {
 
     } catch (error) {
         console.error("Error al generar PDF:", error);
-        window.showToast("❌ Hubo un error al generar el PDF profesional.");
+        window.showMessage("❌ Error: El reporte es demasiado grande. Intentá borrar registros antiguos.", true);
     } finally {
-        // 6. Limpieza Asegurada
+        // 6. Limpieza Obligatoria garantizada
         const containerToRemove = document.getElementById(containerId);
         if (containerToRemove) containerToRemove.remove();
         
