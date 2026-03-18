@@ -1042,7 +1042,7 @@ function promptEditLog(exId, exName, dateStr, exType) {
 
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - DEFINITIVO V2) ---
 // =========================================================================
 
 window.askPdfTheme = function() {
@@ -1082,6 +1082,7 @@ window.askPdfTheme = function() {
         document.getElementById('btn-theme-light').onclick = () => closeModal('light');
         document.getElementById('btn-theme-cancel').onclick = () => closeModal(null);
         
+        // Cierra al tocar fuera del contenedor principal
         modalEl.addEventListener('click', (e) => {
             if (e.target === modalEl) closeModal(null);
         });
@@ -1548,7 +1549,6 @@ window.exportUserDataPDF = async function() {
 
 // ENLACE DEL BOTÓN
 window.exportUserData = window.exportUserDataPDF;
-
 
 
 
