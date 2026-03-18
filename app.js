@@ -1147,7 +1147,8 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden;`;
+    // SIN overflow: hidden; para que la firma jamás se corte
+    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box;`;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1201,12 +1202,10 @@ window.exportUserDataPDF = async function() {
                 h2 { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; color: ${textMain}; margin-bottom: 20px; margin-top: 10px;}
                 h2 span { color: ${accent}; margin-right: 8px; }
                 
-                /* Margen superior removido para el título del día, ya respira con el padding del contenedor */
                 .day-title { font-size: 15px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 0; }
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
                 
-                /* MAYOR SEPARACIÓN ENTRE GRÁFICOS (margin-bottom: 60px) */
                 .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 60px; padding-top: 15px; border-top: 1px solid transparent; }
                 
                 .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
@@ -1222,8 +1221,7 @@ window.exportUserDataPDF = async function() {
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
                 
-                /* Firma HAT Elegante */
-                .hat-signature { text-align: center; margin-top: 40px; padding-top: 30px; padding-bottom: 20px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; }
+                .hat-signature { text-align: center; margin-top: 20px; padding-top: 30px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; }
             </style>
         `;
 
@@ -1342,7 +1340,6 @@ window.exportUserDataPDF = async function() {
             const orderedChartTasks = [];
             const printedExercises = new Set();
             
-            // Solo ejercicios que estén en la rutina actual
             for (const exName of orderedExNames) {
                 const exLogs = groupedLogs[exName];
                 if (!exLogs || exLogs.data.length === 0) continue; 
@@ -1439,37 +1436,31 @@ window.exportUserDataPDF = async function() {
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
         }
+        htmlContent += `</div></div>`; // Cierra pdf-wrapper de la sección 3
 
         // --- FIRMA HAT ---
         htmlContent += `
-            <div class="hat-signature">
-                <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
-                <div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>
-                <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
+            <div class="pdf-wrapper" style="padding-top: 0; padding-bottom: 40px;">
+                <div class="hat-signature">
+                    <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
+                    <div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>
+                    <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
+                </div>
             </div>
         `;
-        
-        htmlContent += `<div id="pdf-filler" style="width: 100%;"></div>`;
-        htmlContent += `</div></div>`; 
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // Magia anti hoja blanca: Si el remanente es mayor a 10px, rellenamos. Si es muy chiquito, lo ignoramos para no forzar una hoja nueva.
+        // Magia anti hoja blanca: Usamos minHeight en vez de height, restando 5px de seguridad.
         const pageHeightPixels = 1131.428; 
         const currentTotalHeight = element.scrollHeight;
-        const remainder = currentTotalHeight % pageHeightPixels;
+        const totalPages = Math.ceil(currentTotalHeight / pageHeightPixels);
         
-        if (remainder > 10 && remainder < (pageHeightPixels - 10)) {
-            const paddingToFill = pageHeightPixels - remainder;
-            document.getElementById('pdf-filler').style.height = `${paddingToFill}px`; 
-        }
-
-        // Forzamos al elemento a medir exactamente en múltiplos de A4
-        const finalPages = Math.ceil(element.scrollHeight / pageHeightPixels);
-        element.style.height = `${finalPages * pageHeightPixels}px`;
+        // Estira el color de fondo hasta el final de la hoja A4 sin pasarse a una nueva.
+        element.style.minHeight = `${(totalPages * pageHeightPixels) - 5}px`;
 
         const opt = {
             margin:       0, 
