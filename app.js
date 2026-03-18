@@ -1435,9 +1435,9 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
-        // --- FIRMA Y RELLENO SEGURO ---
+        // --- FIRMA HAT (Se integra natural al flujo con la clase pdf-avoid-break) ---
         htmlContent += `
-            <div id="hat-signature-wrapper" class="pdf-avoid-break" style="width: 100%; padding-top: 40px; padding-bottom: 20px; background-color: ${bgPage};">
+            <div class="pdf-avoid-break" style="width: 100%; padding: 20px 40px 40px 40px; background-color: ${bgPage};">
                 <div style="text-align: center; border-top: 1px dashed ${borderCol}; padding-top: 30px;">
                     <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
                     <div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>
@@ -1452,31 +1452,16 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // CIRUGÍA FINAL: Algoritmo Inteligente de Paginas.
+        // Relleno matemático exacto: si sobran píxeles, pintamos el fondo restando un margen de seguridad
         const pageHeightPixels = 1131.428; 
-        let currentTotalHeight = element.scrollHeight;
-        let remainder = currentTotalHeight % pageHeightPixels;
+        const currentTotalHeight = element.scrollHeight;
+        const remainder = currentTotalHeight % pageHeightPixels;
         
-        // 1. Si la firma cae en los últimos 160px de la hoja, la librería la va a cortar a la mitad. 
-        // Solución: La empujamos obligatoriamente a la página siguiente con margin-top.
-        if (remainder > (pageHeightPixels - 180)) {
-            const pushToNextPage = pageHeightPixels - remainder + 20;
-            document.getElementById('hat-signature-wrapper').style.marginTop = `${pushToNextPage}px`;
-            
-            // Recalculamos alturas después del empujón
-            currentTotalHeight = element.scrollHeight;
-            remainder = currentTotalHeight % pageHeightPixels;
-        }
-
-        // 2. Rellenamos todo el espacio vacío hasta el final de la hoja para que el color sea 100% perfecto.
-        // Restamos 2 píxeles de seguridad absoluta para no pasarnos jamás y evitar la hoja blanca fantasma.
-        if (remainder > 0) {
+        if (remainder > 10 && remainder < (pageHeightPixels - 10)) {
             const paddingToFill = pageHeightPixels - remainder;
-            document.getElementById('pdf-filler').style.height = `${paddingToFill - 2}px`; 
+            document.getElementById('pdf-filler').style.height = `${paddingToFill - 5}px`; 
         }
 
-        // EL DETALLE QUE FALTABA: Agregamos "pagebreak: { mode: ['css', 'legacy'] }" a las opciones.
-        // Esto le avisa al PDF que respete nuestros comandos de "no cortar" (.pdf-avoid-break).
         const opt = {
             margin:       0, 
             filename:     filename,
