@@ -1092,6 +1092,7 @@ window.exportUserDataPDF = async function() {
 
     const isDark = (themeChoice === 'dark');
 
+    // Paletas de colores estrictas
     const bgPage = isDark ? '#000000' : '#ffffff';
     const bgCard = isDark ? '#171717' : '#ffffff';
     const bgBox = isDark ? '#0a0a0a' : '#f8fafc'; 
@@ -1172,6 +1173,10 @@ window.exportUserDataPDF = async function() {
             return map[day.toLowerCase().trim()] || day.toUpperCase();
         };
 
+        const orderedExNames = [...new Set(routines.map(r => r.exercise_name))];
+        const logExNames = [...new Set(logs.map(l => l.exercise_name))];
+        logExNames.forEach(ex => { if(!orderedExNames.includes(ex)) orderedExNames.push(ex); });
+
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
@@ -1190,10 +1195,11 @@ window.exportUserDataPDF = async function() {
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
                 
-                /* Nueva clase para gráficos con margen superior blindado */
-                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 30px; padding-top: 20px; border-top: 1px solid transparent; }
+                /* CIRUGÍA 1: Padding superior ampliado a 50px para dar mucho más respiro a los gráficos */
+                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 30px; padding-top: 50px; border-top: 1px solid transparent; }
                 
-                .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
+                /* CIRUGÍA 1: El salto de página ahora genera 60px de margen superior automático */
+                .page-break-container { page-break-before: always; clear: both; padding-top: 60px; border-top: 1px solid transparent; width: 100%; }
                 
                 .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
                 
@@ -1311,7 +1317,7 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
-        // --- 03: HISTORIAL POR EJERCICIO (Solo rutina actual) ---
+        // --- 03: HISTORIAL POR EJERCICIO ---
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
@@ -1325,7 +1331,6 @@ window.exportUserDataPDF = async function() {
             const orderedChartTasks = [];
             const printedExercises = new Set();
             
-            // SOLO ejercicios que estén actualmente en la rutina
             for (const ex of routines) {
                 if (!printedExercises.has(ex.exercise_name)) {
                     printedExercises.add(ex.exercise_name);
@@ -1438,7 +1443,6 @@ window.exportUserDataPDF = async function() {
 
         htmlContent += `</div></div>`; // Cierra pdf-wrapper final
 
-        // Pie de página absoluto y div de relleno
         htmlContent += `<div id="pdf-filler" style="width: 100%;"></div>`;
         htmlContent += `<div id="pdf-footer-absolute"><div style="width: 800px; margin: 0 auto; padding: 0 40px;">Generado por Hybrid Athlete Tracker | ${isDark ? 'Modo Oscuro' : 'Modo Impresión'}</div></div>`;
 
@@ -1447,17 +1451,19 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // Magia para eliminar la hoja blanca: Rellenamos pero dejamos 10px de margen de seguridad para no pasarnos a una hoja extra
+        // CIRUGÍA 2: Protección contra choque del pie de página. 
+        // Si sobran menos de 150px, sumamos una hoja entera para que el footer pase seguro a la siguiente.
         const pageHeightPixels = 1131.428; 
         const currentTotalHeight = element.scrollHeight;
         const remainder = currentTotalHeight % pageHeightPixels;
         
-        if (remainder > 0 && remainder < pageHeightPixels) {
-            const paddingToFill = pageHeightPixels - remainder;
-            if (paddingToFill > 50) {
-                document.getElementById('pdf-filler').style.height = `${paddingToFill - 10}px`; 
-            }
+        let paddingToFill = pageHeightPixels - remainder;
+        
+        if (paddingToFill < 150) {
+            paddingToFill += pageHeightPixels; // Empuja el contenido a una nueva hoja segura
         }
+
+        document.getElementById('pdf-filler').style.height = `${paddingToFill - 10}px`; 
 
         const opt = {
             margin:       0, 
@@ -1493,7 +1499,6 @@ window.exportUserDataPDF = async function() {
         }, 500);
     }
 };
-
 
 
 
