@@ -985,30 +985,35 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - BAJO CONSUMO DE RAM) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - FIX PANTALLA EN BLANCO) ---
 // =========================================================================
 window.exportUserDataPDF = async function() {
     window.playPop();
     document.getElementById('loading-title').innerText = "Compilando Reporte...";
-    document.getElementById('loading-desc').innerText = "Procesando gráficos estáticos para ahorrar memoria. Esto tomará unos segundos...";
+    document.getElementById('loading-desc').innerText = "Dibujando gráficos de alta calidad. Esto tomará unos segundos...";
     document.getElementById('ai-loading-overlay').classList.remove('hidden');
     document.getElementById('ai-loading-overlay').classList.add('flex');
 
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    // 1. Contenedor del PDF (Fuera de pantalla)
+    // 1. Contenedor del PDF: LO PONEMOS DETRÁS DEL CARTEL DE CARGA (z-index: -1)
+    // No usamos left: -9999px porque eso vuelve "ciega" a la librería y saca la foto en blanco.
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = "position: absolute; top: 0; left: -9999px; width: 800px; background-color: #000000;";
+    element.style.cssText = "position: absolute; top: 0; left: 0; width: 800px; background-color: #000000; z-index: -1;";
 
-    // 2. Lienzo (Canvas) temporal único para dibujar gráficos sin saturar la RAM
+    // Lienzo temporal para las "fotos" de los gráficos
     const tempCanvas = document.createElement('canvas');
     tempCanvas.id = "temp-chart-renderer";
-    tempCanvas.width = 720; // Ancho ajustado al PDF
-    tempCanvas.height = 220; // Alto de los gráficos
-    tempCanvas.style.cssText = "position: absolute; top: 0; left: -9999px;";
+    tempCanvas.width = 720; 
+    tempCanvas.height = 220; 
+    tempCanvas.style.cssText = "position: absolute; top: 0; left: 0; z-index: -2;"; 
     document.body.appendChild(tempCanvas);
+
+    // 2. TRAMPA VITAL: Destrabar el scroll temporalmente para que capture todo el documento
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'visible'; 
 
     try {
         const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).order('day_of_week', { ascending: true }).order('order_index', { ascending: true });
@@ -1040,7 +1045,6 @@ window.exportUserDataPDF = async function() {
                 .history-card { margin-top: 20px; margin-bottom: 30px; page-break-inside: avoid; background-color: #000000; }
                 .history-title { font-size: 18px; color: #F54927; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 15px; }
                 
-                /* Estilo de la imagen que reemplaza al gráfico interactivo */
                 .chart-img { width: 100%; height: auto; border: 1px solid #262626; border-radius: 12px; margin-bottom: 15px; display: block; background-color: #0a0a0a; }
                 
                 .log-table { width: 100%; border-collapse: collapse; font-size: 12px; background-color: #0a0a0a; border-radius: 8px; border: 1px solid #262626; overflow: hidden; }
@@ -1115,16 +1119,14 @@ window.exportUserDataPDF = async function() {
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
-                // Configuramos el canvas oculto
+                // Dibujamos en el canvas
                 const ctx = tempCanvas.getContext('2d');
                 ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-                // Fondo oscuro para que la foto no quede negra transparente
                 ctx.fillStyle = '#0a0a0a'; 
                 ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
                 const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
 
-                // Dibujamos
                 const tempChart = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -1137,8 +1139,8 @@ window.exportUserDataPDF = async function() {
                         }]
                     },
                     options: {
-                        responsive: false, // Fundamental para evitar parpadeos
-                        animation: false, // Instantáneo
+                        responsive: false, 
+                        animation: false, 
                         plugins: { legend: { display: false } },
                         scales: {
                             y: { grid: { color: '#262626' }, ticks: { color: '#94A3B8', font: {size: 11} }, title: {display: true, text: titleY, color: '#94A3B8', font: {size: 11}} },
@@ -1147,14 +1149,13 @@ window.exportUserDataPDF = async function() {
                     }
                 });
 
-                // Esperamos 50ms para asegurar el trazado
-                await new Promise(r => setTimeout(r, 50));
+                // Esperamos que se dibuje
+                await new Promise(r => setTimeout(r, 100));
                 
-                // Sacamos la FOTO en formato PNG y destruimos el gráfico de la memoria
+                // Extraemos imagen Base64
                 const chartImageBase64 = tempCanvas.toDataURL('image/png', 1.0);
                 tempChart.destroy(); 
 
-                // Armamos la tabla, pero usamos una <IMG> en vez del canvas
                 htmlContent += `
                     <div class="history-card">
                         <div class="history-title">${escapeHTML(exName)}</div>
@@ -1188,18 +1189,25 @@ window.exportUserDataPDF = async function() {
 
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker</div></div>`;
 
-        // 4. Inyectar HTML ya con las imágenes estáticas (consumo de RAM minúsculo)
+        // 4. Inyectar HTML ya con las imágenes estáticas
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Pequeña pausa para asegurar renderizado del DOM de la imagen
+        await new Promise(resolve => setTimeout(resolve, 500));
 
         // 5. Configuración de html2pdf
         const opt = {
             margin:       [10, 0, 10, 0], 
             filename:     filename,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#000000', logging: false },
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true, 
+                backgroundColor: '#000000', 
+                logging: false,
+                windowWidth: 800
+            },
             jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'], avoid: '.history-card' }
         };
@@ -1211,10 +1219,13 @@ window.exportUserDataPDF = async function() {
 
     } catch (error) {
         console.error("Error al generar PDF:", error);
-        window.showMessage("❌ Error: El historial es demasiado grande para tu dispositivo.", true);
+        window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
     } finally {
+        // 6. Restaurar el estado normal del navegador
+        document.body.style.overflow = originalOverflow;
+        
         if (document.getElementById(containerId)) document.getElementById(containerId).remove();
-        if (tempCanvas) tempCanvas.remove(); // Borramos el lienzo de fotos
+        if (tempCanvas) tempCanvas.remove(); 
         
         document.getElementById('ai-loading-overlay').classList.add('hidden');
         document.getElementById('ai-loading-overlay').classList.remove('flex');
