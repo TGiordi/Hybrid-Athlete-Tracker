@@ -1123,9 +1123,10 @@ window.exportUserDataPDF = async function() {
         return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
     };
 
-    // Filtro Inteligente (Evita que falten ejercicios)
     const normalizeName = (name) => {
-        return name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ' '); 
+        return name.trim().toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+            .replace(/\s+/g, ' '); 
     };
 
     const overlay = document.getElementById('ai-loading-overlay');
@@ -1150,7 +1151,7 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: flex; flex-direction: column;`;
+    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: block;`;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1214,7 +1215,9 @@ window.exportUserDataPDF = async function() {
                 .day-title { font-size: 15px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 0; }
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
-                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 50px; padding-top: 15px; border-top: 1px solid transparent; }
+                
+                /* Margen superior de 40px añadido para arreglar el amontonamiento de los ejercicios en la sección 3 */
+                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-top: 40px; margin-bottom: 40px; padding-top: 10px; border-top: 1px solid transparent; }
                 
                 .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
                 
@@ -1228,8 +1231,6 @@ window.exportUserDataPDF = async function() {
                 .log-table tr:last-child td { border-bottom: none; }
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
-                
-                .hat-signature { text-align: center; margin-top: 40px; padding-top: 30px; padding-bottom: 30px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; }
             </style>
         `;
 
@@ -1284,7 +1285,7 @@ window.exportUserDataPDF = async function() {
             globalChart.destroy(); 
 
             htmlContent += `
-                <div class="pdf-avoid-break-chart" style="padding-top: 0; border-top: none;">
+                <div class="pdf-avoid-break-chart" style="margin-top: 0; padding-top: 0; border-top: none;">
                     <img src="${globalChartImg}" class="chart-img" style="background-color: ${bgBox};" />
                     <table class="log-table">
                         <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido (H:M:S)</th></tr></thead>
@@ -1467,31 +1468,26 @@ window.exportUserDataPDF = async function() {
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
         }
-
-        htmlContent += `
-            <div class="hat-signature">
-                <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
-                <div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>
-                <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
-            </div>
-        `;
-
-        htmlContent += `</div></div>`;
+        
+        htmlContent += `</div></div>`; 
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // GUILLOTINA ESTRICTA
         const pageHeightPixels = 1131.428;
-        const currentTotalHeight = element.scrollHeight;
-        const totalPages = Math.ceil(currentTotalHeight / pageHeightPixels);
-        const exactHeight = totalPages * pageHeightPixels;
-
-        element.style.height = `${exactHeight}px`;
-        element.style.maxHeight = `${exactHeight}px`;
-        element.style.overflow = 'hidden';
+        const currentTotalHeight = element.getBoundingClientRect().height;
+        const remainder = currentTotalHeight % pageHeightPixels;
+        
+        if (remainder > 0 && remainder < (pageHeightPixels - 5)) {
+            const fillHeight = Math.floor(pageHeightPixels - remainder) - 2;
+            const filler = document.createElement('div');
+            filler.style.width = '100%';
+            filler.style.height = `${fillHeight}px`;
+            filler.style.backgroundColor = bgPage;
+            element.appendChild(filler);
+        }
 
         const opt = {
             margin:       0,
@@ -1501,9 +1497,7 @@ window.exportUserDataPDF = async function() {
                 scale: 3,
                 useCORS: true,
                 backgroundColor: bgPage,
-                logging: false,
-                height: exactHeight,
-                windowHeight: exactHeight
+                logging: false
             },
             jsPDF:        { unit: 'px', format: [800, 1131.428], orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'] }
