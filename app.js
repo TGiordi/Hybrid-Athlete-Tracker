@@ -1106,6 +1106,7 @@ window.exportUserDataPDF = async function() {
     const borderCol = isDark ? '#262626' : '#cbd5e1';
     const accent = '#F54927';
 
+    // Plugin para asegurar fondo visible en gráficos (Modo Claro)
     const customBgPlugin = {
         id: 'customCanvasBg',
         beforeDraw: (chart) => {
@@ -1125,7 +1126,7 @@ window.exportUserDataPDF = async function() {
         return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
     };
 
-    // Función para normalizar nombres (Quita tildes, mayúsculas y espacios extra)
+    // Buscador Inteligente para que no falte ningún ejercicio
     const normalizeName = (name) => {
         return name.trim().toLowerCase()
             .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
@@ -1138,7 +1139,7 @@ window.exportUserDataPDF = async function() {
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
         document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Uniendo historiales y dibujando el documento final. Aguardá...";
+        document.getElementById('loading-desc').innerText = "Generando el documento definitivo. Aguardá unos segundos...";
     }
 
     const viewApp = document.getElementById('view-app');
@@ -1154,7 +1155,7 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: flex; flex-direction: column; min-height: 100vh;`;
+    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: flex; flex-direction: column;`;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1185,7 +1186,7 @@ window.exportUserDataPDF = async function() {
             return map[day.toLowerCase().trim()] || day.toUpperCase();
         };
 
-        // MAPEO INTELIGENTE DE NOMBRES
+        // Mapeo inteligente de ejercicios y días
         const orderedExNames = [];
         const exerciseDaysMap = {};
         const routineNameMap = {};
@@ -1206,7 +1207,7 @@ window.exportUserDataPDF = async function() {
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
                 #${containerId} * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
-                .pdf-wrapper { padding: 40px; width: 100%; flex-grow: 1; }
+                .pdf-wrapper { padding: 40px; width: 100%; }
                 
                 .pdf-header { text-align: center; border-bottom: 2px solid ${borderCol}; padding-bottom: 20px; margin-bottom: 30px; }
                 .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; color: ${textMain}; }
@@ -1260,6 +1261,8 @@ window.exportUserDataPDF = async function() {
             const sessionMins = sessionDates.map(d => Math.round(groupedSessions[d] / 60)); 
 
             const ctx = tempCanvas.getContext('2d');
+            ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
             const globalChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -1345,30 +1348,28 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
-        // --- 03: HISTORIAL POR EJERCICIO (CON FILTRO INTELIGENTE) ---
+        // --- 03: HISTORIAL POR EJERCICIO ---
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
         if (logs && logs.length > 0) {
             const groupedLogs = {};
-            
-            // Unimos inteligentemente los historiales viejos con la rutina nueva
+
+            // UNIÓN INTELIGENTE (Para no perder ejercicios con ligeras variaciones de nombre)
             logs.forEach(l => {
                 const rawLogName = l.exercise_name.trim();
                 const normLogName = normalizeName(rawLogName);
                 let finalName = null;
 
                 if (routineNameMap[normLogName]) {
-                    finalName = routineNameMap[normLogName]; // Coincidencia exacta limpia
+                    finalName = routineNameMap[normLogName];
                 } else {
-                    // Coincidencia parcial (Ej: Historial dice "Press" y Rutina dice "Press con barra")
-                    const partialMatch = Object.keys(routineNameMap).find(normRoutine => 
+                    const partialMatch = Object.keys(routineNameMap).find(normRoutine =>
                         normRoutine.includes(normLogName) || normLogName.includes(normRoutine)
                     );
                     if (partialMatch) finalName = routineNameMap[partialMatch];
                 }
 
-                // Si lo encontró dentro de la rutina actual, lo agrega
                 if (finalName) {
                     if (!groupedLogs[finalName]) groupedLogs[finalName] = { type: l.exercise_type, data: [] };
                     groupedLogs[finalName].data.push(l);
@@ -1376,10 +1377,10 @@ window.exportUserDataPDF = async function() {
             });
 
             const orderedChartTasks = [];
-            
+
             for (const exName of orderedExNames) {
                 const exLogs = groupedLogs[exName];
-                if (!exLogs || exLogs.data.length === 0) continue; 
+                if (!exLogs || exLogs.data.length === 0) continue;
 
                 const daysSet = exerciseDaysMap[exName];
                 const daysArray = Array.from(daysSet);
@@ -1397,7 +1398,7 @@ window.exportUserDataPDF = async function() {
                 const type = exLogs.type;
 
                 const chartGroupedData = {};
-                
+
                 exLogs.data.forEach(log => {
                     const [year, month, day] = log.log_date.split('-');
                     const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
@@ -1430,27 +1431,20 @@ window.exportUserDataPDF = async function() {
                         }]
                     },
                     options: {
-                        responsive: false, animation: false, 
+                        responsive: false, animation: false,
                         plugins: { legend: { display: false } },
                         layout: { padding: { top: 20, bottom: 20, left: 15, right: 30 } },
                         scales: {
-                            y: { 
-                                grid: { color: borderCol, lineWidth: 2 }, 
-                                ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 5, padding: 12 }, 
-                                title: {display: true, text: titleY, color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} 
-                            },
-                            x: { 
-                                grid: { display: false }, 
-                                ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } 
-                            }
+                            y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 5, padding: 12 }, title: {display: true, text: titleY, color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
+                            x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
                         }
                     },
-                    plugins: [customBgPlugin] 
+                    plugins: [customBgPlugin]
                 });
 
-                await new Promise(r => setTimeout(r, 60)); 
-                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 1.0); 
-                tempChart.destroy(); 
+                await new Promise(r => setTimeout(r, 60));
+                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 1.0);
+                tempChart.destroy();
 
                 htmlContent += `
                     <div class="pdf-avoid-break-chart">
@@ -1483,8 +1477,7 @@ window.exportUserDataPDF = async function() {
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
         }
-        
-        // FIRMA HAT INCORPORADA AL FLUJO NORMAL
+
         htmlContent += `
             <div class="hat-signature">
                 <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
@@ -1492,21 +1485,38 @@ window.exportUserDataPDF = async function() {
                 <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
             </div>
         `;
-        
-        htmlContent += `</div></div>`; 
+
+        htmlContent += `</div></div>`;
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
+        // GUILLOTINA MATEMÁTICA DEFINITIVA (Corte estricto)
+        const pageHeightPixels = 1131;
+        const currentTotalHeight = element.scrollHeight;
+        const totalPages = Math.ceil(currentTotalHeight / pageHeightPixels);
+        const exactHeight = totalPages * pageHeightPixels;
+
+        element.style.height = `${exactHeight}px`;
+        element.style.maxHeight = `${exactHeight}px`;
+        element.style.overflow = 'hidden';
+
         const opt = {
-            margin:       0, 
+            margin:       0,
             filename:     filename,
             image:        { type: 'jpeg', quality: 1.0 },
-            html2canvas:  { scale: 3, useCORS: true, backgroundColor: bgPage, logging: false }, 
+            html2canvas:  {
+                scale: 3,
+                useCORS: true,
+                backgroundColor: bgPage,
+                logging: false,
+                height: exactHeight,
+                windowHeight: exactHeight
+            },
             jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' },
-            pagebreak:    { mode: ['css', 'legacy'] } 
+            pagebreak:    { mode: ['css', 'legacy'] }
         };
 
         await html2pdf().set(opt).from(element).save();
@@ -1520,21 +1530,24 @@ window.exportUserDataPDF = async function() {
     } finally {
         setTimeout(() => {
             if (document.getElementById(containerId)) document.getElementById(containerId).remove();
-            if (hiddenDiv) hiddenDiv.remove(); 
+            if (hiddenDiv) hiddenDiv.remove();
             if (viewApp) viewApp.style.display = '';
-            
+
             document.body.style.overflow = '';
             document.documentElement.style.overflow = '';
             window.scrollTo(0, originalScrollY);
-            
+
             if(overlay) {
                 overlay.classList.remove('flex', 'bg-[#0a0a0a]');
                 overlay.classList.add('hidden', 'bg-black/90', 'backdrop-blur-md');
-                overlay.style.zIndex = ""; 
+                overlay.style.zIndex = "";
             }
         }, 500);
     }
 };
+
+// ENLACE DEL BOTÓN
+window.exportUserData = window.exportUserDataPDF;
 
 
 
