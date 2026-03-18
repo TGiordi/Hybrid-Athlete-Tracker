@@ -1136,7 +1136,7 @@ window.exportUserDataPDF = async function() {
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
         document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Aplicando formato estricto y renderizando documento...";
+        document.getElementById('loading-desc').innerText = "Aplicando formato final y procesando hojas. Aguardá...";
     }
 
     const viewApp = document.getElementById('view-app');
@@ -1183,14 +1183,15 @@ window.exportUserDataPDF = async function() {
             return map[day.toLowerCase().trim()] || day.toUpperCase();
         };
 
-        // Recolección ESTRICTA de ejercicios para que no falte ninguno y se agrupen días
+        // Recolección exacta de ejercicios (Restaura los 7 ejercicios correctos)
         const orderedExNames = [];
         const exerciseDaysMap = {};
         
         routines.forEach(ex => {
-            if (!orderedExNames.includes(ex.exercise_name)) orderedExNames.push(ex.exercise_name);
-            if (!exerciseDaysMap[ex.exercise_name]) exerciseDaysMap[ex.exercise_name] = new Set();
-            exerciseDaysMap[ex.exercise_name].add(formatDay(ex.day_of_week));
+            const name = ex.exercise_name.trim();
+            if (!orderedExNames.includes(name)) orderedExNames.push(name);
+            if (!exerciseDaysMap[name]) exerciseDaysMap[name] = new Set();
+            exerciseDaysMap[name].add(formatDay(ex.day_of_week));
         });
 
         const styles = `
@@ -1211,7 +1212,7 @@ window.exportUserDataPDF = async function() {
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
                 
-                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 50px; padding-top: 15px; border-top: 1px solid transparent; }
+                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-top: 40px; margin-bottom: 40px; padding-top: 10px; border-top: 1px solid transparent; }
                 
                 .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
                 
@@ -1279,7 +1280,7 @@ window.exportUserDataPDF = async function() {
             globalChart.destroy(); 
 
             htmlContent += `
-                <div class="pdf-avoid-break-chart" style="padding-top: 0; border-top: none;">
+                <div class="pdf-avoid-break-chart" style="margin-top: 0; padding-top: 0; border-top: none;">
                     <img src="${globalChartImg}" class="chart-img" style="background-color: ${bgBox};" />
                     <table class="log-table">
                         <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido (H:M:S)</th></tr></thead>
@@ -1342,8 +1343,9 @@ window.exportUserDataPDF = async function() {
             const groupedLogs = {};
 
             logs.forEach(l => {
-                if (!groupedLogs[l.exercise_name]) groupedLogs[l.exercise_name] = { type: l.exercise_type, data: [] };
-                groupedLogs[l.exercise_name].data.push(l);
+                const name = l.exercise_name.trim(); // Coincidencia estricta validada
+                if (!groupedLogs[name]) groupedLogs[name] = { type: l.exercise_type, data: [] };
+                groupedLogs[name].data.push(l);
             });
 
             const orderedChartTasks = [];
@@ -1447,9 +1449,8 @@ window.exportUserDataPDF = async function() {
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
         }
-        
-        // Cierre final sin firmas. Solo el relleno de color.
-        htmlContent += `<div id="pdf-filler" style="width: 100%; background-color: ${bgPage};"></div>`;
+
+        // Se elimina la firma por completo.
         htmlContent += `</div></div>`; 
 
         element.innerHTML = htmlContent;
@@ -1457,19 +1458,25 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // CORTE PERFECTO: Llenamos exactamente los píxeles faltantes hasta completar el A4 (1131px)
-        const pageHeightPixels = 1131;
-        const currentTotalHeight = element.scrollHeight;
-        const remainder = currentTotalHeight % pageHeightPixels;
+        // RUTINA MATEMÁTICA ESTRICTA (Para asegurar que el color llegue al fondo sin páginas extra)
+        const PAGE_HEIGHT = 1131; // Píxeles exactos
+        const currentHeight = element.scrollHeight;
+        const totalPages = Math.ceil(currentHeight / PAGE_HEIGHT);
+        
+        // Altura exacta, menos 2px de margen de seguridad anti-páginas en blanco
+        const targetHeight = (totalPages * PAGE_HEIGHT) - 2;
 
-        if (remainder > 0) {
-            const fillHeight = pageHeightPixels - remainder;
-            document.getElementById('pdf-filler').style.height = `${fillHeight}px`;
+        if (targetHeight > currentHeight) {
+            const filler = document.createElement('div');
+            filler.style.width = '100%';
+            filler.style.height = `${targetHeight - currentHeight}px`;
+            filler.style.backgroundColor = bgPage;
+            element.appendChild(filler);
         }
 
-        const exactHeight = element.scrollHeight;
-        element.style.height = `${exactHeight}px`;
-        element.style.maxHeight = `${exactHeight}px`;
+        // Cortar excesos
+        element.style.height = `${targetHeight}px`;
+        element.style.maxHeight = `${targetHeight}px`;
         element.style.overflow = 'hidden';
 
         const opt = {
@@ -1480,11 +1487,9 @@ window.exportUserDataPDF = async function() {
                 scale: 3,
                 useCORS: true,
                 backgroundColor: bgPage,
-                logging: false,
-                height: exactHeight,
-                windowHeight: exactHeight
+                logging: false
             },
-            jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' },
+            jsPDF:        { unit: 'px', format: [800, PAGE_HEIGHT], orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'] }
         };
 
@@ -1516,7 +1521,6 @@ window.exportUserDataPDF = async function() {
 };
 
 window.exportUserData = window.exportUserDataPDF;
-
 
 
 
