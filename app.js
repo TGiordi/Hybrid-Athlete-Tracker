@@ -985,52 +985,52 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - FIX PANTALLA BLANCA) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - RENDERIZADO NATIVO) ---
 // =========================================================================
 window.exportUserDataPDF = async function() {
     window.playPop();
     
-    // 1. TRUCO VITAL: Guardamos tu posición en la página y forzamos ir arriba de todo.
-    // Esto evita al 100% que la librería saque la foto en blanco por estar scrolleados hacia abajo.
+    // 1. Guardamos scroll y vamos arriba
     const originalScrollY = window.scrollY;
     window.scrollTo(0, 0);
 
+    // 2. Pantalla de carga SÓLIDA para tapar el trabajo
     const overlay = document.getElementById('ai-loading-overlay');
-    // Le subimos la prioridad al overlay y lo volvemos negro oscuro sólido para tapar todo el trabajo
     overlay.style.zIndex = "9999";
     overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
     overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
 
     document.getElementById('loading-title').innerText = "Compilando Reporte...";
-    document.getElementById('loading-desc').innerText = "Dibujando gráficos de alta calidad. Esto tomará unos segundos...";
+    document.getElementById('loading-desc').innerText = "Dibujando gráficos y armando las páginas. Aguardá unos segundos...";
 
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    // 2. Contenedor visible y alineado, pero tapado por el cartel de carga sólido
+    // 3. Contenedor NATIVO (Sin position absolute, esto arregla el PDF en blanco)
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = "position: absolute; top: 0; left: 0; width: 800px; background-color: #000000; z-index: 10;";
+    element.style.cssText = "width: 800px; background-color: #000000; z-index: 10; margin: 0 auto;";
 
+    // Lienzo temporal oculto para procesar gráficos
     const tempCanvas = document.createElement('canvas');
     tempCanvas.id = "temp-chart-renderer";
     tempCanvas.width = 720; 
     tempCanvas.height = 220; 
-    tempCanvas.style.cssText = "position: absolute; top: 0; left: 0; z-index: 10; visibility: hidden;"; 
+    tempCanvas.style.cssText = "position: absolute; top: -9999px; left: -9999px; visibility: hidden;"; 
     document.body.appendChild(tempCanvas);
 
     try {
         const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).order('day_of_week', { ascending: true }).order('order_index', { ascending: true });
         const { data: logs } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: true });
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
-        const filename = `HAT_Reporte_${userEmail.split('@')[0]}_${new Date().toISOString().slice(0,10)}.pdf`;
+        const filename = `HAT_Reporte_${userEmail.split('@')[0]}_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.pdf`;
 
-        // CSS Estricto
+        // CSS Estricto para el PDF
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
                 #${containerId} * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
-                .pdf-wrapper { background-color: #000000; color: #ffffff; padding: 40px; width: 800px; }
+                .pdf-wrapper { background-color: #000000; color: #ffffff; padding: 40px; width: 100%; }
                 .pdf-header { text-align: center; border-bottom: 2px solid #262626; padding-bottom: 20px; margin-bottom: 30px; }
                 .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; }
                 .hat-logo span { color: #F54927; }
@@ -1122,6 +1122,7 @@ window.exportUserDataPDF = async function() {
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
+                // Dibuja el gráfico en el canvas oculto
                 const ctx = tempCanvas.getContext('2d');
                 ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
                 ctx.fillStyle = '#0a0a0a'; 
@@ -1151,9 +1152,8 @@ window.exportUserDataPDF = async function() {
                     }
                 });
 
-                await new Promise(r => setTimeout(r, 100));
-                
-                const chartImageBase64 = tempCanvas.toDataURL('image/png', 1.0);
+                await new Promise(r => setTimeout(r, 50)); // Micro-espera
+                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 0.9); // Pasado a JPEG para aligerar PDF
                 tempChart.destroy(); 
 
                 htmlContent += `
@@ -1190,23 +1190,21 @@ window.exportUserDataPDF = async function() {
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker</div></div>`;
 
         element.innerHTML = htmlContent;
-        document.body.appendChild(element);
+        
+        // 4. INSERCIÓN NATIVA EN EL BODY: 
+        // Esto hace que el navegador le dé dimensiones reales y evite que salga en blanco
+        document.body.prepend(element);
 
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Espera de seguridad para el renderizado del navegador
+        await new Promise(resolve => setTimeout(resolve, 800));
 
+        // 5. Configuración estándar de PDF (A4 Vertical)
         const opt = {
-            margin:       [10, 0, 10, 0], 
+            margin:       10, // Margen numérico simple en mm
             filename:     filename,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { 
-                scale: 2, 
-                useCORS: true, 
-                backgroundColor: '#000000', 
-                logging: false,
-                windowWidth: 800,
-                scrollY: 0
-            },
-            jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' },
+            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#000000', logging: false },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }, // Forzado A4 Vertical
             pagebreak:    { mode: ['css', 'legacy'], avoid: '.history-card' }
         };
 
@@ -1219,7 +1217,7 @@ window.exportUserDataPDF = async function() {
         console.error("Error al generar PDF:", error);
         window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
     } finally {
-        // 3. Devolvemos la pantalla exactamente a como estaba antes
+        // Restauramos todo el entorno
         window.scrollTo(0, originalScrollY);
         
         overlay.classList.remove('flex', 'bg-[#0a0a0a]');
