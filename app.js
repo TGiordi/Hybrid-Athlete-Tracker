@@ -1089,6 +1089,13 @@ window.askPdfTheme = function() {
     });
 };
 
+
+
+
+
+
+
+
 // 2. EL GENERADOR DEL PDF
 window.exportUserDataPDF = async function() {
     const themeChoice = await window.askPdfTheme();
@@ -1123,19 +1130,13 @@ window.exportUserDataPDF = async function() {
         return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
     };
 
-    const normalizeName = (name) => {
-        return name.trim().toLowerCase()
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-            .replace(/\s+/g, ' '); 
-    };
-
     const overlay = document.getElementById('ai-loading-overlay');
     if(overlay) {
         overlay.style.zIndex = "999999";
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
         document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Generando el documento definitivo. Aguardá unos segundos...";
+        document.getElementById('loading-desc').innerText = "Aplicando formato estricto y renderizando documento...";
     }
 
     const viewApp = document.getElementById('view-app');
@@ -1151,7 +1152,7 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: block;`;
+    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: block;`;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1182,20 +1183,14 @@ window.exportUserDataPDF = async function() {
             return map[day.toLowerCase().trim()] || day.toUpperCase();
         };
 
+        // Recolección ESTRICTA de ejercicios para que no falte ninguno y se agrupen días
         const orderedExNames = [];
         const exerciseDaysMap = {};
-        const routineNameMap = {};
         
         routines.forEach(ex => {
-            const officialName = ex.exercise_name.trim();
-            const normName = normalizeName(officialName);
-
-            if (!orderedExNames.includes(officialName)) {
-                orderedExNames.push(officialName);
-                routineNameMap[normName] = officialName;
-            }
-            if (!exerciseDaysMap[officialName]) exerciseDaysMap[officialName] = new Set();
-            exerciseDaysMap[officialName].add(formatDay(ex.day_of_week));
+            if (!orderedExNames.includes(ex.exercise_name)) orderedExNames.push(ex.exercise_name);
+            if (!exerciseDaysMap[ex.exercise_name]) exerciseDaysMap[ex.exercise_name] = new Set();
+            exerciseDaysMap[ex.exercise_name].add(formatDay(ex.day_of_week));
         });
 
         const styles = `
@@ -1216,8 +1211,7 @@ window.exportUserDataPDF = async function() {
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
                 
-                /* Margen superior de 40px añadido para arreglar el amontonamiento de los ejercicios en la sección 3 */
-                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-top: 40px; margin-bottom: 40px; padding-top: 10px; border-top: 1px solid transparent; }
+                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 50px; padding-top: 15px; border-top: 1px solid transparent; }
                 
                 .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
                 
@@ -1285,7 +1279,7 @@ window.exportUserDataPDF = async function() {
             globalChart.destroy(); 
 
             htmlContent += `
-                <div class="pdf-avoid-break-chart" style="margin-top: 0; padding-top: 0; border-top: none;">
+                <div class="pdf-avoid-break-chart" style="padding-top: 0; border-top: none;">
                     <img src="${globalChartImg}" class="chart-img" style="background-color: ${bgBox};" />
                     <table class="log-table">
                         <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido (H:M:S)</th></tr></thead>
@@ -1348,23 +1342,8 @@ window.exportUserDataPDF = async function() {
             const groupedLogs = {};
 
             logs.forEach(l => {
-                const rawLogName = l.exercise_name.trim();
-                const normLogName = normalizeName(rawLogName);
-                let finalName = null;
-
-                if (routineNameMap[normLogName]) {
-                    finalName = routineNameMap[normLogName];
-                } else {
-                    const partialMatch = Object.keys(routineNameMap).find(normRoutine =>
-                        normRoutine.includes(normLogName) || normLogName.includes(normRoutine)
-                    );
-                    if (partialMatch) finalName = routineNameMap[partialMatch];
-                }
-
-                if (finalName) {
-                    if (!groupedLogs[finalName]) groupedLogs[finalName] = { type: l.exercise_type, data: [] };
-                    groupedLogs[finalName].data.push(l);
-                }
+                if (!groupedLogs[l.exercise_name]) groupedLogs[l.exercise_name] = { type: l.exercise_type, data: [] };
+                groupedLogs[l.exercise_name].data.push(l);
             });
 
             const orderedChartTasks = [];
@@ -1469,6 +1448,8 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
         }
         
+        // Cierre final sin firmas. Solo el relleno de color.
+        htmlContent += `<div id="pdf-filler" style="width: 100%; background-color: ${bgPage};"></div>`;
         htmlContent += `</div></div>`; 
 
         element.innerHTML = htmlContent;
@@ -1476,18 +1457,20 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        const pageHeightPixels = 1131.428;
-        const currentTotalHeight = element.getBoundingClientRect().height;
+        // CORTE PERFECTO: Llenamos exactamente los píxeles faltantes hasta completar el A4 (1131px)
+        const pageHeightPixels = 1131;
+        const currentTotalHeight = element.scrollHeight;
         const remainder = currentTotalHeight % pageHeightPixels;
-        
-        if (remainder > 0 && remainder < (pageHeightPixels - 5)) {
-            const fillHeight = Math.floor(pageHeightPixels - remainder) - 2;
-            const filler = document.createElement('div');
-            filler.style.width = '100%';
-            filler.style.height = `${fillHeight}px`;
-            filler.style.backgroundColor = bgPage;
-            element.appendChild(filler);
+
+        if (remainder > 0) {
+            const fillHeight = pageHeightPixels - remainder;
+            document.getElementById('pdf-filler').style.height = `${fillHeight}px`;
         }
+
+        const exactHeight = element.scrollHeight;
+        element.style.height = `${exactHeight}px`;
+        element.style.maxHeight = `${exactHeight}px`;
+        element.style.overflow = 'hidden';
 
         const opt = {
             margin:       0,
@@ -1497,9 +1480,11 @@ window.exportUserDataPDF = async function() {
                 scale: 3,
                 useCORS: true,
                 backgroundColor: bgPage,
-                logging: false
+                logging: false,
+                height: exactHeight,
+                windowHeight: exactHeight
             },
-            jsPDF:        { unit: 'px', format: [800, 1131.428], orientation: 'portrait' },
+            jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'] }
         };
 
@@ -1530,7 +1515,6 @@ window.exportUserDataPDF = async function() {
     }
 };
 
-// 3. ENLACE DEL BOTÓN (La línea que faltó)
 window.exportUserData = window.exportUserDataPDF;
 
 
