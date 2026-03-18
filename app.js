@@ -474,7 +474,7 @@ async function openGlobalStats() {
     const container = document.getElementById('global-stats-container'); 
     container.innerHTML = '<div class="text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando métricas...</div>';
     
-    // Función para convertir a HH:MM:SS
+    // Función conversora a HH:MM:SS
     const formatHMS = (secs) => {
         const h = Math.floor(secs / 3600);
         const m = Math.floor((secs % 3600) / 60);
@@ -495,6 +495,7 @@ async function openGlobalStats() {
         });
         
         const dates = Object.keys(grouped); 
+        // Para el gráfico seguimos usando minutos (porque necesita un número decimal para dibujar la barra)
         const durations = dates.map(d => parseFloat((grouped[d].totalSecs / 60).toFixed(2))); 
         
         let htmlList = `<div class="mt-6 border-t border-custom-border pt-4 max-h-[30vh] overflow-y-auto custom-scroll pr-2 space-y-2">`;
@@ -505,7 +506,7 @@ async function openGlobalStats() {
             htmlList += `<div class="flex justify-between items-center bg-[#171717] p-3 rounded-xl border border-[#262626]">
                             <div class="flex flex-col">
                                 <span class="text-white font-bold text-sm">${date}</span>
-                                <span class="text-xs text-custom-textMuted font-bold">Tiempo Invertido: ${formatHMS(secs)}</span>
+                                <span class="text-xs text-custom-textMuted font-bold">Tiempo Invertido: <span class="text-custom-primary">${formatHMS(secs)}</span></span>
                             </div>
                             <div class="flex gap-2">`;
             sessionIds.forEach(id => {
@@ -520,7 +521,7 @@ async function openGlobalStats() {
         const ctx = document.getElementById('chart-global-time').getContext('2d');
         new Chart(ctx, { 
             type: 'bar', 
-            data: { labels: dates, datasets: [{ label: 'Minutos de Entrenamiento', data: durations, backgroundColor: 'rgba(20, 184, 166, 0.8)', borderRadius: 4 }] }, 
+            data: { labels: dates, datasets: [{ label: 'Minutos', data: durations, backgroundColor: 'rgba(20, 184, 166, 0.8)', borderRadius: 4 }] }, 
             options: { 
                 responsive: true, 
                 maintainAspectRatio: false, 
@@ -529,10 +530,11 @@ async function openGlobalStats() {
                     legend: { display: false },
                     tooltip: {
                         callbacks: {
+                            // Al pasar el mouse, mostramos el formato H:M:S
                             label: function(context) {
                                 const date = context.label;
                                 const secs = grouped[date].totalSecs;
-                                return 'Tiempo: ' + formatHMS(secs);
+                                return 'Tiempo total: ' + formatHMS(secs);
                             }
                         }
                     } 
@@ -1040,7 +1042,7 @@ function promptEditLog(exId, exName, dateStr, exType) {
 
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - CIRUGÍA FINAL) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL) ---
 // =========================================================================
 
 window.askPdfTheme = function() {
@@ -1086,13 +1088,16 @@ window.askPdfTheme = function() {
     });
 };
 
+// =========================================================================
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - OBRA MAESTRA) ---
+// =========================================================================
+
 window.exportUserDataPDF = async function() {
     const themeChoice = await window.askPdfTheme();
     if (!themeChoice) return;
 
     const isDark = (themeChoice === 'dark');
 
-    // Paletas de colores estrictas
     const bgPage = isDark ? '#000000' : '#ffffff';
     const bgCard = isDark ? '#171717' : '#ffffff';
     const bgBox = isDark ? '#0a0a0a' : '#f8fafc'; 
@@ -1126,7 +1131,7 @@ window.exportUserDataPDF = async function() {
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
         document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Renderizando gráficos, filtrando rutina y ajustando márgenes. Aguardá...";
+        document.getElementById('loading-desc').innerText = "Renderizando gráficos, filtrando rutina y ajustando diseño. Aguardá...";
     }
 
     const viewApp = document.getElementById('view-app');
@@ -1142,7 +1147,7 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden;`;
+    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden;`;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1173,9 +1178,15 @@ window.exportUserDataPDF = async function() {
             return map[day.toLowerCase().trim()] || day.toUpperCase();
         };
 
-        const orderedExNames = [...new Set(routines.map(r => r.exercise_name))];
-        const logExNames = [...new Set(logs.map(l => l.exercise_name))];
-        logExNames.forEach(ex => { if(!orderedExNames.includes(ex)) orderedExNames.push(ex); });
+        // Extraer nombres de rutinas en orden y mapear qué días se hace cada ejercicio
+        const orderedExNames = [];
+        const exerciseDaysMap = {};
+        
+        routines.forEach(ex => {
+            if (!orderedExNames.includes(ex.exercise_name)) orderedExNames.push(ex.exercise_name);
+            if (!exerciseDaysMap[ex.exercise_name]) exerciseDaysMap[ex.exercise_name] = new Set();
+            exerciseDaysMap[ex.exercise_name].add(formatDay(ex.day_of_week));
+        });
 
         const styles = `
             <style>
@@ -1195,13 +1206,12 @@ window.exportUserDataPDF = async function() {
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
                 
-                /* CIRUGÍA 1: Padding superior ampliado a 50px para dar mucho más respiro a los gráficos */
-                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 30px; padding-top: 50px; border-top: 1px solid transparent; }
+                /* Margen seguro para los gráficos. Si salta de hoja, arranca con 20px de respiro */
+                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 40px; padding-top: 20px; border-top: 1px solid transparent; }
                 
-                /* CIRUGÍA 1: El salto de página ahora genera 60px de margen superior automático */
-                .page-break-container { page-break-before: always; clear: both; padding-top: 60px; border-top: 1px solid transparent; width: 100%; }
+                .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
                 
-                .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
+                .sub-day-title { font-size: 11px; color: ${textMuted}; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
                 
                 .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; }
                 
@@ -1211,8 +1221,6 @@ window.exportUserDataPDF = async function() {
                 .log-table tr:last-child td { border-bottom: none; }
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
-                
-                #pdf-footer-absolute { position: absolute; bottom: 30px; left: 0; width: 100%; text-align: center; color: ${textMuted}; font-size: 11px; font-weight: bold; border-top: 1px solid ${borderCol}; padding-top: 20px; }
             </style>
         `;
 
@@ -1266,7 +1274,7 @@ window.exportUserDataPDF = async function() {
             globalChart.destroy(); 
 
             htmlContent += `
-                <div class="pdf-avoid-break-chart">
+                <div class="pdf-avoid-break-chart" style="padding-top: 0; border-top: none;">
                     <img src="${globalChartImg}" class="chart-img" style="background-color: ${bgBox};" />
                     <table class="log-table">
                         <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido (H:M:S)</th></tr></thead>
@@ -1328,34 +1336,19 @@ window.exportUserDataPDF = async function() {
                 groupedLogs[l.exercise_name].data.push(l);
             });
 
-            const orderedChartTasks = [];
-            const printedExercises = new Set();
-            
-            for (const ex of routines) {
-                if (!printedExercises.has(ex.exercise_name)) {
-                    printedExercises.add(ex.exercise_name);
-                    if (groupedLogs[ex.exercise_name]) {
-                        orderedChartTasks.push({ dayGroup: formatDay(ex.day_of_week), exName: ex.exercise_name, logs: groupedLogs[ex.exercise_name] });
-                    }
-                }
-            }
+            // Iterar estrictamente por los ejercicios de la rutina actual
+            for (const exName of orderedExNames) {
+                const exLogs = groupedLogs[exName];
+                if (!exLogs || exLogs.data.length === 0) continue; 
 
-            if(orderedChartTasks.length === 0) {
-                htmlContent += `<p style="color: ${textMuted}; text-align: center; margin-top: 20px;">Aún no hay progreso registrado para los ejercicios de tu rutina actual.</p>`;
-            }
+                // Armar etiqueta de días (ej: "DÍAS: LUNES, JUEVES")
+                const daysSet = exerciseDaysMap[exName];
+                const daysStr = Array.from(daysSet).join(', ');
+                const dayLabel = daysSet.size > 1 ? `DÍAS: ${daysStr}` : `DÍA: ${daysStr}`;
 
-            let currentSubDay = "";
-
-            for (const task of orderedChartTasks) {
-                if (task.dayGroup !== currentSubDay) {
-                    currentSubDay = task.dayGroup;
-                    htmlContent += `<div class="sub-day-title">DÍA: ${currentSubDay}</div>`;
-                }
-
-                const exLogs = task.logs;
                 const type = exLogs.type;
-
                 const chartGroupedData = {};
+                
                 exLogs.data.forEach(log => {
                     const [year, month, day] = log.log_date.split('-');
                     const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
@@ -1412,7 +1405,8 @@ window.exportUserDataPDF = async function() {
 
                 htmlContent += `
                     <div class="pdf-avoid-break-chart">
-                        <div style="font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 12px;">${escapeHTML(task.exName)}</div>
+                        <div class="sub-day-title">${dayLabel}</div>
+                        <div style="font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 12px;">${escapeHTML(exName)}</div>
                         <img src="${chartImageBase64}" class="chart-img" style="background-color: ${bgBox};" />
                         <table class="log-table">
                             <thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>
@@ -1440,30 +1434,36 @@ window.exportUserDataPDF = async function() {
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible.</p>`;
         }
-
-        htmlContent += `</div></div>`; // Cierra pdf-wrapper final
-
-        htmlContent += `<div id="pdf-filler" style="width: 100%;"></div>`;
-        htmlContent += `<div id="pdf-footer-absolute"><div style="width: 800px; margin: 0 auto; padding: 0 40px;">Generado por Hybrid Athlete Tracker | ${isDark ? 'Modo Oscuro' : 'Modo Impresión'}</div></div>`;
+        
+        // Firma Final HAT (Reemplaza el footer absoluto que causaba problemas)
+        htmlContent += `
+            <div style="margin-top: 50px; padding-bottom: 40px; text-align: center; border-top: 1px dashed ${borderCol}; padding-top: 30px;">
+                <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
+                <div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>
+                <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
+            </div>
+        `;
+        htmlContent += `</div></div>`; // Cierra envoltorios
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // CIRUGÍA 2: Protección contra choque del pie de página. 
-        // Si sobran menos de 150px, sumamos una hoja entera para que el footer pase seguro a la siguiente.
+        // Magia para eliminar la hoja blanca: Rellenamos pero restamos 5px para NO forzar a la librería a crear una hoja nueva
         const pageHeightPixels = 1131.428; 
         const currentTotalHeight = element.scrollHeight;
         const remainder = currentTotalHeight % pageHeightPixels;
         
-        let paddingToFill = pageHeightPixels - remainder;
-        
-        if (paddingToFill < 150) {
-            paddingToFill += pageHeightPixels; // Empuja el contenido a una nueva hoja segura
+        if (remainder > 0 && remainder < pageHeightPixels) {
+            const paddingToFill = pageHeightPixels - remainder;
+            // Bloque de relleno del color de fondo de la hoja
+            const filler = document.createElement('div');
+            filler.style.height = `${paddingToFill - 5}px`; 
+            filler.style.width = '100%';
+            filler.style.backgroundColor = bgPage;
+            element.appendChild(filler);
         }
-
-        document.getElementById('pdf-filler').style.height = `${paddingToFill - 10}px`; 
 
         const opt = {
             margin:       0, 
