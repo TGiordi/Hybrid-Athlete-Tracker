@@ -985,13 +985,50 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - TEMAS CLARO/OSCURO & 4K) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - DEFINITIVO) ---
 // =========================================================================
-window.exportUserDataPDF = async function() {
-    window.playPop();
 
-    // 1. Selector de Tema (Claro o Oscuro)
-    const isDark = window.confirm("⚙️ FORMATO DEL REPORTE\n\n¿Querés descargar el reporte con TEMA OSCURO?\n\n▶ Tocá 'Aceptar' para Tema Oscuro (Fondo negro, ideal para pantallas).\n▶ Tocá 'Cancelar' para Tema Claro (Fondo blanco, ideal para imprimir).");
+// 1. Creador del Modal Estilo HAT para elegir el Tema
+window.askPdfTheme = function() {
+    return new Promise((resolve) => {
+        // Creamos el HTML del modal
+        const modalHtml = `
+            <div id="pdf-theme-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[999999] flex items-center justify-center p-4">
+                <div class="bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl animate-fade-in-up">
+                    <div class="w-16 h-16 bg-[#171717] border border-[#262626] text-white rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-custom-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-black italic text-white uppercase tracking-tight mb-2">Formato del Reporte</h3>
+                    <p class="text-sm text-custom-textMuted mb-6">Elegí el estilo visual para generar tu documento.</p>
+                    <div class="flex flex-col gap-3">
+                        <button id="btn-theme-dark" class="w-full bg-[#0a0a0a] border border-[#262626] hover:border-custom-primary text-white py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg">
+                            🌙 Modo Oscuro <span class="text-[10px] text-custom-textMuted font-normal uppercase tracking-widest">(Digital)</span>
+                        </button>
+                        <button id="btn-theme-light" class="w-full bg-white border border-gray-300 hover:bg-gray-100 text-black py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg">
+                            ☀️ Modo Claro <span class="text-[10px] text-gray-500 font-normal uppercase tracking-widest">(Imprimir)</span>
+                        </button>
+                        <button id="btn-theme-cancel" class="mt-3 text-xs text-custom-textMuted hover:text-red-500 uppercase tracking-widest font-bold transition-colors py-2">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const modalEl = document.getElementById('pdf-theme-modal');
+        
+        document.getElementById('btn-theme-dark').onclick = () => { modalEl.remove(); window.playTap(); resolve('dark'); };
+        document.getElementById('btn-theme-light').onclick = () => { modalEl.remove(); window.playTap(); resolve('light'); };
+        document.getElementById('btn-theme-cancel').onclick = () => { modalEl.remove(); window.playPop(); resolve(null); };
+    });
+};
+
+window.exportUserDataPDF = async function() {
+    // Lanzamos el modal estilizado y esperamos la respuesta del usuario
+    const themeChoice = await window.askPdfTheme();
+    if (!themeChoice) return; // Si cancela, no hacemos nada
+
+    window.playPop();
+    const isDark = (themeChoice === 'dark');
 
     // Paletas de colores dinámicas
     const bgPage = isDark ? '#000000' : '#ffffff';
@@ -1006,8 +1043,8 @@ window.exportUserDataPDF = async function() {
     overlay.style.zIndex = "999999";
     overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
     overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
-    document.getElementById('loading-title').innerText = "Compilando Reporte 4K...";
-    document.getElementById('loading-desc').innerText = "Renderizando textos e imágenes en Ultra Alta Definición. Por favor, aguardá...";
+    document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
+    document.getElementById('loading-desc').innerText = "Ajustando márgenes y renderizando gráficos en Alta Definición. Por favor, aguardá...";
 
     const viewApp = document.getElementById('view-app');
     if (viewApp) viewApp.style.display = 'none';
@@ -1022,15 +1059,14 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    // El padding 40px actúa como margen seguro pintado del color de fondo
     element.style.cssText = `width: 800px; margin: 0; background-color: ${bgPage}; color: ${textMain}; min-height: 100vh; padding: 40px; box-sizing: border-box;`;
 
-    // Lienzo temporal 4K para gráficos
+    // Lienzo temporal 4K para gráficos (Más espacio para los números)
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 2880;  
-    tempCanvas.height = 880; 
+    tempCanvas.width = 2400;  
+    tempCanvas.height = 800; 
     hiddenDiv.appendChild(tempCanvas);
     document.body.appendChild(hiddenDiv);
 
@@ -1040,7 +1076,6 @@ window.exportUserDataPDF = async function() {
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
         const filename = `HAT_Reporte_${isDark ? 'Oscuro' : 'Claro'}_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.pdf`;
 
-        // Orden y formateo
         const daysOrder = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 7 };
         routines.sort((a, b) => {
             const dayA = daysOrder[a.day_of_week.toLowerCase().trim()] || 8;
@@ -1058,7 +1093,6 @@ window.exportUserDataPDF = async function() {
         const logExNames = [...new Set(logs.map(l => l.exercise_name))];
         logExNames.forEach(ex => { if(!orderedExNames.includes(ex)) orderedExNames.push(ex); });
 
-        // CSS Estricto usando Tablas para asegurar que NADA se colapse
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
@@ -1068,16 +1102,17 @@ window.exportUserDataPDF = async function() {
                 .hat-logo span { color: ${accent}; }
                 .report-title { font-size: 16px; font-weight: 700; color: ${textMuted}; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px; }
                 .report-subtitle { color: ${textMuted}; font-size: 12px; margin-top: 8px; }
-                h2 { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; color: ${textMain}; margin-bottom: 20px; }
+                h2 { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; color: ${textMain}; margin-bottom: 20px; margin-top: 20px;}
                 h2 span { color: ${accent}; margin-right: 8px; }
                 
                 .day-title { font-size: 14px; font-weight: 700; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 30px; }
                 
-                /* La clave: pdf-avoid-break impide cortes y la tabla impide aplastamiento */
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 15px; }
                 
+                /* Margen superior en cada salto de página para que no se pegue al techo */
                 .page-break { page-break-before: always; border-top: none; padding-top: 40px; clear: both; }
-                .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
+                
+                .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 40px; margin-bottom: 15px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
                 
                 .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; background-color: ${bgBox}; }
                 
@@ -1086,7 +1121,8 @@ window.exportUserDataPDF = async function() {
                 .log-table td { padding: 12px 10px; border-bottom: 1px solid ${borderCol}; color: ${textMain}; }
                 .log-table tr:last-child td { border-bottom: none; }
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
-                .footer { text-align: center; color: ${textMuted}; font-size: 10px; margin-top: 50px; border-top: 1px solid ${borderCol}; padding-top: 20px;}
+                
+                .footer { text-align: center; color: ${textMuted}; font-size: 10px; border-top: 1px solid ${borderCol}; padding-top: 20px; padding-bottom: 20px; width: 100%;}
             </style>
         `;
 
@@ -1100,7 +1136,6 @@ window.exportUserDataPDF = async function() {
             <h2><span>01</span> Rutina Semanal Detallada</h2>
         `;
 
-        // 3. SECCIÓN 1: RUTINA (Estructurada en Tabla invisible)
         if (routines && routines.length > 0) {
             let currentDay = "";
             routines.forEach(ex => {
@@ -1131,7 +1166,6 @@ window.exportUserDataPDF = async function() {
 
         htmlContent += `<div class="page-break"><h2><span>02</span> Evolución y Progreso Visual</h2></div>`;
 
-        // 4. SECCIÓN 2: HISTORIAL
         if (logs && logs.length > 0) {
             const groupedLogs = {};
             logs.forEach(l => {
@@ -1184,7 +1218,6 @@ window.exportUserDataPDF = async function() {
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
-                // DIBUJAR GRÁFICO 4K
                 const ctx = tempCanvas.getContext('2d');
                 ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
                 ctx.fillStyle = bgBox; 
@@ -1192,6 +1225,7 @@ window.exportUserDataPDF = async function() {
 
                 const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
 
+                // Gráficos calibrados: Textos más chicos y líneas ajustadas
                 const tempChart = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -1199,16 +1233,16 @@ window.exportUserDataPDF = async function() {
                         datasets: [{
                             data: maxData,
                             borderColor: accent,
-                            backgroundColor: 'rgba(245, 73, 39, 0.08)',
-                            borderWidth: 10, tension: 0.3, pointRadius: 10, fill: true
+                            backgroundColor: isDark ? 'rgba(245, 73, 39, 0.08)' : 'rgba(245, 73, 39, 0.15)',
+                            borderWidth: 6, tension: 0.3, pointRadius: 6, fill: true
                         }]
                     },
                     options: {
                         responsive: false, animation: false, 
                         plugins: { legend: { display: false } },
                         scales: {
-                            y: { grid: { color: borderCol, lineWidth: 3 }, ticks: { color: textMuted, font: {size: 40, weight: 'bold'} }, title: {display: true, text: titleY, color: textMuted, font: {size: 45, weight: 'bold'}} },
-                            x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 40, weight: 'bold'} } }
+                            y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'} }, title: {display: true, text: titleY, color: textMuted, font: {size: 28, weight: 'bold'}} },
+                            x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'} } }
                         }
                     }
                 });
@@ -1218,7 +1252,7 @@ window.exportUserDataPDF = async function() {
                 tempChart.destroy(); 
 
                 htmlContent += `
-                    <div class="pdf-avoid-break" style="background-color: ${bgPage}; margin-bottom: 40px;">
+                    <div class="pdf-avoid-break" style="margin-bottom: 40px;">
                         <div style="font-size: 20px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 15px;">${escapeHTML(task.exName)}</div>
                         <img src="${chartImageBase64}" class="chart-img" />
                         <table class="log-table">
@@ -1248,20 +1282,32 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible.</p>`;
         }
 
+        // ESPACIO DE RELLENO INTELIGENTE PARA LA ÚLTIMA PÁGINA BLANCA
+        htmlContent += `<div id="pdf-filler" style="width: 100%;"></div>`;
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker | ${isDark ? 'Modo Oscuro' : 'Modo Impresión'}</div>`;
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        // 5. Motor PDF Alta Calidad: 0 Margen. El padding lo da el propio contenedor HTML.
+        // Cálculo matemático del espacio sobrante en la hoja A4
+        const currentHeight = element.offsetHeight;
+        const pageHeightPixels = 800 * 1.4142; // Proporción estricta de A4
+        const remainder = currentHeight % pageHeightPixels;
+        
+        if (remainder > 0 && remainder < pageHeightPixels - 100) {
+            // Rellenamos lo que falta para empujar el footer al fondo y pintar el color completo
+            const padBottom = pageHeightPixels - remainder;
+            document.getElementById('pdf-filler').style.height = `${padBottom}px`;
+        }
+
         const opt = {
             margin:       0, 
             filename:     filename,
             image:        { type: 'jpeg', quality: 1.0 },
-            html2canvas:  { scale: 4, useCORS: true, backgroundColor: bgPage, logging: false }, 
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+            html2canvas:  { scale: 3, useCORS: true, backgroundColor: bgPage, logging: false }, 
+            jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' } 
         };
 
         await html2pdf().set(opt).from(element).save();
@@ -1287,6 +1333,8 @@ window.exportUserDataPDF = async function() {
         overlay.style.zIndex = ""; 
     }
 };
+
+window.exportUserData = window.exportUserDataPDF;
 
 // =========================================================================
 // EXPORTACIÓN GLOBAL 
