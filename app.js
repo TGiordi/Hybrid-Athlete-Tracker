@@ -1435,7 +1435,7 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
-        // --- FIRMA HAT (Se integra natural al flujo con la clase pdf-avoid-break) ---
+        // --- FIRMA HAT ---
         htmlContent += `
             <div class="pdf-avoid-break" style="width: 100%; padding: 20px 40px 40px 40px; background-color: ${bgPage};">
                 <div style="text-align: center; border-top: 1px dashed ${borderCol}; padding-top: 30px;">
@@ -1452,14 +1452,17 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // Relleno matemático exacto: si sobran píxeles, pintamos el fondo restando un margen de seguridad
+        // LA CORRECCIÓN EXACTA DEL RELLENO MATEMÁTICO:
         const pageHeightPixels = 1131.428; 
-        const currentTotalHeight = element.scrollHeight;
+        const currentTotalHeight = element.getBoundingClientRect().height;
         const remainder = currentTotalHeight % pageHeightPixels;
         
-        if (remainder > 10 && remainder < (pageHeightPixels - 10)) {
+        // Si el sobrante es mayor a 0, obligatoriamente lo rellenamos para evitar el espacio blanco.
+        if (remainder > 0) {
             const paddingToFill = pageHeightPixels - remainder;
-            document.getElementById('pdf-filler').style.height = `${paddingToFill - 5}px`; 
+            // Usamos Math.floor() para redondear siempre hacia abajo. 
+            // Esto asegura que jamás se sume 1 pixel extra que haga saltar al PDF a una página nueva en blanco.
+            document.getElementById('pdf-filler').style.height = `${Math.floor(paddingToFill)}px`; 
         }
 
         const opt = {
