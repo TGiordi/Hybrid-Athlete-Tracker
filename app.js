@@ -471,24 +471,74 @@ async function updateCreditsDisplay() {
 // --- ESTADÍSTICAS GLOBALES ---
 async function openGlobalStats() {
     openModal('modal-global-stats');
-    const container = document.getElementById('global-stats-container'); container.innerHTML = '<div class="text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando métricas...</div>';
+    const container = document.getElementById('global-stats-container'); 
+    container.innerHTML = '<div class="text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando métricas...</div>';
+    
+    // Función para convertir a HH:MM:SS
+    const formatHMS = (secs) => {
+        const h = Math.floor(secs / 3600);
+        const m = Math.floor((secs % 3600) / 60);
+        const s = Math.floor(secs % 60);
+        return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
+    };
+
     try {
         const { data, error } = await supabaseClient.from('workout_sessions').select('id, session_date, duration_seconds').eq('user_id', currentUserId).order('session_date', { ascending: true });
         if(error) throw error;
         if(data.length === 0) { container.innerHTML = `<p class="text-custom-textMuted text-sm text-center">Aún no hay entrenamientos registrados.</p>`; return; }
+        
         const grouped = {};
-        data.forEach(d => { if(!grouped[d.session_date]) grouped[d.session_date] = { totalSecs: 0, ids: [] }; grouped[d.session_date].totalSecs += d.duration_seconds; grouped[d.session_date].ids.push(d.id); });
-        const dates = Object.keys(grouped); const durations = dates.map(d => parseFloat((grouped[d].totalSecs / 60).toFixed(2))); 
+        data.forEach(d => { 
+            if(!grouped[d.session_date]) grouped[d.session_date] = { totalSecs: 0, ids: [] }; 
+            grouped[d.session_date].totalSecs += d.duration_seconds; 
+            grouped[d.session_date].ids.push(d.id); 
+        });
+        
+        const dates = Object.keys(grouped); 
+        const durations = dates.map(d => parseFloat((grouped[d].totalSecs / 60).toFixed(2))); 
         
         let htmlList = `<div class="mt-6 border-t border-custom-border pt-4 max-h-[30vh] overflow-y-auto custom-scroll pr-2 space-y-2">`;
-        [...dates].reverse().forEach(d => {
-            let firstId = grouped[d].ids[0];
-            htmlList += `<div class="flex justify-between items-center bg-[#0a0a0a] p-3 rounded-lg border border-[#262626]"><span class="text-sm font-bold text-white">${d}</span><div class="flex items-center gap-3"><span class="text-xs text-custom-textMuted">${formatTime(grouped[d].totalSecs)}</span><button onclick="promptDeleteSession('${firstId}')" class="text-red-500 hover:text-white hover:bg-red-500 p-1.5 rounded-md transition-colors" title="Eliminar registro"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button></div></div>`;
+        
+        [...dates].reverse().forEach(date => {
+            const secs = grouped[date].totalSecs;
+            const sessionIds = grouped[date].ids;
+            htmlList += `<div class="flex justify-between items-center bg-[#171717] p-3 rounded-xl border border-[#262626]">
+                            <div class="flex flex-col">
+                                <span class="text-white font-bold text-sm">${date}</span>
+                                <span class="text-xs text-custom-textMuted font-bold">Tiempo Invertido: ${formatHMS(secs)}</span>
+                            </div>
+                            <div class="flex gap-2">`;
+            sessionIds.forEach(id => {
+                htmlList += `<button onclick="promptDeleteSession('${id}')" class="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>`;
+            });
+            htmlList += `</div></div>`;
         });
         htmlList += `</div>`;
+        
         container.innerHTML = `<div class="h-48 w-full bg-[#0a0a0a] rounded-xl p-3 border border-custom-border relative mb-2"><canvas id="chart-global-time"></canvas></div>` + htmlList;
+        
         const ctx = document.getElementById('chart-global-time').getContext('2d');
-        new Chart(ctx, { type: 'bar', data: { labels: dates, datasets: [{ label: 'Minutos de Entrenamiento', data: durations, backgroundColor: 'rgba(20, 184, 166, 0.8)', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false } } } });
+        new Chart(ctx, { 
+            type: 'bar', 
+            data: { labels: dates, datasets: [{ label: 'Minutos de Entrenamiento', data: durations, backgroundColor: 'rgba(20, 184, 166, 0.8)', borderRadius: 4 }] }, 
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, 
+                scales: { y: { beginAtZero: true, grid: { color: '#171717' } }, x: { grid: { display: false } } }, 
+                plugins: { 
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const date = context.label;
+                                const secs = grouped[date].totalSecs;
+                                return 'Tiempo: ' + formatHMS(secs);
+                            }
+                        }
+                    } 
+                } 
+            } 
+        });
     } catch(e) { container.innerHTML = `<div class="text-xs text-red-500">Error: ${e.message}</div>`; }
 }
 
@@ -1042,7 +1092,6 @@ window.exportUserDataPDF = async function() {
 
     const isDark = (themeChoice === 'dark');
 
-    // Colores ultra definidos
     const bgPage = isDark ? '#000000' : '#ffffff';
     const bgCard = isDark ? '#171717' : '#ffffff';
     const bgBox = isDark ? '#0a0a0a' : '#f8fafc'; 
@@ -1051,7 +1100,6 @@ window.exportUserDataPDF = async function() {
     const borderCol = isDark ? '#262626' : '#cbd5e1';
     const accent = '#F54927';
 
-    // Plugin para asegurar que el gráfico no salga negro en modo claro
     const customBgPlugin = {
         id: 'customCanvasBg',
         beforeDraw: (chart) => {
@@ -1093,8 +1141,7 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    // Position relative para anclar el footer matemático al final
-    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box;`;
+    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden;`;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1141,12 +1188,14 @@ window.exportUserDataPDF = async function() {
                 
                 .day-title { font-size: 15px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; }
                 
-                /* El padding-top y border transparente impiden que el navegador colapse el margen, garantizando separación superior en la hoja nueva */
-                .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
-                
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
                 
-                .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
+                /* Nueva clase para gráficos con margen superior blindado */
+                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 30px; padding-top: 20px; border-top: 1px solid transparent; }
+                
+                .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
+                
+                .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
                 
                 .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; }
                 
@@ -1157,7 +1206,6 @@ window.exportUserDataPDF = async function() {
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
                 
-                /* Footer anclado absolutamente al piso del documento matemático */
                 #pdf-footer-absolute { position: absolute; bottom: 30px; left: 0; width: 100%; text-align: center; color: ${textMuted}; font-size: 11px; font-weight: bold; border-top: 1px solid ${borderCol}; padding-top: 20px; }
             </style>
         `;
@@ -1204,7 +1252,7 @@ window.exportUserDataPDF = async function() {
                         x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
                     }
                 },
-                plugins: [customBgPlugin] // Asegura fondo blanco/gris en modo claro
+                plugins: [customBgPlugin] 
             });
 
             await new Promise(r => setTimeout(r, 60)); 
@@ -1212,7 +1260,7 @@ window.exportUserDataPDF = async function() {
             globalChart.destroy(); 
 
             htmlContent += `
-                <div class="pdf-avoid-break" style="margin-bottom: 30px;">
+                <div class="pdf-avoid-break-chart">
                     <img src="${globalChartImg}" class="chart-img" style="background-color: ${bgBox};" />
                     <table class="log-table">
                         <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido (H:M:S)</th></tr></thead>
@@ -1225,7 +1273,7 @@ window.exportUserDataPDF = async function() {
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">Aún no hay sesiones de entrenamiento global registradas.</p>`;
         }
-        htmlContent += `</div>`; // Cierra pdf-wrapper 1
+        htmlContent += `</div>`; 
 
         // --- 02: RUTINA ---
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
@@ -1237,10 +1285,8 @@ window.exportUserDataPDF = async function() {
             routines.forEach(ex => {
                 if (ex.day_of_week !== currentDay) {
                     currentDay = ex.day_of_week;
-                    if(!isFirstDay) {
-                        htmlContent += `</div></div><div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
-                    }
-                    htmlContent += `<div class="day-title">${formatDay(currentDay)}</div>`;
+                    let pageBreakHTML = isFirstDay ? '' : `</div></div><div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
+                    htmlContent += `${pageBreakHTML}<div class="day-title">${formatDay(currentDay)}</div>`;
                     isFirstDay = false;
                 }
                 htmlContent += `
@@ -1263,9 +1309,9 @@ window.exportUserDataPDF = async function() {
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay rutina configurada.</p>`;
         }
-        htmlContent += `</div></div>`; // Cierra pdf-wrapper y page-break-container
+        htmlContent += `</div></div>`; 
 
-        // --- 03: HISTORIAL POR EJERCICIO (SOLO RUTINA ACTUAL) ---
+        // --- 03: HISTORIAL POR EJERCICIO (Solo rutina actual) ---
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
@@ -1279,7 +1325,7 @@ window.exportUserDataPDF = async function() {
             const orderedChartTasks = [];
             const printedExercises = new Set();
             
-            // CIRUGÍA: Solo iteramos por los ejercicios que están en la RUTINA ACTUAL. Eliminamos el bucle "Otros".
+            // SOLO ejercicios que estén actualmente en la rutina
             for (const ex of routines) {
                 if (!printedExercises.has(ex.exercise_name)) {
                     printedExercises.add(ex.exercise_name);
@@ -1290,7 +1336,7 @@ window.exportUserDataPDF = async function() {
             }
 
             if(orderedChartTasks.length === 0) {
-                htmlContent += `<p style="color: ${textMuted}; text-align: center; margin-top: 20px;">No hay historial registrado de los ejercicios de tu rutina actual.</p>`;
+                htmlContent += `<p style="color: ${textMuted}; text-align: center; margin-top: 20px;">Aún no hay progreso registrado para los ejercicios de tu rutina actual.</p>`;
             }
 
             let currentSubDay = "";
@@ -1298,7 +1344,6 @@ window.exportUserDataPDF = async function() {
             for (const task of orderedChartTasks) {
                 if (task.dayGroup !== currentSubDay) {
                     currentSubDay = task.dayGroup;
-                    // Ya no hay "Otros", todos tienen DÍA.
                     htmlContent += `<div class="sub-day-title">DÍA: ${currentSubDay}</div>`;
                 }
 
@@ -1353,7 +1398,7 @@ window.exportUserDataPDF = async function() {
                             }
                         }
                     },
-                    plugins: [customBgPlugin] // Asegura que el canvas no salga negro
+                    plugins: [customBgPlugin] 
                 });
 
                 await new Promise(r => setTimeout(r, 60)); 
@@ -1361,7 +1406,7 @@ window.exportUserDataPDF = async function() {
                 tempChart.destroy(); 
 
                 htmlContent += `
-                    <div class="pdf-avoid-break">
+                    <div class="pdf-avoid-break-chart">
                         <div style="font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 12px;">${escapeHTML(task.exName)}</div>
                         <img src="${chartImageBase64}" class="chart-img" style="background-color: ${bgBox};" />
                         <table class="log-table">
@@ -1393,7 +1438,8 @@ window.exportUserDataPDF = async function() {
 
         htmlContent += `</div></div>`; // Cierra pdf-wrapper final
 
-        // Pie de página absoluto (esperando el cálculo matemático)
+        // Pie de página absoluto y div de relleno
+        htmlContent += `<div id="pdf-filler" style="width: 100%;"></div>`;
         htmlContent += `<div id="pdf-footer-absolute"><div style="width: 800px; margin: 0 auto; padding: 0 40px;">Generado por Hybrid Athlete Tracker | ${isDark ? 'Modo Oscuro' : 'Modo Impresión'}</div></div>`;
 
         element.innerHTML = htmlContent;
@@ -1401,14 +1447,17 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // CIRUGÍA FINAL: Forzar que el HTML mida EXACTAMENTE múltiples de A4
-        // A4 ratio 1.4142857 -> 800px width = 1131.428px height
-        const A4_HEIGHT = 1131.428; 
+        // Magia para eliminar la hoja blanca: Rellenamos pero dejamos 10px de margen de seguridad para no pasarnos a una hoja extra
+        const pageHeightPixels = 1131.428; 
         const currentTotalHeight = element.scrollHeight;
-        const totalPages = Math.ceil(currentTotalHeight / A4_HEIGHT);
+        const remainder = currentTotalHeight % pageHeightPixels;
         
-        // Forzamos la altura del contenedor principal para que la librería pinte hasta el final
-        element.style.height = `${totalPages * A4_HEIGHT}px`;
+        if (remainder > 0 && remainder < pageHeightPixels) {
+            const paddingToFill = pageHeightPixels - remainder;
+            if (paddingToFill > 50) {
+                document.getElementById('pdf-filler').style.height = `${paddingToFill - 10}px`; 
+            }
+        }
 
         const opt = {
             margin:       0, 
