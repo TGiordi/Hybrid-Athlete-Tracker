@@ -991,27 +991,30 @@ window.exportUserDataPDF = async function() {
     window.playPop();
     document.getElementById('loading-title').innerText = "Compilando Reporte...";
     document.getElementById('loading-desc').innerText = "Dibujando gráficos de alta calidad. Esto tomará unos segundos...";
-    document.getElementById('ai-loading-overlay').classList.remove('hidden');
-    document.getElementById('ai-loading-overlay').classList.add('flex');
+    
+    // El cartel de carga suele tener z-index 100
+    const overlay = document.getElementById('ai-loading-overlay');
+    overlay.style.zIndex = "9999";
+    overlay.classList.remove('hidden');
+    overlay.classList.add('flex');
 
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    // 1. Contenedor del PDF: LO PONEMOS DETRÁS DEL CARTEL DE CARGA (z-index: -1)
-    // No usamos left: -9999px porque eso vuelve "ciega" a la librería y saca la foto en blanco.
+    // 1. Contenedor del PDF: z-index 10 (Arriba del fondo, pero debajo del cartel de carga)
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = "position: absolute; top: 0; left: 0; width: 800px; background-color: #000000; z-index: -1;";
+    element.style.cssText = "position: absolute; top: 0; left: 0; width: 800px; background-color: #000000; z-index: 10;";
 
-    // Lienzo temporal para las "fotos" de los gráficos
+    // Lienzo temporal para las fotos
     const tempCanvas = document.createElement('canvas');
     tempCanvas.id = "temp-chart-renderer";
     tempCanvas.width = 720; 
     tempCanvas.height = 220; 
-    tempCanvas.style.cssText = "position: absolute; top: 0; left: 0; z-index: -2;"; 
+    tempCanvas.style.cssText = "position: absolute; top: 0; left: 0; z-index: 10;"; 
     document.body.appendChild(tempCanvas);
 
-    // 2. TRAMPA VITAL: Destrabar el scroll temporalmente para que capture todo el documento
+    // Destrabar el scroll temporalmente
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'visible'; 
 
@@ -1021,7 +1024,6 @@ window.exportUserDataPDF = async function() {
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
         const filename = `HAT_Reporte_${userEmail.split('@')[0]}_${new Date().toISOString().slice(0,10)}.pdf`;
 
-        // CSS Estricto
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
@@ -1097,7 +1099,6 @@ window.exportUserDataPDF = async function() {
                 groupedLogs[l.exercise_name].data.push(l);
             });
 
-            // 3. Iteramos ejercicios y fabricamos IMÁGENES de los gráficos
             for (const exName in groupedLogs) {
                 const exLogs = groupedLogs[exName];
                 const type = exLogs.type;
@@ -1119,7 +1120,6 @@ window.exportUserDataPDF = async function() {
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
-                // Dibujamos en el canvas
                 const ctx = tempCanvas.getContext('2d');
                 ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
                 ctx.fillStyle = '#0a0a0a'; 
@@ -1149,10 +1149,8 @@ window.exportUserDataPDF = async function() {
                     }
                 });
 
-                // Esperamos que se dibuje
                 await new Promise(r => setTimeout(r, 100));
                 
-                // Extraemos imagen Base64
                 const chartImageBase64 = tempCanvas.toDataURL('image/png', 1.0);
                 tempChart.destroy(); 
 
@@ -1189,14 +1187,12 @@ window.exportUserDataPDF = async function() {
 
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker</div></div>`;
 
-        // 4. Inyectar HTML ya con las imágenes estáticas
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
-        // Pequeña pausa para asegurar renderizado del DOM de la imagen
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // 5. Configuración de html2pdf
+        // ScrollY: 0 fuerza a la cámara a enfocar desde la cima del documento
         const opt = {
             margin:       [10, 0, 10, 0], 
             filename:     filename,
@@ -1206,7 +1202,8 @@ window.exportUserDataPDF = async function() {
                 useCORS: true, 
                 backgroundColor: '#000000', 
                 logging: false,
-                windowWidth: 800
+                windowWidth: 800,
+                scrollY: 0 
             },
             jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'], avoid: '.history-card' }
@@ -1221,14 +1218,14 @@ window.exportUserDataPDF = async function() {
         console.error("Error al generar PDF:", error);
         window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
     } finally {
-        // 6. Restaurar el estado normal del navegador
         document.body.style.overflow = originalOverflow;
+        overlay.style.zIndex = ""; // Restaurar z-index original
         
         if (document.getElementById(containerId)) document.getElementById(containerId).remove();
         if (tempCanvas) tempCanvas.remove(); 
         
-        document.getElementById('ai-loading-overlay').classList.add('hidden');
-        document.getElementById('ai-loading-overlay').classList.remove('flex');
+        overlay.classList.add('hidden');
+        overlay.classList.remove('flex');
     }
 };
 
