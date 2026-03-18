@@ -1045,53 +1045,6 @@ function promptEditLog(exId, exName, dateStr, exType) {
 // --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL) ---
 // =========================================================================
 
-window.askPdfTheme = function() {
-    return new Promise((resolve) => {
-        const modalHtml = `
-            <div id="pdf-theme-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[999999] flex items-center justify-center p-4 transition-opacity">
-                <div class="bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl">
-                    <div class="w-16 h-16 bg-[#171717] border border-[#262626] text-white rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-custom-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                    </div>
-                    <h3 class="text-xl font-black italic text-white uppercase tracking-tight mb-2">Formato del Reporte</h3>
-                    <p class="text-sm text-custom-textMuted mb-6">Elegí el estilo visual para generar tu documento.</p>
-                    <div class="flex flex-col gap-3">
-                        <button id="btn-theme-dark" class="w-full bg-[#0a0a0a] border border-[#262626] hover:border-custom-primary text-white py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg">
-                            🌙 Modo Oscuro <span class="text-[10px] text-custom-textMuted font-normal uppercase tracking-widest">(Digital)</span>
-                        </button>
-                        <button id="btn-theme-light" class="w-full bg-white border border-gray-300 hover:bg-gray-100 text-black py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg">
-                            ☀️ Modo Claro <span class="text-[10px] text-[#404040] font-bold uppercase tracking-widest">(Imprimir)</span>
-                        </button>
-                        <button id="btn-theme-cancel" class="mt-3 text-xs text-custom-textMuted hover:text-red-500 uppercase tracking-widest font-bold transition-colors py-2">Cancelar</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-        const modalEl = document.getElementById('pdf-theme-modal');
-        
-        const closeModal = (result) => {
-            modalEl.remove();
-            if(result) { if(window.playTap) window.playTap(); } 
-            else { if(window.playPop) window.playPop(); }
-            resolve(result);
-        };
-
-        document.getElementById('btn-theme-dark').onclick = () => closeModal('dark');
-        document.getElementById('btn-theme-light').onclick = () => closeModal('light');
-        document.getElementById('btn-theme-cancel').onclick = () => closeModal(null);
-        
-        modalEl.addEventListener('click', (e) => {
-            if (e.target === modalEl) closeModal(null);
-        });
-    });
-};
-
-// =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - OBRA MAESTRA FINAL) ---
-// =========================================================================
-
 window.exportUserDataPDF = async function() {
     const themeChoice = await window.askPdfTheme();
     if (!themeChoice) return;
@@ -1125,13 +1078,20 @@ window.exportUserDataPDF = async function() {
         return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
     };
 
+    // Función para normalizar nombres (Quita tildes, mayúsculas y espacios extra)
+    const normalizeName = (name) => {
+        return name.trim().toLowerCase()
+            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
+            .replace(/\s+/g, ' '); 
+    };
+
     const overlay = document.getElementById('ai-loading-overlay');
     if(overlay) {
         overlay.style.zIndex = "999999";
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
         document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Aplicando formato estricto y cerrando documento. Aguardá...";
+        document.getElementById('loading-desc').innerText = "Uniendo historiales y dibujando el documento final. Aguardá...";
     }
 
     const viewApp = document.getElementById('view-app');
@@ -1147,7 +1107,7 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden;`;
+    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: flex; flex-direction: column; min-height: 100vh;`;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1178,20 +1138,28 @@ window.exportUserDataPDF = async function() {
             return map[day.toLowerCase().trim()] || day.toUpperCase();
         };
 
+        // MAPEO INTELIGENTE DE NOMBRES
         const orderedExNames = [];
         const exerciseDaysMap = {};
+        const routineNameMap = {};
         
         routines.forEach(ex => {
-            if (!orderedExNames.includes(ex.exercise_name)) orderedExNames.push(ex.exercise_name);
-            if (!exerciseDaysMap[ex.exercise_name]) exerciseDaysMap[ex.exercise_name] = new Set();
-            exerciseDaysMap[ex.exercise_name].add(formatDay(ex.day_of_week));
+            const officialName = ex.exercise_name.trim();
+            const normName = normalizeName(officialName);
+
+            if (!orderedExNames.includes(officialName)) {
+                orderedExNames.push(officialName);
+                routineNameMap[normName] = officialName;
+            }
+            if (!exerciseDaysMap[officialName]) exerciseDaysMap[officialName] = new Set();
+            exerciseDaysMap[officialName].add(formatDay(ex.day_of_week));
         });
 
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
                 #${containerId} * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
-                .pdf-wrapper { padding: 40px; width: 100%; }
+                .pdf-wrapper { padding: 40px; width: 100%; flex-grow: 1; }
                 
                 .pdf-header { text-align: center; border-bottom: 2px solid ${borderCol}; padding-bottom: 20px; margin-bottom: 30px; }
                 .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; color: ${textMain}; }
@@ -1204,12 +1172,11 @@ window.exportUserDataPDF = async function() {
                 .day-title { font-size: 15px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 0; }
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
-                
-                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 60px; padding-top: 15px; border-top: 1px solid transparent; }
+                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 50px; padding-top: 15px; border-top: 1px solid transparent; }
                 
                 .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
                 
-                .sub-day-title { font-size: 11px; color: ${textMuted}; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 6px; }
+                .sub-day-title { font-size: 11px; color: ${textMuted}; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
                 
                 .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; }
                 
@@ -1219,6 +1186,8 @@ window.exportUserDataPDF = async function() {
                 .log-table tr:last-child td { border-bottom: none; }
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
+                
+                .hat-signature { text-align: center; margin-top: 40px; padding-top: 30px; padding-bottom: 30px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; }
             </style>
         `;
 
@@ -1232,6 +1201,7 @@ window.exportUserDataPDF = async function() {
                 </div>
         `;
 
+        // --- 01: ESTADÍSTICAS GLOBALES ---
         htmlContent += `<h2><span>01</span> Resumen Global de Entrenamiento</h2>`;
         if (sessions && sessions.length > 0) {
             const groupedSessions = {};
@@ -1286,21 +1256,28 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div>`; 
 
+        // --- 02: RUTINA ---
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>02</span> Rutina Semanal Detallada</h2>`;
         if (routines && routines.length > 0) {
             let currentDay = "";
-            let isFirstDay = true;
+            let isFirstExerciseOfDay = true;
             
             routines.forEach(ex => {
                 if (ex.day_of_week !== currentDay) {
+                    if (currentDay !== "") {
+                        htmlContent += `</div></div><div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
+                    }
                     currentDay = ex.day_of_week;
-                    let pageBreakHTML = isFirstDay ? '' : `</div></div><div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
-                    htmlContent += `${pageBreakHTML}<div class="day-title">${formatDay(currentDay)}</div>`;
-                    isFirstDay = false;
+                    htmlContent += `<div class="day-title">${formatDay(currentDay)}</div>`;
+                    isFirstExerciseOfDay = true;
                 }
+
+                const extraMargin = isFirstExerciseOfDay ? 'margin-top: 0;' : 'margin-top: 20px;';
+                isFirstExerciseOfDay = false;
+
                 htmlContent += `
-                    <div class="pdf-avoid-break" style="background-color: ${bgCard}; border: 1px solid ${borderCol}; border-radius: 12px; padding: 18px;">
+                    <div class="pdf-avoid-break" style="background-color: ${bgCard}; border: 1px solid ${borderCol}; border-radius: 12px; padding: 18px; ${extraMargin}">
                         <table style="width: 100%; border-collapse: collapse;">
                             <tr>
                                 <td style="text-align: left; vertical-align: middle;">
@@ -1321,14 +1298,34 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
+        // --- 03: HISTORIAL POR EJERCICIO (CON FILTRO INTELIGENTE) ---
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
         if (logs && logs.length > 0) {
             const groupedLogs = {};
+            
+            // Unimos inteligentemente los historiales viejos con la rutina nueva
             logs.forEach(l => {
-                if (!groupedLogs[l.exercise_name]) groupedLogs[l.exercise_name] = { type: l.exercise_type, data: [] };
-                groupedLogs[l.exercise_name].data.push(l);
+                const rawLogName = l.exercise_name.trim();
+                const normLogName = normalizeName(rawLogName);
+                let finalName = null;
+
+                if (routineNameMap[normLogName]) {
+                    finalName = routineNameMap[normLogName]; // Coincidencia exacta limpia
+                } else {
+                    // Coincidencia parcial (Ej: Historial dice "Press" y Rutina dice "Press con barra")
+                    const partialMatch = Object.keys(routineNameMap).find(normRoutine => 
+                        normRoutine.includes(normLogName) || normLogName.includes(normRoutine)
+                    );
+                    if (partialMatch) finalName = routineNameMap[partialMatch];
+                }
+
+                // Si lo encontró dentro de la rutina actual, lo agrega
+                if (finalName) {
+                    if (!groupedLogs[finalName]) groupedLogs[finalName] = { type: l.exercise_type, data: [] };
+                    groupedLogs[finalName].data.push(l);
+                }
             });
 
             const orderedChartTasks = [];
@@ -1338,10 +1335,20 @@ window.exportUserDataPDF = async function() {
                 if (!exLogs || exLogs.data.length === 0) continue; 
 
                 const daysSet = exerciseDaysMap[exName];
-                const daysStr = Array.from(daysSet).join(', ');
-                const dayLabel = daysSet.size > 1 ? `DÍAS: ${daysStr}` : `DÍA: ${daysStr}`;
+                const daysArray = Array.from(daysSet);
+                const dayLabel = daysArray.length > 1 ? `DÍAS: ${daysArray.join(', ')}` : `DÍA: ${daysArray[0]}`;
 
+                orderedChartTasks.push({ dayLabel: dayLabel, exName: exName, logs: exLogs });
+            }
+
+            if(orderedChartTasks.length === 0) {
+                htmlContent += `<p style="color: ${textMuted}; text-align: center; margin-top: 20px;">Aún no hay progreso registrado para los ejercicios de tu rutina actual.</p>`;
+            }
+
+            for (const task of orderedChartTasks) {
+                const exLogs = task.logs;
                 const type = exLogs.type;
+
                 const chartGroupedData = {};
                 
                 exLogs.data.forEach(log => {
@@ -1400,8 +1407,8 @@ window.exportUserDataPDF = async function() {
 
                 htmlContent += `
                     <div class="pdf-avoid-break-chart">
-                        <div class="sub-day-title">${dayLabel}</div>
-                        <div style="font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 12px;">${escapeHTML(exName)}</div>
+                        <div class="sub-day-title">${task.dayLabel}</div>
+                        <div style="font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 12px;">${escapeHTML(task.exName)}</div>
                         <img src="${chartImageBase64}" class="chart-img" style="background-color: ${bgBox};" />
                         <table class="log-table">
                             <thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>
@@ -1430,22 +1437,21 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
         }
         
+        // FIRMA HAT INCORPORADA AL FLUJO NORMAL
+        htmlContent += `
+            <div class="hat-signature">
+                <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
+                <div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>
+                <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
+            </div>
+        `;
+        
         htmlContent += `</div></div>`; 
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
         await new Promise(resolve => setTimeout(resolve, 800));
-
-        // CORTE ESTRICTO Y DEFINITIVO
-        const pageHeightPixels = 1131; 
-        const currentTotalHeight = element.scrollHeight;
-        const totalPages = Math.ceil(currentTotalHeight / pageHeightPixels);
-        
-        // Bloqueo estricto del tamaño del contenedor para evitar derrames
-        element.style.height = `${totalPages * pageHeightPixels}px`;
-        element.style.maxHeight = `${totalPages * pageHeightPixels}px`;
-        element.style.overflow = 'hidden';
 
         const opt = {
             margin:       0, 
