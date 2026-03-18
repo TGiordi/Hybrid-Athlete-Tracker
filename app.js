@@ -985,46 +985,44 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - FIX SCROLL INVISIBLE) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - RENDERIZADO NATIVO PURO) ---
 // =========================================================================
 window.exportUserDataPDF = async function() {
     window.playPop();
     
-    // 1. Guardamos la posición y vamos arriba
-    const originalScrollY = window.scrollY;
-    window.scrollTo(0, 0);
-
-    // 2. EL TRUCO VITAL: Destrabamos los límites de la pantalla temporalmente.
-    // Esto evita al 100% que la librería recorte el documento y lo devuelva en blanco.
-    const originalBodyOverflow = document.body.style.overflow;
-    const originalHtmlOverflow = document.documentElement.style.overflow;
-    document.body.style.overflow = 'visible';
-    document.documentElement.style.overflow = 'visible';
-
-    // 3. Modificamos el cartel de carga para que sea negro sólido y tape el proceso
+    // 1. Mostrar cartel negro sólido que cubra absolutamente todo
     const overlay = document.getElementById('ai-loading-overlay');
-    overlay.style.zIndex = "9999";
+    overlay.style.zIndex = "999999";
     overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
     overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
-
     document.getElementById('loading-title').innerText = "Compilando Reporte...";
-    document.getElementById('loading-desc').innerText = "Dibujando gráficos y armando las páginas. Aguardá unos segundos...";
+    document.getElementById('loading-desc').innerText = "Generando documento en alta resolución. Aguardá unos segundos...";
+
+    // 2. Ocultar la App para dejar la página completamente vacía para el PDF
+    const viewApp = document.getElementById('view-app');
+    if (viewApp) viewApp.style.display = 'none';
+    
+    const originalScrollY = window.scrollY;
+    document.body.style.overflow = 'visible';
+    document.documentElement.style.overflow = 'visible';
+    window.scrollTo(0, 0);
 
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    // 4. Creamos el contenedor del PDF, justo debajo del cartel de carga (z-index: 9998)
+    // 3. Crear el contenedor en el flujo normal (sin position absolute)
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = "position: absolute; top: 0; left: 0; width: 800px; background-color: #000000; z-index: 9998;";
+    element.style.cssText = "width: 800px; margin: 0; background-color: #000000; color: #ffffff; min-height: 100vh;";
 
-    // Lienzo temporal oculto para procesar gráficos a imágenes estáticas
+    // Lienzo temporal fuera de pantalla para fabricar los gráficos
+    const hiddenDiv = document.createElement('div');
+    hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.id = "temp-chart-renderer";
     tempCanvas.width = 720; 
     tempCanvas.height = 220; 
-    tempCanvas.style.cssText = "position: absolute; top: 0; left: 0; visibility: hidden; z-index: -1;"; 
-    document.body.appendChild(tempCanvas);
+    hiddenDiv.appendChild(tempCanvas);
+    document.body.appendChild(hiddenDiv);
 
     try {
         const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).order('day_of_week', { ascending: true }).order('order_index', { ascending: true });
@@ -1032,12 +1030,12 @@ window.exportUserDataPDF = async function() {
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
         const filename = `HAT_Reporte_${userEmail.split('@')[0]}_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.pdf`;
 
-        // CSS Estricto para el PDF
+        // CSS Estricto
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
                 #${containerId} * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
-                .pdf-wrapper { background-color: #000000; color: #ffffff; padding: 40px; width: 800px; }
+                .pdf-wrapper { padding: 40px; }
                 .pdf-header { text-align: center; border-bottom: 2px solid #262626; padding-bottom: 20px; margin-bottom: 30px; }
                 .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; }
                 .hat-logo span { color: #F54927; }
@@ -1052,7 +1050,7 @@ window.exportUserDataPDF = async function() {
                 .ex-sets { text-align: right; font-weight: 700; font-size: 20px; }
                 .ex-sets span { font-size: 12px; color: #94A3B8; font-weight: 400; margin-left: 4px; }
                 
-                .page-break { page-break-before: always; border-top: none; padding-top: 40px; }
+                .page-break { page-break-before: always; border-top: none; padding-top: 40px; clear: both; }
                 .history-card { margin-top: 20px; margin-bottom: 30px; page-break-inside: avoid; background-color: #000000; }
                 .history-title { font-size: 18px; color: #F54927; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 15px; }
                 
@@ -1078,6 +1076,7 @@ window.exportUserDataPDF = async function() {
                 <h2><span>01</span> Rutina Semanal Detallada</h2>
         `;
 
+        // RUTINA
         if (routines && routines.length > 0) {
             let currentDay = "";
             routines.forEach(ex => {
@@ -1101,6 +1100,7 @@ window.exportUserDataPDF = async function() {
 
         htmlContent += `<div class="page-break"><h2><span>02</span> Evolución y Progreso Visual</h2></div>`;
 
+        // HISTORIAL Y GRÁFICOS
         if (logs && logs.length > 0) {
             const groupedLogs = {};
             logs.forEach(l => {
@@ -1129,9 +1129,8 @@ window.exportUserDataPDF = async function() {
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
-                // Dibuja el gráfico en el canvas oculto
+                // Dibuja el gráfico y lo convierte a foto (JPG)
                 const ctx = tempCanvas.getContext('2d');
-                ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
                 ctx.fillStyle = '#0a0a0a'; 
                 ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
@@ -1149,8 +1148,7 @@ window.exportUserDataPDF = async function() {
                         }]
                     },
                     options: {
-                        responsive: false, 
-                        animation: false, 
+                        responsive: false, animation: false, 
                         plugins: { legend: { display: false } },
                         scales: {
                             y: { grid: { color: '#262626' }, ticks: { color: '#94A3B8', font: {size: 11} }, title: {display: true, text: titleY, color: '#94A3B8', font: {size: 11}} },
@@ -1160,7 +1158,7 @@ window.exportUserDataPDF = async function() {
                 });
 
                 await new Promise(r => setTimeout(r, 50)); 
-                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 0.9); 
+                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 0.95); 
                 tempChart.destroy(); 
 
                 htmlContent += `
@@ -1196,27 +1194,20 @@ window.exportUserDataPDF = async function() {
 
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker</div></div>`;
 
+        // 4. Montar el reporte en el cuerpo principal de la página
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
-        // Espera para que el DOM asimile las imágenes recién inyectadas
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // 5. Configuración de PDF asegurando Vertical (Portrait) y A4
+        // 5. Opciones nativas A4 Vertical aseguradas
         const opt = {
             margin:       10, 
             filename:     filename,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { 
-                scale: 2, 
-                useCORS: true, 
-                backgroundColor: '#000000', 
-                logging: false,
-                scrollY: 0, // Fuerza la captura desde el tope superior
-                windowWidth: 800
-            },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }, // portrait = vertical siempre
-            pagebreak:    { mode: ['css', 'legacy'], avoid: '.history-card' }
+            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#000000', logging: false },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }, 
+            pagebreak:    { mode: ['css', 'legacy'] }
         };
 
         await html2pdf().set(opt).from(element).save();
@@ -1228,17 +1219,21 @@ window.exportUserDataPDF = async function() {
         console.error("Error al generar PDF:", error);
         window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
     } finally {
-        // 6. RESTAURACIÓN DEL SISTEMA A LA NORMALIDAD
-        document.body.style.overflow = originalBodyOverflow;
-        document.documentElement.style.overflow = originalHtmlOverflow;
+        // 6. DEVOLVER TODO A LA NORMALIDAD
+        if (document.getElementById(containerId)) document.getElementById(containerId).remove();
+        if (hiddenDiv) hiddenDiv.remove(); 
+        
+        // Mostrar la app de nuevo
+        if (viewApp) viewApp.style.display = '';
+        
+        // Restaurar estado de pantalla
+        document.body.style.overflow = '';
+        document.documentElement.style.overflow = '';
         window.scrollTo(0, originalScrollY);
         
         overlay.classList.remove('flex', 'bg-[#0a0a0a]');
         overlay.classList.add('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.style.zIndex = ""; 
-        
-        if (document.getElementById(containerId)) document.getElementById(containerId).remove();
-        if (tempCanvas) tempCanvas.remove(); 
     }
 };
 
