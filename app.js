@@ -1130,13 +1130,17 @@ window.exportUserDataPDF = async function() {
         return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
     };
 
+    const normalizeName = (name) => {
+        return name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ' '); 
+    };
+
     const overlay = document.getElementById('ai-loading-overlay');
     if(overlay) {
         overlay.style.zIndex = "999999";
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
         document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Aplicando formato final y procesando hojas. Aguardá...";
+        document.getElementById('loading-desc').innerText = "Renderizando gráficos, uniendo tu rutina y ajustando el diseño final. Aguardá...";
     }
 
     const viewApp = document.getElementById('view-app');
@@ -1183,15 +1187,14 @@ window.exportUserDataPDF = async function() {
             return map[day.toLowerCase().trim()] || day.toUpperCase();
         };
 
-        // Recolección exacta de ejercicios (Restaura los 7 ejercicios correctos)
         const orderedExNames = [];
         const exerciseDaysMap = {};
         
         routines.forEach(ex => {
-            const name = ex.exercise_name.trim();
-            if (!orderedExNames.includes(name)) orderedExNames.push(name);
-            if (!exerciseDaysMap[name]) exerciseDaysMap[name] = new Set();
-            exerciseDaysMap[name].add(formatDay(ex.day_of_week));
+            const officialName = ex.exercise_name.trim();
+            if (!orderedExNames.includes(officialName)) orderedExNames.push(officialName);
+            if (!exerciseDaysMap[officialName]) exerciseDaysMap[officialName] = new Set();
+            exerciseDaysMap[officialName].add(formatDay(ex.day_of_week));
         });
 
         const styles = `
@@ -1212,7 +1215,7 @@ window.exportUserDataPDF = async function() {
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
                 
-                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-top: 40px; margin-bottom: 40px; padding-top: 10px; border-top: 1px solid transparent; }
+                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 50px; padding-top: 15px; border-top: 1px solid transparent; }
                 
                 .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
                 
@@ -1280,7 +1283,7 @@ window.exportUserDataPDF = async function() {
             globalChart.destroy(); 
 
             htmlContent += `
-                <div class="pdf-avoid-break-chart" style="margin-top: 0; padding-top: 0; border-top: none;">
+                <div class="pdf-avoid-break-chart" style="padding-top: 0; border-top: none;">
                     <img src="${globalChartImg}" class="chart-img" style="background-color: ${bgBox};" />
                     <table class="log-table">
                         <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido (H:M:S)</th></tr></thead>
@@ -1339,118 +1342,137 @@ window.exportUserDataPDF = async function() {
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
+        // AGRUPACIÓN INTELIGENTE (Para no perder ni un solo ejercicio de los 18+)
+        const groupedLogs = {};
+        orderedExNames.forEach(name => {
+            groupedLogs[name] = { type: null, data: [] };
+        });
+
         if (logs && logs.length > 0) {
-            const groupedLogs = {};
-
             logs.forEach(l => {
-                const name = l.exercise_name.trim(); // Coincidencia estricta validada
-                if (!groupedLogs[name]) groupedLogs[name] = { type: l.exercise_type, data: [] };
-                groupedLogs[name].data.push(l);
-            });
-
-            const orderedChartTasks = [];
-
-            for (const exName of orderedExNames) {
-                const exLogs = groupedLogs[exName];
-                if (!exLogs || exLogs.data.length === 0) continue;
-
-                const daysSet = exerciseDaysMap[exName];
-                const daysArray = Array.from(daysSet);
-                const dayLabel = daysArray.length > 1 ? `DÍAS: ${daysArray.join(', ')}` : `DÍA: ${daysArray[0]}`;
-
-                orderedChartTasks.push({ dayLabel: dayLabel, exName: exName, logs: exLogs });
-            }
-
-            if(orderedChartTasks.length === 0) {
-                htmlContent += `<p style="color: ${textMuted}; text-align: center; margin-top: 20px;">Aún no hay progreso registrado para los ejercicios de tu rutina actual.</p>`;
-            }
-
-            for (const task of orderedChartTasks) {
-                const exLogs = task.logs;
-                const type = exLogs.type;
-
-                const chartGroupedData = {};
-
-                exLogs.data.forEach(log => {
-                    const [year, month, day] = log.log_date.split('-');
-                    const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-                    if (!chartGroupedData[dateStr]) chartGroupedData[dateStr] = { maxStat: 0, sets: [] };
-                    if (type === 'tiempo') {
-                        if (log.time_seconds > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.time_seconds;
-                    } else {
-                        if (log.weight > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.weight;
+                const rawLogName = l.exercise_name.trim();
+                const normLogName = normalizeName(rawLogName);
+                
+                let bestMatch = null;
+                for (const officialName of orderedExNames) {
+                    const normOfficial = normalizeName(officialName);
+                    // Match flexible: Si son exactamente iguales, o si uno es parte del otro (ej: "Elevaciones" vs "Elevaciones Dropset")
+                    if (normOfficial === normLogName || normOfficial.includes(normLogName) || normLogName.includes(normOfficial)) {
+                        bestMatch = officialName;
+                        break;
                     }
-                    chartGroupedData[dateStr].sets.push(log);
-                });
+                }
 
-                const dates = Object.keys(chartGroupedData);
-                const maxData = dates.map(d => chartGroupedData[d].maxStat);
-
-                const ctx = tempCanvas.getContext('2d');
-                ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-                const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
-
-                const tempChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: dates,
-                        datasets: [{
-                            data: maxData,
-                            borderColor: accent,
-                            backgroundColor: isDark ? 'rgba(245, 73, 39, 0.1)' : 'rgba(245, 73, 39, 0.15)',
-                            borderWidth: 6, tension: 0.3, pointRadius: 6, fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: false, animation: false,
-                        plugins: { legend: { display: false } },
-                        layout: { padding: { top: 20, bottom: 20, left: 15, right: 30 } },
-                        scales: {
-                            y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 5, padding: 12 }, title: {display: true, text: titleY, color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
-                            x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
-                        }
-                    },
-                    plugins: [customBgPlugin]
-                });
-
-                await new Promise(r => setTimeout(r, 60));
-                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 1.0);
-                tempChart.destroy();
-
-                htmlContent += `
-                    <div class="pdf-avoid-break-chart">
-                        <div class="sub-day-title">${task.dayLabel}</div>
-                        <div style="font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 12px;">${escapeHTML(task.exName)}</div>
-                        <img src="${chartImageBase64}" class="chart-img" style="background-color: ${bgBox};" />
-                        <table class="log-table">
-                            <thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>
-                            <tbody>
-                `;
-
-                [...dates].reverse().forEach(date => {
-                    const dayData = chartGroupedData[date];
-                    dayData.sets.sort((a,b) => a.set_number - b.set_number);
-                    const badges = dayData.sets.map(s => {
-                        if (type === 'tiempo') {
-                            let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60;
-                            return `<span class="badge">${m}m ${seg}s</span>`;
-                        } else {
-                            return `<span class="badge">${s.weight}kg x ${s.reps}</span>`;
-                        }
-                    }).join('');
-
-                    let totalDur = dayData.sets[0].exercise_duration || 0;
-                    let durText = totalDur > 0 ? `${Math.floor(totalDur/60)}m ${totalDur%60}s` : '-';
-                    htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="color:${textMuted};">${durText}</td><td>${badges}</td></tr>`;
-                });
-                htmlContent += `</tbody></table></div>`;
-            }
-        } else {
-            htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
+                if (bestMatch) {
+                    if (!groupedLogs[bestMatch].type) groupedLogs[bestMatch].type = l.exercise_type;
+                    groupedLogs[bestMatch].data.push(l);
+                }
+            });
         }
 
-        // Se elimina la firma por completo.
+        // DIBUJAMOS OBLIGATORIAMENTE TODOS LOS EJERCICIOS DE LA RUTINA
+        for (const exName of orderedExNames) {
+            const exLogs = groupedLogs[exName];
+            
+            const daysSet = exerciseDaysMap[exName];
+            const daysArray = Array.from(daysSet);
+            const dayLabel = daysArray.length > 1 ? `DÍAS: ${daysArray.join(', ')}` : `DÍA: ${daysArray[0]}`;
+
+            htmlContent += `
+                <div class="pdf-avoid-break-chart">
+                    <div class="sub-day-title">${dayLabel}</div>
+                    <div style="font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 12px;">${escapeHTML(exName)}</div>
+            `;
+
+            // Si el ejercicio no tiene datos en el historial, lo mostramos igual pero con un aviso
+            if (!exLogs.data || exLogs.data.length === 0) {
+                htmlContent += `
+                    <div style="background-color: ${bgBox}; border: 1px solid ${borderCol}; border-radius: 12px; padding: 20px; text-align: center;">
+                        <span style="color: ${textMuted}; font-size: 12px; font-weight: bold;">AÚN NO HAY HISTORIAL DE PROGRESO REGISTRADO PARA ESTE EJERCICIO.</span>
+                    </div>
+                </div>`;
+                continue; // Pasamos al siguiente ejercicio
+            }
+
+            // Si tiene datos, armamos el gráfico normalmente
+            const type = exLogs.type;
+            const chartGroupedData = {};
+            
+            exLogs.data.forEach(log => {
+                const [year, month, day] = log.log_date.split('-');
+                const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+                if (!chartGroupedData[dateStr]) chartGroupedData[dateStr] = { maxStat: 0, sets: [] };
+                if (type === 'tiempo') {
+                    if (log.time_seconds > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.time_seconds;
+                } else {
+                    if (log.weight > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.weight;
+                }
+                chartGroupedData[dateStr].sets.push(log);
+            });
+
+            const dates = Object.keys(chartGroupedData);
+            const maxData = dates.map(d => chartGroupedData[d].maxStat);
+
+            const ctx = tempCanvas.getContext('2d');
+            ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+            const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
+
+            const tempChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        data: maxData,
+                        borderColor: accent,
+                        backgroundColor: isDark ? 'rgba(245, 73, 39, 0.1)' : 'rgba(245, 73, 39, 0.15)',
+                        borderWidth: 6, tension: 0.3, pointRadius: 6, fill: true
+                    }]
+                },
+                options: {
+                    responsive: false, animation: false, 
+                    plugins: { legend: { display: false } },
+                    layout: { padding: { top: 20, bottom: 20, left: 15, right: 30 } },
+                    scales: {
+                        y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 5, padding: 12 }, title: {display: true, text: titleY, color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
+                        x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
+                    }
+                },
+                plugins: [customBgPlugin] 
+            });
+
+            await new Promise(r => setTimeout(r, 60)); 
+            const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 1.0); 
+            tempChart.destroy(); 
+
+            htmlContent += `
+                    <img src="${chartImageBase64}" class="chart-img" style="background-color: ${bgBox};" />
+                    <table class="log-table">
+                        <thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>
+                        <tbody>
+            `;
+
+            [...dates].reverse().forEach(date => {
+                const dayData = chartGroupedData[date];
+                dayData.sets.sort((a,b) => a.set_number - b.set_number);
+                const badges = dayData.sets.map(s => {
+                    if (type === 'tiempo') {
+                        let m = Math.floor(s.time_seconds / 60); let seg = s.time_seconds % 60;
+                        return `<span class="badge">${m}m ${seg}s</span>`;
+                    } else {
+                        return `<span class="badge">${s.weight}kg x ${s.reps}</span>`;
+                    }
+                }).join('');
+
+                let totalDur = dayData.sets[0].exercise_duration || 0;
+                let durText = totalDur > 0 ? `${Math.floor(totalDur/60)}m ${totalDur%60}s` : '-';
+                htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="color:${textMuted};">${durText}</td><td>${badges}</td></tr>`;
+            });
+            htmlContent += `</tbody></table></div>`;
+        }
+
+        // Cierre final. Inyectamos un filler para asegurarnos de que la hoja se pinte por completo.
+        htmlContent += `<div id="pdf-filler" style="width: 100%; background-color: ${bgPage};"></div>`;
         htmlContent += `</div></div>`; 
 
         element.innerHTML = htmlContent;
@@ -1458,39 +1480,28 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // RUTINA MATEMÁTICA ESTRICTA (Para asegurar que el color llegue al fondo sin páginas extra)
-        const PAGE_HEIGHT = 1131; // Píxeles exactos
-        const currentHeight = element.scrollHeight;
-        const totalPages = Math.ceil(currentHeight / PAGE_HEIGHT);
+        // Relleno Matemático Exacto (Sin generar páginas fantasma)
+        const PAGE_HEIGHT = 1131.428; 
+        const currentTotalHeight = element.scrollHeight;
+        const remainder = currentTotalHeight % PAGE_HEIGHT;
         
-        // Altura exacta, menos 2px de margen de seguridad anti-páginas en blanco
-        const targetHeight = (totalPages * PAGE_HEIGHT) - 2;
-
-        if (targetHeight > currentHeight) {
-            const filler = document.createElement('div');
-            filler.style.width = '100%';
-            filler.style.height = `${targetHeight - currentHeight}px`;
-            filler.style.backgroundColor = bgPage;
-            element.appendChild(filler);
+        if (remainder > 10 && remainder < (PAGE_HEIGHT - 10)) {
+            const paddingToFill = PAGE_HEIGHT - remainder;
+            document.getElementById('pdf-filler').style.height = `${paddingToFill - 5}px`; 
         }
 
-        // Cortar excesos
-        element.style.height = `${targetHeight}px`;
-        element.style.maxHeight = `${targetHeight}px`;
+        const finalPages = Math.ceil(element.scrollHeight / PAGE_HEIGHT);
+        element.style.height = `${finalPages * PAGE_HEIGHT}px`;
+        element.style.maxHeight = `${finalPages * PAGE_HEIGHT}px`;
         element.style.overflow = 'hidden';
 
         const opt = {
-            margin:       0,
+            margin:       0, 
             filename:     filename,
             image:        { type: 'jpeg', quality: 1.0 },
-            html2canvas:  {
-                scale: 3,
-                useCORS: true,
-                backgroundColor: bgPage,
-                logging: false
-            },
-            jsPDF:        { unit: 'px', format: [800, PAGE_HEIGHT], orientation: 'portrait' },
-            pagebreak:    { mode: ['css', 'legacy'] }
+            html2canvas:  { scale: 3, useCORS: true, backgroundColor: bgPage, logging: false }, 
+            jsPDF:        { unit: 'px', format: [800, 1131.428], orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'] } 
         };
 
         await html2pdf().set(opt).from(element).save();
@@ -1504,24 +1515,23 @@ window.exportUserDataPDF = async function() {
     } finally {
         setTimeout(() => {
             if (document.getElementById(containerId)) document.getElementById(containerId).remove();
-            if (hiddenDiv) hiddenDiv.remove();
+            if (hiddenDiv) hiddenDiv.remove(); 
             if (viewApp) viewApp.style.display = '';
-
+            
             document.body.style.overflow = '';
             document.documentElement.style.overflow = '';
             window.scrollTo(0, originalScrollY);
-
+            
             if(overlay) {
                 overlay.classList.remove('flex', 'bg-[#0a0a0a]');
                 overlay.classList.add('hidden', 'bg-black/90', 'backdrop-blur-md');
-                overlay.style.zIndex = "";
+                overlay.style.zIndex = ""; 
             }
         }, 500);
     }
 };
 
 window.exportUserData = window.exportUserDataPDF;
-
 
 
 
