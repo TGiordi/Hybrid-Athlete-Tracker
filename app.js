@@ -985,16 +985,23 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - RENDERIZADO NATIVO) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - FIX SCROLL INVISIBLE) ---
 // =========================================================================
 window.exportUserDataPDF = async function() {
     window.playPop();
     
-    // 1. Guardamos scroll y vamos arriba
+    // 1. Guardamos la posición y vamos arriba
     const originalScrollY = window.scrollY;
     window.scrollTo(0, 0);
 
-    // 2. Pantalla de carga SÓLIDA para tapar el trabajo
+    // 2. EL TRUCO VITAL: Destrabamos los límites de la pantalla temporalmente.
+    // Esto evita al 100% que la librería recorte el documento y lo devuelva en blanco.
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+    document.body.style.overflow = 'visible';
+    document.documentElement.style.overflow = 'visible';
+
+    // 3. Modificamos el cartel de carga para que sea negro sólido y tape el proceso
     const overlay = document.getElementById('ai-loading-overlay');
     overlay.style.zIndex = "9999";
     overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
@@ -1006,17 +1013,17 @@ window.exportUserDataPDF = async function() {
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    // 3. Contenedor NATIVO (Sin position absolute, esto arregla el PDF en blanco)
+    // 4. Creamos el contenedor del PDF, justo debajo del cartel de carga (z-index: 9998)
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = "width: 800px; background-color: #000000; z-index: 10; margin: 0 auto;";
+    element.style.cssText = "position: absolute; top: 0; left: 0; width: 800px; background-color: #000000; z-index: 9998;";
 
-    // Lienzo temporal oculto para procesar gráficos
+    // Lienzo temporal oculto para procesar gráficos a imágenes estáticas
     const tempCanvas = document.createElement('canvas');
     tempCanvas.id = "temp-chart-renderer";
     tempCanvas.width = 720; 
     tempCanvas.height = 220; 
-    tempCanvas.style.cssText = "position: absolute; top: -9999px; left: -9999px; visibility: hidden;"; 
+    tempCanvas.style.cssText = "position: absolute; top: 0; left: 0; visibility: hidden; z-index: -1;"; 
     document.body.appendChild(tempCanvas);
 
     try {
@@ -1030,7 +1037,7 @@ window.exportUserDataPDF = async function() {
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
                 #${containerId} * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
-                .pdf-wrapper { background-color: #000000; color: #ffffff; padding: 40px; width: 100%; }
+                .pdf-wrapper { background-color: #000000; color: #ffffff; padding: 40px; width: 800px; }
                 .pdf-header { text-align: center; border-bottom: 2px solid #262626; padding-bottom: 20px; margin-bottom: 30px; }
                 .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; }
                 .hat-logo span { color: #F54927; }
@@ -1152,8 +1159,8 @@ window.exportUserDataPDF = async function() {
                     }
                 });
 
-                await new Promise(r => setTimeout(r, 50)); // Micro-espera
-                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 0.9); // Pasado a JPEG para aligerar PDF
+                await new Promise(r => setTimeout(r, 50)); 
+                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 0.9); 
                 tempChart.destroy(); 
 
                 htmlContent += `
@@ -1190,21 +1197,25 @@ window.exportUserDataPDF = async function() {
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker</div></div>`;
 
         element.innerHTML = htmlContent;
-        
-        // 4. INSERCIÓN NATIVA EN EL BODY: 
-        // Esto hace que el navegador le dé dimensiones reales y evite que salga en blanco
-        document.body.prepend(element);
+        document.body.appendChild(element);
 
-        // Espera de seguridad para el renderizado del navegador
+        // Espera para que el DOM asimile las imágenes recién inyectadas
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // 5. Configuración estándar de PDF (A4 Vertical)
+        // 5. Configuración de PDF asegurando Vertical (Portrait) y A4
         const opt = {
-            margin:       10, // Margen numérico simple en mm
+            margin:       10, 
             filename:     filename,
             image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#000000', logging: false },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }, // Forzado A4 Vertical
+            html2canvas:  { 
+                scale: 2, 
+                useCORS: true, 
+                backgroundColor: '#000000', 
+                logging: false,
+                scrollY: 0, // Fuerza la captura desde el tope superior
+                windowWidth: 800
+            },
+            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }, // portrait = vertical siempre
             pagebreak:    { mode: ['css', 'legacy'], avoid: '.history-card' }
         };
 
@@ -1217,7 +1228,9 @@ window.exportUserDataPDF = async function() {
         console.error("Error al generar PDF:", error);
         window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
     } finally {
-        // Restauramos todo el entorno
+        // 6. RESTAURACIÓN DEL SISTEMA A LA NORMALIDAD
+        document.body.style.overflow = originalBodyOverflow;
+        document.documentElement.style.overflow = originalHtmlOverflow;
         window.scrollTo(0, originalScrollY);
         
         overlay.classList.remove('flex', 'bg-[#0a0a0a]');
