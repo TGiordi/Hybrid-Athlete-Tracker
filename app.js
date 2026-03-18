@@ -1140,7 +1140,7 @@ window.exportUserDataPDF = async function() {
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
         document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Aplicando corte estricto de páginas sin rellenos. Aguardá...";
+        document.getElementById('loading-desc').innerText = "Renderizando gráficos finales. Aguardá unos segundos...";
     }
 
     const viewApp = document.getElementById('view-app');
@@ -1156,7 +1156,7 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: block;`;
+    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: block;`;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1220,8 +1220,7 @@ window.exportUserDataPDF = async function() {
                 .day-title { font-size: 15px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 0; }
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
-                
-                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-top: 40px; margin-bottom: 40px; padding-top: 10px; border-top: 1px solid transparent; }
+                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 50px; padding-top: 15px; border-top: 1px solid transparent; }
                 
                 .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
                 
@@ -1472,7 +1471,8 @@ window.exportUserDataPDF = async function() {
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
         }
-        
+
+        htmlContent += `<div id="pdf-filler" style="width: 100%; background-color: ${bgPage};"></div>`;
         htmlContent += `</div></div>`; 
 
         element.innerHTML = htmlContent;
@@ -1480,11 +1480,20 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // NUEVA ORDEN DE CORTE: No más rellenos en el DOM. Controlado por html2canvas directo.
-        const PAGE_HEIGHT = 1131; // Entero puro sin decimales
-        const currentTotalHeight = element.scrollHeight;
-        const totalPages = Math.ceil(currentTotalHeight / PAGE_HEIGHT);
-        const exactCanvasHeight = totalPages * PAGE_HEIGHT;
+        const pageBreaks = element.querySelectorAll('.page-break-container');
+        let topOfLastSegment = element.getBoundingClientRect().top;
+        if (pageBreaks.length > 0) {
+            topOfLastSegment = pageBreaks[pageBreaks.length - 1].getBoundingClientRect().top;
+        }
+        
+        const lastSegmentHeight = element.getBoundingClientRect().bottom - topOfLastSegment;
+        const PAGE_HEIGHT = 1131.428;
+        const remainder = lastSegmentHeight % PAGE_HEIGHT;
+
+        if (remainder > 0 && remainder < (PAGE_HEIGHT - 5)) {
+            const fillHeight = PAGE_HEIGHT - remainder - 5;
+            document.getElementById('pdf-filler').style.height = `${fillHeight}px`;
+        }
 
         const opt = {
             margin:       0,
@@ -1494,14 +1503,10 @@ window.exportUserDataPDF = async function() {
                 scale: 3,
                 useCORS: true,
                 backgroundColor: bgPage,
-                logging: false,
-                width: 800,
-                height: exactCanvasHeight, // Cámara captura el múltiplo exacto rellenando con el bgPage
-                windowWidth: 800,
-                windowHeight: exactCanvasHeight
+                logging: false
             },
-            jsPDF:        { unit: 'px', format: [800, PAGE_HEIGHT], orientation: 'portrait' },
-            pagebreak:    { mode: ['css'] } // Eliminamos el 'legacy' que causa bugs invisibles
+            jsPDF:        { unit: 'px', format: [800, 1131.428], orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'] }
         };
 
         await html2pdf().set(opt).from(element).save();
