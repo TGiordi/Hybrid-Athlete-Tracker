@@ -985,20 +985,18 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - RENDERIZADO NATIVO PURO) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - ALTA DEFINICIÓN Y ORDENADO) ---
 // =========================================================================
 window.exportUserDataPDF = async function() {
     window.playPop();
     
-    // 1. Mostrar cartel negro sólido que cubra absolutamente todo
     const overlay = document.getElementById('ai-loading-overlay');
     overlay.style.zIndex = "999999";
     overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
     overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
     document.getElementById('loading-title').innerText = "Compilando Reporte...";
-    document.getElementById('loading-desc').innerText = "Generando documento en alta resolución. Aguardá unos segundos...";
+    document.getElementById('loading-desc').innerText = "Renderizando gráficos en Alta Definición y ordenando tus rutinas...";
 
-    // 2. Ocultar la App para dejar la página completamente vacía para el PDF
     const viewApp = document.getElementById('view-app');
     if (viewApp) viewApp.style.display = 'none';
     
@@ -1010,32 +1008,52 @@ window.exportUserDataPDF = async function() {
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    // 3. Crear el contenedor en el flujo normal (sin position absolute)
     const element = document.createElement('div');
     element.id = containerId;
     element.style.cssText = "width: 800px; margin: 0; background-color: #000000; color: #ffffff; min-height: 100vh;";
 
-    // Lienzo temporal fuera de pantalla para fabricar los gráficos
+    // Lienzo temporal en Full HD para gráficos súper nítidos
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 720; 
-    tempCanvas.height = 220; 
+    tempCanvas.width = 1440;  // Doble resolución
+    tempCanvas.height = 440; 
     hiddenDiv.appendChild(tempCanvas);
     document.body.appendChild(hiddenDiv);
 
     try {
-        const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).order('day_of_week', { ascending: true }).order('order_index', { ascending: true });
+        let { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId);
         const { data: logs } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: true });
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
         const filename = `HAT_Reporte_${userEmail.split('@')[0]}_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.pdf`;
 
-        // CSS Estricto
+        // 1. ORDENAMIENTO LÓGICO DE DÍAS (Lunes a Domingo)
+        const daysOrder = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 7 };
+        routines.sort((a, b) => {
+            const dayA = daysOrder[a.day_of_week.toLowerCase().trim()] || 8;
+            const dayB = daysOrder[b.day_of_week.toLowerCase().trim()] || 8;
+            if (dayA !== dayB) return dayA - dayB;
+            return a.order_index - b.order_index;
+        });
+
+        // 2. FORMATEADOR DE NOMBRES DE DÍAS (Arregla "Sabado" -> "Sábado")
+        const formatDay = (day) => {
+            const map = {'lunes':'Lunes', 'martes':'Martes', 'miercoles':'Miércoles', 'miércoles':'Miércoles', 'jueves':'Jueves', 'viernes':'Viernes', 'sabado':'Sábado', 'sábado':'Sábado', 'domingo':'Domingo'};
+            return map[day.toLowerCase().trim()] || day.toUpperCase();
+        };
+
+        // 3. EXTRACCIÓN DE ORDEN DE EJERCICIOS PARA EL HISTORIAL
+        const orderedExNames = [...new Set(routines.map(r => r.exercise_name))];
+        const logExNames = [...new Set(logs.map(l => l.exercise_name))];
+        // Agregar al final los ejercicios que están en el historial pero ya no en la rutina actual
+        logExNames.forEach(ex => { if(!orderedExNames.includes(ex)) orderedExNames.push(ex); });
+
+        // CSS Estricto y Protegido contra cortes
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
                 #${containerId} * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
-                .pdf-wrapper { padding: 40px; }
+                .pdf-wrapper { padding: 40px; background-color: #000000; width: 100%; }
                 .pdf-header { text-align: center; border-bottom: 2px solid #262626; padding-bottom: 20px; margin-bottom: 30px; }
                 .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; }
                 .hat-logo span { color: #F54927; }
@@ -1043,15 +1061,15 @@ window.exportUserDataPDF = async function() {
                 .report-subtitle { color: #404040; font-size: 12px; margin-top: 8px; }
                 h2 { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; color: #ffffff; margin-bottom: 20px; }
                 h2 span { color: #F54927; margin-right: 8px; }
-                .day-title { font-size: 14px; font-weight: 700; color: #F54927; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F54927; margin-top: 25px; }
-                .ex-card { background-color: #171717; border: 1px solid #262626; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+                .day-title { font-size: 14px; font-weight: 700; color: #F54927; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px; padding-left: 10px; border-left: 3px solid #F54927; margin-top: 25px; page-break-after: avoid; break-after: avoid; }
+                .ex-card { background-color: #171717; border: 1px solid #262626; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; page-break-inside: avoid; break-inside: avoid; }
                 .ex-name { font-weight: 700; font-size: 15px; }
                 .ex-target { color: #94A3B8; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-top: 4px; }
                 .ex-sets { text-align: right; font-weight: 700; font-size: 20px; }
                 .ex-sets span { font-size: 12px; color: #94A3B8; font-weight: 400; margin-left: 4px; }
                 
                 .page-break { page-break-before: always; border-top: none; padding-top: 40px; clear: both; }
-                .history-card { margin-top: 20px; margin-bottom: 30px; page-break-inside: avoid; background-color: #000000; }
+                .history-card { margin-top: 20px; margin-bottom: 30px; page-break-inside: avoid; break-inside: avoid; display: block; background-color: #000000; width: 100%; }
                 .history-title { font-size: 18px; color: #F54927; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 15px; }
                 
                 .chart-img { width: 100%; height: auto; border: 1px solid #262626; border-radius: 12px; margin-bottom: 15px; display: block; background-color: #0a0a0a; }
@@ -1082,7 +1100,7 @@ window.exportUserDataPDF = async function() {
             routines.forEach(ex => {
                 if (ex.day_of_week !== currentDay) {
                     currentDay = ex.day_of_week;
-                    htmlContent += `<div class="day-title">${currentDay}</div>`;
+                    htmlContent += `<div class="day-title">${formatDay(currentDay)}</div>`;
                 }
                 htmlContent += `
                     <div class="ex-card">
@@ -1108,7 +1126,10 @@ window.exportUserDataPDF = async function() {
                 groupedLogs[l.exercise_name].data.push(l);
             });
 
-            for (const exName in groupedLogs) {
+            // 4. Iterar sobre el orden oficial extraído de la rutina
+            for (const exName of orderedExNames) {
+                if (!groupedLogs[exName]) continue; // Si no hay logs para este ejercicio, lo salta
+                
                 const exLogs = groupedLogs[exName];
                 const type = exLogs.type;
 
@@ -1129,7 +1150,7 @@ window.exportUserDataPDF = async function() {
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
-                // Dibuja el gráfico y lo convierte a foto (JPG)
+                // Dibuja el gráfico en Full HD
                 const ctx = tempCanvas.getContext('2d');
                 ctx.fillStyle = '#0a0a0a'; 
                 ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
@@ -1144,21 +1165,22 @@ window.exportUserDataPDF = async function() {
                             data: maxData,
                             borderColor: '#F54927',
                             backgroundColor: 'rgba(245, 73, 39, 0.05)',
-                            borderWidth: 3, tension: 0.3, pointRadius: 3, fill: true
+                            borderWidth: 6, // Adaptado al tamaño grande
+                            tension: 0.3, pointRadius: 6, fill: true
                         }]
                     },
                     options: {
                         responsive: false, animation: false, 
                         plugins: { legend: { display: false } },
                         scales: {
-                            y: { grid: { color: '#262626' }, ticks: { color: '#94A3B8', font: {size: 11} }, title: {display: true, text: titleY, color: '#94A3B8', font: {size: 11}} },
-                            x: { grid: { display: false }, ticks: { color: '#94A3B8', font: {size: 11} } }
+                            y: { grid: { color: '#262626', lineWidth: 2 }, ticks: { color: '#94A3B8', font: {size: 22} }, title: {display: true, text: titleY, color: '#94A3B8', font: {size: 22}} },
+                            x: { grid: { display: false }, ticks: { color: '#94A3B8', font: {size: 22} } }
                         }
                     }
                 });
 
                 await new Promise(r => setTimeout(r, 50)); 
-                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 0.95); 
+                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 1.0); 
                 tempChart.destroy(); 
 
                 htmlContent += `
@@ -1194,20 +1216,19 @@ window.exportUserDataPDF = async function() {
 
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker</div></div>`;
 
-        // 4. Montar el reporte en el cuerpo principal de la página
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // 5. Opciones nativas A4 Vertical aseguradas
+        // 5. Configuración PDF: Margen cero, Alta Densidad, y Protección total de cortes
         const opt = {
-            margin:       10, 
+            margin:       0, // Margen eliminado para borrar el recuadro blanco
             filename:     filename,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#000000', logging: false },
+            image:        { type: 'jpeg', quality: 1.0 },
+            html2canvas:  { scale: 3, useCORS: true, backgroundColor: '#000000', logging: false }, // Scale 3 para Ultra Nitidez
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }, 
-            pagebreak:    { mode: ['css', 'legacy'] }
+            pagebreak:    { mode: ['css', 'legacy'], avoid: ['.history-card', '.ex-card', '.day-title'] }
         };
 
         await html2pdf().set(opt).from(element).save();
@@ -1219,14 +1240,11 @@ window.exportUserDataPDF = async function() {
         console.error("Error al generar PDF:", error);
         window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
     } finally {
-        // 6. DEVOLVER TODO A LA NORMALIDAD
         if (document.getElementById(containerId)) document.getElementById(containerId).remove();
         if (hiddenDiv) hiddenDiv.remove(); 
         
-        // Mostrar la app de nuevo
         if (viewApp) viewApp.style.display = '';
         
-        // Restaurar estado de pantalla
         document.body.style.overflow = '';
         document.documentElement.style.overflow = '';
         window.scrollTo(0, originalScrollY);
@@ -1236,8 +1254,6 @@ window.exportUserDataPDF = async function() {
         overlay.style.zIndex = ""; 
     }
 };
-
-window.exportUserData = window.exportUserDataPDF;
 
 // =========================================================================
 // EXPORTACIÓN GLOBAL 
