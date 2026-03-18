@@ -985,7 +985,7 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - VERSIÓN MAESTRA) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - RENDERIZADO ESTÁTICO) ---
 // =========================================================================
 
 window.askPdfTheme = function() {
@@ -1024,9 +1024,9 @@ window.askPdfTheme = function() {
         document.getElementById('btn-theme-light').onclick = () => closeModal('light');
         document.getElementById('btn-theme-cancel').onclick = () => closeModal(null);
         
-        // Cerrar al tocar por fuera del cartel
+        // Cierra al tocar fuera del contenedor (el fondo)
         modalEl.addEventListener('click', (e) => {
-            if (e.target === modalEl) closeModal(null);
+            if (e.target.id === 'pdf-theme-modal') closeModal(null);
         });
     });
 };
@@ -1037,26 +1037,24 @@ window.exportUserDataPDF = async function() {
 
     const isDark = (themeChoice === 'dark');
 
-    // Paletas de colores estrictas para Modo Claro y Oscuro
+    // Paleta de colores súper contrastada para ambos modos
     const bgPage = isDark ? '#000000' : '#ffffff';
     const bgCard = isDark ? '#171717' : '#ffffff';
-    const bgBox = isDark ? '#0a0a0a' : '#f8fafc'; // Blanco/Grisáceo puro para modo claro
+    const bgBox = isDark ? '#0a0a0a' : '#f8fafc'; // Gris súper claro para que se destaquen los gráficos
     const textMain = isDark ? '#ffffff' : '#0f172a';
     const textMuted = isDark ? '#94A3B8' : '#475569';
     const borderCol = isDark ? '#262626' : '#cbd5e1';
     const accent = '#F54927';
 
-    // 1. Mostrar pantalla de carga negra que tapa toda la pantalla
     const overlay = document.getElementById('ai-loading-overlay');
     overlay.style.zIndex = "999999";
     overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
     overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
     document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-    document.getElementById('loading-desc').innerText = "Renderizando gráficos de alta calidad y formateando hojas. Aguardá...";
+    document.getElementById('loading-desc').innerText = "Dibujando páginas y aplicando márgenes profesionales. Aguardá...";
 
-    // Ocultar la app para no interferir
     const viewApp = document.getElementById('view-app');
-    if (viewApp) viewApp.style.display = 'none';
+    if (viewApp) viewApp.style.display = 'none'; // Oculta la app para que no moleste en el render
     
     const originalScrollY = window.scrollY;
     document.body.style.overflow = 'visible';
@@ -1066,17 +1064,17 @@ window.exportUserDataPDF = async function() {
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    // 2. Contenedor de 800px EXACTOS. Position absolute top 0 evita colapsos.
+    // Contenedor ESTÁTICO (No absolute). Esto arregla el PDF blanco.
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = `position: absolute; top: 0; left: 0; width: 800px; background-color: ${bgPage}; color: ${textMain}; z-index: 10;`;
+    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain};`;
 
-    // Lienzo oculto 4K
+    // Lienzo temporal para gráficos oculto
     const hiddenDiv = document.createElement('div');
-    hiddenDiv.style.cssText = "position: absolute; top: 0; left: 0; z-index: -1; opacity: 0;";
+    hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 1600;  
-    tempCanvas.height = 600; 
+    tempCanvas.width = 2400;  
+    tempCanvas.height = 800; 
     hiddenDiv.appendChild(tempCanvas);
     document.body.appendChild(hiddenDiv);
 
@@ -1105,12 +1103,13 @@ window.exportUserDataPDF = async function() {
         const logExNames = [...new Set(logs.map(l => l.exercise_name))];
         logExNames.forEach(ex => { if(!orderedExNames.includes(ex)) orderedExNames.push(ex); });
 
-        // CSS Estricto. El padding interior reemplaza al margen exterior para que el fondo llegue a los bordes.
+        // CSS Estricto - El PADDING hace de margen, así pintamos la hoja al 100% sin marcos blancos.
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
                 #${containerId} * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
-                .pdf-content { padding: 40px; }
+                .pdf-wrapper { padding: 40px; width: 100%; display: flex; flex-direction: column; min-height: 100%; }
+                
                 .pdf-header { text-align: center; border-bottom: 2px solid ${borderCol}; padding-bottom: 20px; margin-bottom: 30px; }
                 .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; color: ${textMain}; }
                 .hat-logo span { color: ${accent}; }
@@ -1123,8 +1122,11 @@ window.exportUserDataPDF = async function() {
                 .day-title { font-size: 14px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 20px; }
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 15px; }
-                .page-break { page-break-before: always; clear: both; height: 10px; }
-                .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 40px; margin-bottom: 15px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
+                
+                /* El padding-top 40px asegura que si hay un salto de hoja, arranque despegado del techo */
+                .page-break { page-break-before: always; clear: both; padding-top: 40px; }
+                
+                .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
                 
                 .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; background-color: ${bgBox}; }
                 
@@ -1135,14 +1137,13 @@ window.exportUserDataPDF = async function() {
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
                 
-                /* Footer pegado al fondo */
                 .footer { text-align: center; color: ${textMuted}; font-size: 11px; font-weight: bold; padding: 20px 0; border-top: 1px solid ${borderCol}; width: 100%; margin-top: auto; }
             </style>
         `;
 
         let htmlContent = `
             ${styles}
-            <div class="pdf-content" id="pdf-inner-content">
+            <div class="pdf-wrapper">
                 <div class="pdf-header">
                     <div class="hat-logo"><span>H</span>AT</div>
                     <div class="report-title">Reporte de Alto Rendimiento</div>
@@ -1150,9 +1151,7 @@ window.exportUserDataPDF = async function() {
                 </div>
         `;
 
-        // ---------------------------------------------------------
-        // SECCIÓN 01: ESTADÍSTICAS GLOBALES (EN MINUTOS)
-        // ---------------------------------------------------------
+        // --- 01: ESTADÍSTICAS GLOBALES ---
         htmlContent += `<h2><span>01</span> Resumen Global de Entrenamiento</h2>`;
         if (sessions && sessions.length > 0) {
             const groupedSessions = {};
@@ -1161,7 +1160,7 @@ window.exportUserDataPDF = async function() {
                 groupedSessions[s.session_date] += s.duration_seconds;
             });
             const sessionDates = Object.keys(groupedSessions);
-            const sessionMins = sessionDates.map(d => Math.round(groupedSessions[d] / 60)); // Minutos cerrados
+            const sessionMins = sessionDates.map(d => Math.round(groupedSessions[d] / 60)); 
 
             const ctx = tempCanvas.getContext('2d');
             ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
@@ -1184,13 +1183,13 @@ window.exportUserDataPDF = async function() {
                     plugins: { legend: { display: false } },
                     layout: { padding: { top: 20, bottom: 20, left: 10, right: 30 } },
                     scales: {
-                        y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 28, weight: 'bold'}, maxTicksLimit: 6, padding: 12 }, title: {display: true, text: "Minutos de Entrenamiento", color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
-                        x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
+                        y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 28, weight: 'bold'}, maxTicksLimit: 5, padding: 15 }, title: {display: true, text: "Minutos", color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
+                        x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 15 } }
                     }
                 }
             });
 
-            await new Promise(r => setTimeout(r, 80)); 
+            await new Promise(r => setTimeout(r, 60)); 
             const globalChartImg = tempCanvas.toDataURL('image/jpeg', 1.0); 
             globalChart.destroy(); 
 
@@ -1207,14 +1206,13 @@ window.exportUserDataPDF = async function() {
             });
             htmlContent += `</tbody></table></div>`;
         } else {
-            htmlContent += `<p style="color: ${textMuted}; text-align: center;">Aún no hay sesiones de entrenamiento global registradas.</p>`;
+            htmlContent += `<p style="color: ${textMuted}; text-align: center;">Aún no hay sesiones de entrenamiento global.</p>`;
         }
 
-        htmlContent += `<div class="page-break"></div>`;
+        htmlContent += `</div>`; // Cierra envoltorio de página 1
+        htmlContent += `<div class="pdf-wrapper page-break">`;
 
-        // ---------------------------------------------------------
-        // SECCIÓN 02: RUTINA (Una hoja por día)
-        // ---------------------------------------------------------
+        // --- 02: RUTINA ---
         htmlContent += `<h2><span>02</span> Rutina Semanal Detallada</h2>`;
         if (routines && routines.length > 0) {
             let currentDay = "";
@@ -1223,8 +1221,8 @@ window.exportUserDataPDF = async function() {
             routines.forEach(ex => {
                 if (ex.day_of_week !== currentDay) {
                     currentDay = ex.day_of_week;
-                    let pageBreakHTML = isFirstDay ? '' : '<div class="page-break"></div>';
-                    htmlContent += `${pageBreakHTML}<div class="day-title">${formatDay(currentDay)}</div>`;
+                    if(!isFirstDay) htmlContent += `</div><div class="pdf-wrapper page-break">`; 
+                    htmlContent += `<div class="day-title">${formatDay(currentDay)}</div>`;
                     isFirstDay = false;
                 }
                 htmlContent += `
@@ -1248,11 +1246,10 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay rutina configurada.</p>`;
         }
 
-        htmlContent += `<div class="page-break"></div>`;
+        htmlContent += `</div>`;
+        htmlContent += `<div class="pdf-wrapper page-break">`;
 
-        // ---------------------------------------------------------
-        // SECCIÓN 03: HISTORIAL POR EJERCICIO (Escalas limpias y legibles)
-        // ---------------------------------------------------------
+        // --- 03: HISTORIAL POR EJERCICIO ---
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
         if (logs && logs.length > 0) {
@@ -1275,7 +1272,7 @@ window.exportUserDataPDF = async function() {
             }
             for (const exName in groupedLogs) {
                 if (!printedExercises.has(exName)) {
-                    orderedChartTasks.push({ dayGroup: 'Otros Ejercicios (Fuera de rutina)', exName: exName, logs: groupedLogs[exName] });
+                    orderedChartTasks.push({ dayGroup: 'Otros Ejercicios', exName: exName, logs: groupedLogs[exName] });
                 }
             }
 
@@ -1307,7 +1304,6 @@ window.exportUserDataPDF = async function() {
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
-                // LIMPIEZA DE LIENZO Y FONDO CON EL COLOR CORRECTO
                 const ctx = tempCanvas.getContext('2d');
                 ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
                 ctx.fillStyle = bgBox; 
@@ -1315,7 +1311,6 @@ window.exportUserDataPDF = async function() {
 
                 const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
 
-                // GRÁFICOS OPTIMIZADOS PARA NO APELMAZARSE (maxTicksLimit: 5)
                 const tempChart = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -1334,18 +1329,18 @@ window.exportUserDataPDF = async function() {
                         scales: {
                             y: { 
                                 grid: { color: borderCol, lineWidth: 2 }, 
-                                ticks: { color: textMuted, font: {size: 28, weight: 'bold'}, maxTicksLimit: 5, padding: 12 }, 
+                                ticks: { color: textMuted, font: {size: 28, weight: 'bold'}, maxTicksLimit: 5, padding: 15 }, 
                                 title: {display: true, text: titleY, color: textMuted, font: {size: 32, weight: 'bold'}, padding: {bottom: 15}} 
                             },
                             x: { 
                                 grid: { display: false }, 
-                                ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } 
+                                ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 8, padding: 15 } 
                             }
                         }
                     }
                 });
 
-                await new Promise(r => setTimeout(r, 80)); 
+                await new Promise(r => setTimeout(r, 60)); 
                 const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 1.0); 
                 tempChart.destroy(); 
 
@@ -1380,36 +1375,33 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible.</p>`;
         }
 
-        // Div invisible que usaremos para rellenar la última página
-        htmlContent += `<div id="pdf-filler" style="width: 100%;"></div>`;
-        htmlContent += `</div>`; // Cierra pdf-content
+        // ESPACIO EN BLANCO INTELIGENTE Y FOOTER
+        htmlContent += `<div id="pdf-filler" style="flex-grow: 1;"></div>`;
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker | ${isDark ? 'Modo Oscuro' : 'Modo Impresión'}</div>`;
+        htmlContent += `</div>`; // Cierra pdf-wrapper final
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // 3. ALGORITMO MATEMÁTICO: Calcular y pintar el espacio en blanco sobrante
-        // La proporción A4 es 1.4142. Si el ancho es 800, el alto exacto de página es ~1131.42px
-        const pageHeight = 1131.42; 
+        // ALGORITMO DE RELLENO: Calcula exactamente cuánto falta para que el A4 quede 100% pintado.
+        const pageHeight = 1131.42; // Proporción exacta en px de un A4 si el ancho es 800px.
         const currentTotalHeight = element.offsetHeight;
         const remainder = currentTotalHeight % pageHeight;
         
-        if (remainder > 0) {
-            // Cuánto falta para terminar la hoja
+        if (remainder > 0 && remainder < pageHeight) {
             const paddingToFill = pageHeight - remainder;
-            // Lo aplicamos al filler para que empuje el footer hacia abajo
-            document.getElementById('pdf-filler').style.height = `${paddingToFill - 60}px`; // Restamos los píxeles que ocupa el footer
+            document.getElementById('pdf-filler').style.height = `${paddingToFill}px`;
         }
 
-        // 4. CONFIGURACIÓN DEL MOTOR PDF: margin 0 para que nuestro fondo tiña toda la hoja
+        // MARGIN 0 (Es vital para no tener marcos blancos. Todo el aire interno lo provee el padding CSS)
         const opt = {
             margin:       0, 
             filename:     filename,
             image:        { type: 'jpeg', quality: 1.0 },
             html2canvas:  { scale: 3, useCORS: true, backgroundColor: bgPage, logging: false }, 
-            jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' } 
+            jsPDF:        { unit: 'px', format: [800, 1131.42], orientation: 'portrait' } 
         };
 
         await html2pdf().set(opt).from(element).save();
