@@ -1089,7 +1089,7 @@ window.askPdfTheme = function() {
 };
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - OBRA MAESTRA) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - OBRA MAESTRA FINAL) ---
 // =========================================================================
 
 window.exportUserDataPDF = async function() {
@@ -1147,7 +1147,7 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden;`;
+    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden;`;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1178,7 +1178,6 @@ window.exportUserDataPDF = async function() {
             return map[day.toLowerCase().trim()] || day.toUpperCase();
         };
 
-        // Extraer nombres de rutinas en orden y mapear qué días se hace cada ejercicio
         const orderedExNames = [];
         const exerciseDaysMap = {};
         
@@ -1202,12 +1201,13 @@ window.exportUserDataPDF = async function() {
                 h2 { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; color: ${textMain}; margin-bottom: 20px; margin-top: 10px;}
                 h2 span { color: ${accent}; margin-right: 8px; }
                 
-                .day-title { font-size: 15px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; }
+                /* Margen superior removido para el título del día, ya respira con el padding del contenedor */
+                .day-title { font-size: 15px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 0; }
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
                 
-                /* Margen seguro para los gráficos. Si salta de hoja, arranca con 20px de respiro */
-                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 40px; padding-top: 20px; border-top: 1px solid transparent; }
+                /* MAYOR SEPARACIÓN ENTRE GRÁFICOS (margin-bottom: 60px) */
+                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 60px; padding-top: 15px; border-top: 1px solid transparent; }
                 
                 .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
                 
@@ -1221,6 +1221,9 @@ window.exportUserDataPDF = async function() {
                 .log-table tr:last-child td { border-bottom: none; }
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
+                
+                /* Firma HAT Elegante */
+                .hat-signature { text-align: center; margin-top: 40px; padding-top: 30px; padding-bottom: 20px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; }
             </style>
         `;
 
@@ -1336,12 +1339,14 @@ window.exportUserDataPDF = async function() {
                 groupedLogs[l.exercise_name].data.push(l);
             });
 
-            // Iterar estrictamente por los ejercicios de la rutina actual
+            const orderedChartTasks = [];
+            const printedExercises = new Set();
+            
+            // Solo ejercicios que estén en la rutina actual
             for (const exName of orderedExNames) {
                 const exLogs = groupedLogs[exName];
                 if (!exLogs || exLogs.data.length === 0) continue; 
 
-                // Armar etiqueta de días (ej: "DÍAS: LUNES, JUEVES")
                 const daysSet = exerciseDaysMap[exName];
                 const daysStr = Array.from(daysSet).join(', ');
                 const dayLabel = daysSet.size > 1 ? `DÍAS: ${daysStr}` : `DÍA: ${daysStr}`;
@@ -1432,38 +1437,39 @@ window.exportUserDataPDF = async function() {
                 htmlContent += `</tbody></table></div>`;
             }
         } else {
-            htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible.</p>`;
+            htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
         }
-        
-        // Firma Final HAT (Reemplaza el footer absoluto que causaba problemas)
+
+        // --- FIRMA HAT ---
         htmlContent += `
-            <div style="margin-top: 50px; padding-bottom: 40px; text-align: center; border-top: 1px dashed ${borderCol}; padding-top: 30px;">
+            <div class="hat-signature">
                 <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
                 <div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>
                 <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
             </div>
         `;
-        htmlContent += `</div></div>`; // Cierra envoltorios
+        
+        htmlContent += `<div id="pdf-filler" style="width: 100%;"></div>`;
+        htmlContent += `</div></div>`; 
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // Magia para eliminar la hoja blanca: Rellenamos pero restamos 5px para NO forzar a la librería a crear una hoja nueva
+        // Magia anti hoja blanca: Si el remanente es mayor a 10px, rellenamos. Si es muy chiquito, lo ignoramos para no forzar una hoja nueva.
         const pageHeightPixels = 1131.428; 
         const currentTotalHeight = element.scrollHeight;
         const remainder = currentTotalHeight % pageHeightPixels;
         
-        if (remainder > 0 && remainder < pageHeightPixels) {
+        if (remainder > 10 && remainder < (pageHeightPixels - 10)) {
             const paddingToFill = pageHeightPixels - remainder;
-            // Bloque de relleno del color de fondo de la hoja
-            const filler = document.createElement('div');
-            filler.style.height = `${paddingToFill - 5}px`; 
-            filler.style.width = '100%';
-            filler.style.backgroundColor = bgPage;
-            element.appendChild(filler);
+            document.getElementById('pdf-filler').style.height = `${paddingToFill}px`; 
         }
+
+        // Forzamos al elemento a medir exactamente en múltiplos de A4
+        const finalPages = Math.ceil(element.scrollHeight / pageHeightPixels);
+        element.style.height = `${finalPages * pageHeightPixels}px`;
 
         const opt = {
             margin:       0, 
@@ -1499,7 +1505,6 @@ window.exportUserDataPDF = async function() {
         }, 500);
     }
 };
-
 
 
 
