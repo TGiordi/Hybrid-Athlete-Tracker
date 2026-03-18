@@ -1042,9 +1042,10 @@ function promptEditLog(exId, exName, dateStr, exType) {
 
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - DEFINITIVO V2) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - CÓDIGO COMPLETO) ---
 // =========================================================================
 
+// 1. LA FUNCIÓN DEL CARTEL (La que faltaba y rompió el botón)
 window.askPdfTheme = function() {
     return new Promise((resolve) => {
         const modalHtml = `
@@ -1082,17 +1083,13 @@ window.askPdfTheme = function() {
         document.getElementById('btn-theme-light').onclick = () => closeModal('light');
         document.getElementById('btn-theme-cancel').onclick = () => closeModal(null);
         
-        // Cierra al tocar fuera del contenedor principal
         modalEl.addEventListener('click', (e) => {
             if (e.target === modalEl) closeModal(null);
         });
     });
 };
 
-// =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - OBRA MAESTRA FINAL) ---
-// =========================================================================
-
+// 2. EL GENERADOR DEL PDF
 window.exportUserDataPDF = async function() {
     const themeChoice = await window.askPdfTheme();
     if (!themeChoice) return;
@@ -1107,7 +1104,6 @@ window.exportUserDataPDF = async function() {
     const borderCol = isDark ? '#262626' : '#cbd5e1';
     const accent = '#F54927';
 
-    // Plugin para asegurar fondo visible en gráficos (Modo Claro)
     const customBgPlugin = {
         id: 'customCanvasBg',
         beforeDraw: (chart) => {
@@ -1127,11 +1123,9 @@ window.exportUserDataPDF = async function() {
         return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
     };
 
-    // Buscador Inteligente para que no falte ningún ejercicio
+    // Filtro Inteligente (Evita que falten ejercicios)
     const normalizeName = (name) => {
-        return name.trim().toLowerCase()
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "") 
-            .replace(/\s+/g, ' '); 
+        return name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ' '); 
     };
 
     const overlay = document.getElementById('ai-loading-overlay');
@@ -1187,7 +1181,6 @@ window.exportUserDataPDF = async function() {
             return map[day.toLowerCase().trim()] || day.toUpperCase();
         };
 
-        // Mapeo inteligente de ejercicios y días
         const orderedExNames = [];
         const exerciseDaysMap = {};
         const routineNameMap = {};
@@ -1250,7 +1243,6 @@ window.exportUserDataPDF = async function() {
                 </div>
         `;
 
-        // --- 01: ESTADÍSTICAS GLOBALES ---
         htmlContent += `<h2><span>01</span> Resumen Global de Entrenamiento</h2>`;
         if (sessions && sessions.length > 0) {
             const groupedSessions = {};
@@ -1307,7 +1299,6 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div>`; 
 
-        // --- 02: RUTINA ---
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>02</span> Rutina Semanal Detallada</h2>`;
         if (routines && routines.length > 0) {
@@ -1349,14 +1340,12 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
-        // --- 03: HISTORIAL POR EJERCICIO ---
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
         if (logs && logs.length > 0) {
             const groupedLogs = {};
 
-            // UNIÓN INTELIGENTE (Para no perder ejercicios con ligeras variaciones de nombre)
             logs.forEach(l => {
                 const rawLogName = l.exercise_name.trim();
                 const normLogName = normalizeName(rawLogName);
@@ -1494,8 +1483,8 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // GUILLOTINA MATEMÁTICA DEFINITIVA (Corte estricto)
-        const pageHeightPixels = 1131;
+        // GUILLOTINA ESTRICTA
+        const pageHeightPixels = 1131.428;
         const currentTotalHeight = element.scrollHeight;
         const totalPages = Math.ceil(currentTotalHeight / pageHeightPixels);
         const exactHeight = totalPages * pageHeightPixels;
@@ -1516,7 +1505,7 @@ window.exportUserDataPDF = async function() {
                 height: exactHeight,
                 windowHeight: exactHeight
             },
-            jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' },
+            jsPDF:        { unit: 'px', format: [800, 1131.428], orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'] }
         };
 
@@ -1547,7 +1536,7 @@ window.exportUserDataPDF = async function() {
     }
 };
 
-// ENLACE DEL BOTÓN
+// 3. ENLACE DEL BOTÓN (La línea que faltó)
 window.exportUserData = window.exportUserDataPDF;
 
 
