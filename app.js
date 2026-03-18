@@ -985,38 +985,39 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - FIX PANTALLA EN BLANCO) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - FIX PANTALLA BLANCA) ---
 // =========================================================================
 window.exportUserDataPDF = async function() {
     window.playPop();
+    
+    // 1. TRUCO VITAL: Guardamos tu posición en la página y forzamos ir arriba de todo.
+    // Esto evita al 100% que la librería saque la foto en blanco por estar scrolleados hacia abajo.
+    const originalScrollY = window.scrollY;
+    window.scrollTo(0, 0);
+
+    const overlay = document.getElementById('ai-loading-overlay');
+    // Le subimos la prioridad al overlay y lo volvemos negro oscuro sólido para tapar todo el trabajo
+    overlay.style.zIndex = "9999";
+    overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
+    overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
+
     document.getElementById('loading-title').innerText = "Compilando Reporte...";
     document.getElementById('loading-desc').innerText = "Dibujando gráficos de alta calidad. Esto tomará unos segundos...";
-    
-    // El cartel de carga suele tener z-index 100
-    const overlay = document.getElementById('ai-loading-overlay');
-    overlay.style.zIndex = "9999";
-    overlay.classList.remove('hidden');
-    overlay.classList.add('flex');
 
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    // 1. Contenedor del PDF: z-index 10 (Arriba del fondo, pero debajo del cartel de carga)
+    // 2. Contenedor visible y alineado, pero tapado por el cartel de carga sólido
     const element = document.createElement('div');
     element.id = containerId;
     element.style.cssText = "position: absolute; top: 0; left: 0; width: 800px; background-color: #000000; z-index: 10;";
 
-    // Lienzo temporal para las fotos
     const tempCanvas = document.createElement('canvas');
     tempCanvas.id = "temp-chart-renderer";
     tempCanvas.width = 720; 
     tempCanvas.height = 220; 
-    tempCanvas.style.cssText = "position: absolute; top: 0; left: 0; z-index: 10;"; 
+    tempCanvas.style.cssText = "position: absolute; top: 0; left: 0; z-index: 10; visibility: hidden;"; 
     document.body.appendChild(tempCanvas);
-
-    // Destrabar el scroll temporalmente
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'visible'; 
 
     try {
         const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).order('day_of_week', { ascending: true }).order('order_index', { ascending: true });
@@ -1024,6 +1025,7 @@ window.exportUserDataPDF = async function() {
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
         const filename = `HAT_Reporte_${userEmail.split('@')[0]}_${new Date().toISOString().slice(0,10)}.pdf`;
 
+        // CSS Estricto
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
@@ -1192,7 +1194,6 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // ScrollY: 0 fuerza a la cámara a enfocar desde la cima del documento
         const opt = {
             margin:       [10, 0, 10, 0], 
             filename:     filename,
@@ -1203,7 +1204,7 @@ window.exportUserDataPDF = async function() {
                 backgroundColor: '#000000', 
                 logging: false,
                 windowWidth: 800,
-                scrollY: 0 
+                scrollY: 0
             },
             jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'], avoid: '.history-card' }
@@ -1218,14 +1219,15 @@ window.exportUserDataPDF = async function() {
         console.error("Error al generar PDF:", error);
         window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
     } finally {
-        document.body.style.overflow = originalOverflow;
-        overlay.style.zIndex = ""; // Restaurar z-index original
+        // 3. Devolvemos la pantalla exactamente a como estaba antes
+        window.scrollTo(0, originalScrollY);
+        
+        overlay.classList.remove('flex', 'bg-[#0a0a0a]');
+        overlay.classList.add('hidden', 'bg-black/90', 'backdrop-blur-md');
+        overlay.style.zIndex = ""; 
         
         if (document.getElementById(containerId)) document.getElementById(containerId).remove();
         if (tempCanvas) tempCanvas.remove(); 
-        
-        overlay.classList.add('hidden');
-        overlay.classList.remove('flex');
     }
 };
 
