@@ -1147,8 +1147,7 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    // SIN overflow: hidden; para que la firma jamás se corte
-    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box;`;
+    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden;`;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1220,8 +1219,6 @@ window.exportUserDataPDF = async function() {
                 .log-table tr:last-child td { border-bottom: none; }
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
-                
-                .hat-signature { text-align: center; margin-top: 20px; padding-top: 30px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; }
             </style>
         `;
 
@@ -1436,17 +1433,18 @@ window.exportUserDataPDF = async function() {
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
         }
-        htmlContent += `</div></div>`; // Cierra pdf-wrapper de la sección 3
+        htmlContent += `</div></div>`; 
 
-        // --- FIRMA HAT ---
+        // --- FIRMA Y RELLENO SEGURO ---
         htmlContent += `
-            <div class="pdf-wrapper" style="padding-top: 0; padding-bottom: 40px;">
-                <div class="hat-signature">
+            <div id="hat-signature-wrapper" class="pdf-avoid-break" style="width: 100%; padding-top: 40px; padding-bottom: 20px; background-color: ${bgPage};">
+                <div style="text-align: center; border-top: 1px dashed ${borderCol}; padding-top: 30px;">
                     <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
                     <div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>
                     <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
                 </div>
             </div>
+            <div id="pdf-filler" style="width: 100%; background-color: ${bgPage};"></div>
         `;
 
         element.innerHTML = htmlContent;
@@ -1454,20 +1452,38 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // Magia anti hoja blanca: Usamos minHeight en vez de height, restando 5px de seguridad.
+        // CIRUGÍA FINAL: Algoritmo Inteligente de Paginas.
         const pageHeightPixels = 1131.428; 
-        const currentTotalHeight = element.scrollHeight;
-        const totalPages = Math.ceil(currentTotalHeight / pageHeightPixels);
+        let currentTotalHeight = element.scrollHeight;
+        let remainder = currentTotalHeight % pageHeightPixels;
         
-        // Estira el color de fondo hasta el final de la hoja A4 sin pasarse a una nueva.
-        element.style.minHeight = `${(totalPages * pageHeightPixels) - 5}px`;
+        // 1. Si la firma cae en los últimos 160px de la hoja, la librería la va a cortar a la mitad. 
+        // Solución: La empujamos obligatoriamente a la página siguiente con margin-top.
+        if (remainder > (pageHeightPixels - 180)) {
+            const pushToNextPage = pageHeightPixels - remainder + 20;
+            document.getElementById('hat-signature-wrapper').style.marginTop = `${pushToNextPage}px`;
+            
+            // Recalculamos alturas después del empujón
+            currentTotalHeight = element.scrollHeight;
+            remainder = currentTotalHeight % pageHeightPixels;
+        }
 
+        // 2. Rellenamos todo el espacio vacío hasta el final de la hoja para que el color sea 100% perfecto.
+        // Restamos 2 píxeles de seguridad absoluta para no pasarnos jamás y evitar la hoja blanca fantasma.
+        if (remainder > 0) {
+            const paddingToFill = pageHeightPixels - remainder;
+            document.getElementById('pdf-filler').style.height = `${paddingToFill - 2}px`; 
+        }
+
+        // EL DETALLE QUE FALTABA: Agregamos "pagebreak: { mode: ['css', 'legacy'] }" a las opciones.
+        // Esto le avisa al PDF que respete nuestros comandos de "no cortar" (.pdf-avoid-break).
         const opt = {
             margin:       0, 
             filename:     filename,
             image:        { type: 'jpeg', quality: 1.0 },
             html2canvas:  { scale: 3, useCORS: true, backgroundColor: bgPage, logging: false }, 
-            jsPDF:        { unit: 'px', format: [800, 1131.428], orientation: 'portrait' } 
+            jsPDF:        { unit: 'px', format: [800, 1131.428], orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'] } 
         };
 
         await html2pdf().set(opt).from(element).save();
