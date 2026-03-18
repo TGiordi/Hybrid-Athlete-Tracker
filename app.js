@@ -1131,7 +1131,7 @@ window.exportUserDataPDF = async function() {
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
         document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Renderizando gráficos, filtrando rutina y ajustando diseño. Aguardá...";
+        document.getElementById('loading-desc').innerText = "Aplicando formato estricto y corte de páginas. Aguardá...";
     }
 
     const viewApp = document.getElementById('view-app');
@@ -1147,7 +1147,7 @@ window.exportUserDataPDF = async function() {
 
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden;`;
+    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box;`;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1232,7 +1232,6 @@ window.exportUserDataPDF = async function() {
                 </div>
         `;
 
-        // --- 01: ESTADÍSTICAS GLOBALES ---
         htmlContent += `<h2><span>01</span> Resumen Global de Entrenamiento</h2>`;
         if (sessions && sessions.length > 0) {
             const groupedSessions = {};
@@ -1244,6 +1243,8 @@ window.exportUserDataPDF = async function() {
             const sessionMins = sessionDates.map(d => Math.round(groupedSessions[d] / 60)); 
 
             const ctx = tempCanvas.getContext('2d');
+            ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+            
             const globalChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -1287,7 +1288,6 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div>`; 
 
-        // --- 02: RUTINA ---
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>02</span> Rutina Semanal Detallada</h2>`;
         if (routines && routines.length > 0) {
@@ -1323,7 +1323,6 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
-        // --- 03: HISTORIAL POR EJERCICIO ---
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
@@ -1435,7 +1434,6 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
-        // --- FIRMA HAT ---
         htmlContent += `
             <div class="pdf-avoid-break" style="width: 100%; padding: 20px 40px 40px 40px; background-color: ${bgPage};">
                 <div style="text-align: center; border-top: 1px dashed ${borderCol}; padding-top: 30px;">
@@ -1452,25 +1450,27 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // LA CORRECCIÓN EXACTA DEL RELLENO MATEMÁTICO:
-        const pageHeightPixels = 1131.428; 
-        const currentTotalHeight = element.getBoundingClientRect().height;
-        const remainder = currentTotalHeight % pageHeightPixels;
-        
-        // Si el sobrante es mayor a 0, obligatoriamente lo rellenamos para evitar el espacio blanco.
-        if (remainder > 0) {
-            const paddingToFill = pageHeightPixels - remainder;
-            // Usamos Math.floor() para redondear siempre hacia abajo. 
-            // Esto asegura que jamás se sume 1 pixel extra que haga saltar al PDF a una página nueva en blanco.
-            document.getElementById('pdf-filler').style.height = `${Math.floor(paddingToFill)}px`; 
-        }
+        // LA GUILLOTINA: Corte matemático absoluto.
+        const pageHeightPixels = 1131; // Usamos un entero estricto
+        const currentTotalHeight = element.scrollHeight;
+        const totalPages = Math.ceil(currentTotalHeight / pageHeightPixels);
+        const exactHeight = totalPages * pageHeightPixels;
+
+        // Le damos al bloque de relleno una cantidad de color ridículamente alta para que nunca falte
+        document.getElementById('pdf-filler').style.height = '2000px';
 
         const opt = {
             margin:       0, 
             filename:     filename,
             image:        { type: 'jpeg', quality: 1.0 },
-            html2canvas:  { scale: 3, useCORS: true, backgroundColor: bgPage, logging: false }, 
-            jsPDF:        { unit: 'px', format: [800, 1131.428], orientation: 'portrait' },
+            html2canvas:  { 
+                scale: 3, 
+                useCORS: true, 
+                backgroundColor: bgPage, 
+                logging: false,
+                height: exactHeight // El truco: Le decimos a la cámara que la foto termine EXACTAMENTE en el último pixel de la página A4.
+            }, 
+            jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'] } 
         };
 
