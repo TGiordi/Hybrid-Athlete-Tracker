@@ -1045,6 +1045,53 @@ function promptEditLog(exId, exName, dateStr, exType) {
 // --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL) ---
 // =========================================================================
 
+window.askPdfTheme = function() {
+    return new Promise((resolve) => {
+        const modalHtml = `
+            <div id="pdf-theme-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[999999] flex items-center justify-center p-4 transition-opacity">
+                <div class="bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl">
+                    <div class="w-16 h-16 bg-[#171717] border border-[#262626] text-white rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-8 h-8 text-custom-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-black italic text-white uppercase tracking-tight mb-2">Formato del Reporte</h3>
+                    <p class="text-sm text-custom-textMuted mb-6">Elegí el estilo visual para generar tu documento.</p>
+                    <div class="flex flex-col gap-3">
+                        <button id="btn-theme-dark" class="w-full bg-[#0a0a0a] border border-[#262626] hover:border-custom-primary text-white py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg">
+                            🌙 Modo Oscuro <span class="text-[10px] text-custom-textMuted font-normal uppercase tracking-widest">(Digital)</span>
+                        </button>
+                        <button id="btn-theme-light" class="w-full bg-white border border-gray-300 hover:bg-gray-100 text-black py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg">
+                            ☀️ Modo Claro <span class="text-[10px] text-[#404040] font-bold uppercase tracking-widest">(Imprimir)</span>
+                        </button>
+                        <button id="btn-theme-cancel" class="mt-3 text-xs text-custom-textMuted hover:text-red-500 uppercase tracking-widest font-bold transition-colors py-2">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        const modalEl = document.getElementById('pdf-theme-modal');
+        
+        const closeModal = (result) => {
+            modalEl.remove();
+            if(result) { if(window.playTap) window.playTap(); } 
+            else { if(window.playPop) window.playPop(); }
+            resolve(result);
+        };
+
+        document.getElementById('btn-theme-dark').onclick = () => closeModal('dark');
+        document.getElementById('btn-theme-light').onclick = () => closeModal('light');
+        document.getElementById('btn-theme-cancel').onclick = () => closeModal(null);
+        
+        modalEl.addEventListener('click', (e) => {
+            if (e.target === modalEl) closeModal(null);
+        });
+    });
+};
+
+// =========================================================================
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - OBRA MAESTRA FINAL) ---
+// =========================================================================
+
 window.exportUserDataPDF = async function() {
     const themeChoice = await window.askPdfTheme();
     if (!themeChoice) return;
