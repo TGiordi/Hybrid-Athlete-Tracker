@@ -985,10 +985,9 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - VERSIÓN DEFINITIVA) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - VERSIÓN MAESTRA) ---
 // =========================================================================
 
-// 1. Creador del Modal Estilo HAT (Ahora se cierra al tocar afuera)
 window.askPdfTheme = function() {
     return new Promise((resolve) => {
         const modalHtml = `
@@ -1015,21 +1014,19 @@ window.askPdfTheme = function() {
 
         const modalEl = document.getElementById('pdf-theme-modal');
         
-        // Función de limpieza
         const closeModal = (result) => {
             modalEl.remove();
             if(result) window.playTap(); else window.playPop();
             resolve(result);
         };
 
-        // Eventos de botones
         document.getElementById('btn-theme-dark').onclick = () => closeModal('dark');
         document.getElementById('btn-theme-light').onclick = () => closeModal('light');
         document.getElementById('btn-theme-cancel').onclick = () => closeModal(null);
         
-        // Cerrar al tocar el fondo difuminado
+        // Cerrar al tocar por fuera del cartel
         modalEl.addEventListener('click', (e) => {
-            if (e.target.id === 'pdf-theme-modal') closeModal(null);
+            if (e.target === modalEl) closeModal(null);
         });
     });
 };
@@ -1040,22 +1037,24 @@ window.exportUserDataPDF = async function() {
 
     const isDark = (themeChoice === 'dark');
 
-    // Paletas de colores dinámicas pulidas (Modo claro impecable)
+    // Paletas de colores estrictas para Modo Claro y Oscuro
     const bgPage = isDark ? '#000000' : '#ffffff';
     const bgCard = isDark ? '#171717' : '#ffffff';
-    const bgBox = isDark ? '#0a0a0a' : '#ffffff'; // Blanco puro para los gráficos en modo claro
+    const bgBox = isDark ? '#0a0a0a' : '#f8fafc'; // Blanco/Grisáceo puro para modo claro
     const textMain = isDark ? '#ffffff' : '#0f172a';
     const textMuted = isDark ? '#94A3B8' : '#475569';
     const borderCol = isDark ? '#262626' : '#cbd5e1';
     const accent = '#F54927';
 
+    // 1. Mostrar pantalla de carga negra que tapa toda la pantalla
     const overlay = document.getElementById('ai-loading-overlay');
     overlay.style.zIndex = "999999";
     overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
     overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
     document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-    document.getElementById('loading-desc').innerText = "Renderizando gráficos en 4K y aplicando algoritmos de paginación. Aguardá...";
+    document.getElementById('loading-desc').innerText = "Renderizando gráficos de alta calidad y formateando hojas. Aguardá...";
 
+    // Ocultar la app para no interferir
     const viewApp = document.getElementById('view-app');
     if (viewApp) viewApp.style.display = 'none';
     
@@ -1067,17 +1066,17 @@ window.exportUserDataPDF = async function() {
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
+    // 2. Contenedor de 800px EXACTOS. Position absolute top 0 evita colapsos.
     const element = document.createElement('div');
     element.id = containerId;
-    // Ancho estricto sin padding HTML. Los márgenes los pondrá el PDF.
-    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden;`;
+    element.style.cssText = `position: absolute; top: 0; left: 0; width: 800px; background-color: ${bgPage}; color: ${textMain}; z-index: 10;`;
 
-    // Lienzo temporal 4K
+    // Lienzo oculto 4K
     const hiddenDiv = document.createElement('div');
-    hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
+    hiddenDiv.style.cssText = "position: absolute; top: 0; left: 0; z-index: -1; opacity: 0;";
     const tempCanvas = document.createElement('canvas');
-    tempCanvas.width = 2400;  
-    tempCanvas.height = 800; 
+    tempCanvas.width = 1600;  
+    tempCanvas.height = 600; 
     hiddenDiv.appendChild(tempCanvas);
     document.body.appendChild(hiddenDiv);
 
@@ -1106,26 +1105,28 @@ window.exportUserDataPDF = async function() {
         const logExNames = [...new Set(logs.map(l => l.exercise_name))];
         logExNames.forEach(ex => { if(!orderedExNames.includes(ex)) orderedExNames.push(ex); });
 
+        // CSS Estricto. El padding interior reemplaza al margen exterior para que el fondo llegue a los bordes.
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
                 #${containerId} * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
-                .pdf-header { text-align: center; border-bottom: 2px solid ${borderCol}; padding-bottom: 20px; margin-bottom: 25px; }
-                .hat-logo { font-weight: 900; font-style: italic; font-size: 36px; letter-spacing: -2px; color: ${textMain}; }
+                .pdf-content { padding: 40px; }
+                .pdf-header { text-align: center; border-bottom: 2px solid ${borderCol}; padding-bottom: 20px; margin-bottom: 30px; }
+                .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; color: ${textMain}; }
                 .hat-logo span { color: ${accent}; }
-                .report-title { font-size: 15px; font-weight: 700; color: ${textMuted}; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px; }
-                .report-subtitle { color: ${textMuted}; font-size: 11px; margin-top: 8px; }
+                .report-title { font-size: 16px; font-weight: 700; color: ${textMuted}; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px; }
+                .report-subtitle { color: ${textMuted}; font-size: 12px; margin-top: 8px; }
                 
-                h2 { font-size: 20px; font-weight: 900; font-style: italic; text-transform: uppercase; color: ${textMain}; margin-bottom: 15px; margin-top: 15px;}
+                h2 { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; color: ${textMain}; margin-bottom: 20px; margin-top: 20px;}
                 h2 span { color: ${accent}; margin-right: 8px; }
                 
-                .day-title { font-size: 14px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; }
+                .day-title { font-size: 14px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 20px; }
                 
-                .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 12px; }
+                .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 15px; }
                 .page-break { page-break-before: always; clear: both; height: 10px; }
-                .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
+                .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 40px; margin-bottom: 15px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
                 
-                .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 10px; margin-bottom: 15px; display: block; background-color: ${bgBox}; }
+                .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; background-color: ${bgBox}; }
                 
                 .log-table { width: 100%; border-collapse: collapse; font-size: 12px; background-color: ${bgBox}; border-radius: 8px; border: 1px solid ${borderCol}; overflow: hidden; }
                 .log-table th { background-color: ${bgCard}; color: ${textMuted}; padding: 12px 10px; text-align: left; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid ${borderCol};}
@@ -1134,21 +1135,23 @@ window.exportUserDataPDF = async function() {
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
                 
-                .footer { text-align: center; color: ${textMuted}; font-size: 10px; font-weight: bold; border-top: 1px solid ${borderCol}; padding-top: 15px; padding-bottom: 15px; width: 100%; margin-top: 20px;}
+                /* Footer pegado al fondo */
+                .footer { text-align: center; color: ${textMuted}; font-size: 11px; font-weight: bold; padding: 20px 0; border-top: 1px solid ${borderCol}; width: 100%; margin-top: auto; }
             </style>
         `;
 
         let htmlContent = `
             ${styles}
-            <div class="pdf-header">
-                <div class="hat-logo"><span>H</span>AT</div>
-                <div class="report-title">Reporte de Alto Rendimiento</div>
-                <div class="report-subtitle">Atleta: ${userEmail} | Generado: ${new Date().toLocaleDateString('es-AR')}</div>
-            </div>
+            <div class="pdf-content" id="pdf-inner-content">
+                <div class="pdf-header">
+                    <div class="hat-logo"><span>H</span>AT</div>
+                    <div class="report-title">Reporte de Alto Rendimiento</div>
+                    <div class="report-subtitle">Atleta: ${userEmail} | Generado: ${new Date().toLocaleDateString('es-AR')}</div>
+                </div>
         `;
 
         // ---------------------------------------------------------
-        // SECCIÓN 01: ESTADÍSTICAS GLOBALES
+        // SECCIÓN 01: ESTADÍSTICAS GLOBALES (EN MINUTOS)
         // ---------------------------------------------------------
         htmlContent += `<h2><span>01</span> Resumen Global de Entrenamiento</h2>`;
         if (sessions && sessions.length > 0) {
@@ -1158,7 +1161,7 @@ window.exportUserDataPDF = async function() {
                 groupedSessions[s.session_date] += s.duration_seconds;
             });
             const sessionDates = Object.keys(groupedSessions);
-            const sessionMins = sessionDates.map(d => parseFloat((groupedSessions[d] / 60).toFixed(1))); // Minutos
+            const sessionMins = sessionDates.map(d => Math.round(groupedSessions[d] / 60)); // Minutos cerrados
 
             const ctx = tempCanvas.getContext('2d');
             ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
@@ -1181,13 +1184,13 @@ window.exportUserDataPDF = async function() {
                     plugins: { legend: { display: false } },
                     layout: { padding: { top: 20, bottom: 20, left: 10, right: 30 } },
                     scales: {
-                        y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 26, weight: '600'}, maxTicksLimit: 6, padding: 12 }, title: {display: true, text: "Minutos de Entrenamiento", color: textMuted, font: {size: 26, weight: 'bold'}, padding: {bottom: 15}} },
-                        x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: '600'}, maxTicksLimit: 10, padding: 12 } }
+                        y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 28, weight: 'bold'}, maxTicksLimit: 6, padding: 12 }, title: {display: true, text: "Minutos de Entrenamiento", color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
+                        x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
                     }
                 }
             });
 
-            await new Promise(r => setTimeout(r, 50)); 
+            await new Promise(r => setTimeout(r, 80)); 
             const globalChartImg = tempCanvas.toDataURL('image/jpeg', 1.0); 
             globalChart.destroy(); 
 
@@ -1195,11 +1198,12 @@ window.exportUserDataPDF = async function() {
                 <div class="pdf-avoid-break" style="margin-bottom: 30px;">
                     <img src="${globalChartImg}" class="chart-img" />
                     <table class="log-table">
-                        <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Total Invertido (H:M:S)</th></tr></thead>
+                        <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido</th></tr></thead>
                         <tbody>
             `;
             [...sessionDates].reverse().forEach(date => {
-                htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="text-align: right; color: ${textMuted}; font-weight: bold;">${formatTime(groupedSessions[date])}</td></tr>`;
+                const mins = Math.round(groupedSessions[date] / 60);
+                htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="text-align: right; color: ${textMuted}; font-weight: bold;">${mins} min</td></tr>`;
             });
             htmlContent += `</tbody></table></div>`;
         } else {
@@ -1209,7 +1213,7 @@ window.exportUserDataPDF = async function() {
         htmlContent += `<div class="page-break"></div>`;
 
         // ---------------------------------------------------------
-        // SECCIÓN 02: RUTINA (Con hojas por día)
+        // SECCIÓN 02: RUTINA (Una hoja por día)
         // ---------------------------------------------------------
         htmlContent += `<h2><span>02</span> Rutina Semanal Detallada</h2>`;
         if (routines && routines.length > 0) {
@@ -1219,22 +1223,21 @@ window.exportUserDataPDF = async function() {
             routines.forEach(ex => {
                 if (ex.day_of_week !== currentDay) {
                     currentDay = ex.day_of_week;
-                    // Salto de página para todos los días excepto el primero
                     let pageBreakHTML = isFirstDay ? '' : '<div class="page-break"></div>';
                     htmlContent += `${pageBreakHTML}<div class="day-title">${formatDay(currentDay)}</div>`;
                     isFirstDay = false;
                 }
                 htmlContent += `
-                    <div class="pdf-avoid-break" style="background-color: ${bgCard}; border: 1px solid ${borderCol}; border-radius: 10px; padding: 15px;">
+                    <div class="pdf-avoid-break" style="background-color: ${bgCard}; border: 1px solid ${borderCol}; border-radius: 12px; padding: 18px;">
                         <table style="width: 100%; border-collapse: collapse;">
                             <tr>
                                 <td style="text-align: left; vertical-align: middle;">
-                                    <div style="font-weight: 700; font-size: 15px; color: ${textMain}; margin-bottom: 4px;">${escapeHTML(ex.exercise_name)}</div>
-                                    <div style="font-size: 11px; color: ${textMuted}; font-weight: 700; text-transform: uppercase;">Objetivo: ${escapeHTML(ex.target_reps)}</div>
+                                    <div style="font-weight: 700; font-size: 16px; color: ${textMain}; margin-bottom: 4px;">${escapeHTML(ex.exercise_name)}</div>
+                                    <div style="font-size: 12px; color: ${textMuted}; font-weight: 700; text-transform: uppercase;">Objetivo: ${escapeHTML(ex.target_reps)}</div>
                                 </td>
                                 <td style="text-align: right; vertical-align: middle; width: 80px;">
-                                    <span style="font-weight: 900; font-size: 24px; color: ${textMain}; font-style: italic;">${ex.sets}</span>
-                                    <span style="font-size: 11px; color: ${textMuted}; margin-left: 2px;">sets</span>
+                                    <span style="font-weight: 900; font-size: 26px; color: ${textMain}; font-style: italic;">${ex.sets}</span>
+                                    <span style="font-size: 12px; color: ${textMuted}; margin-left: 2px;">sets</span>
                                 </td>
                             </tr>
                         </table>
@@ -1248,7 +1251,7 @@ window.exportUserDataPDF = async function() {
         htmlContent += `<div class="page-break"></div>`;
 
         // ---------------------------------------------------------
-        // SECCIÓN 03: HISTORIAL POR EJERCICIO (Gráficos Espaciados)
+        // SECCIÓN 03: HISTORIAL POR EJERCICIO (Escalas limpias y legibles)
         // ---------------------------------------------------------
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
@@ -1304,7 +1307,7 @@ window.exportUserDataPDF = async function() {
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
-                // DIBUJAR GRÁFICO 4K
+                // LIMPIEZA DE LIENZO Y FONDO CON EL COLOR CORRECTO
                 const ctx = tempCanvas.getContext('2d');
                 ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
                 ctx.fillStyle = bgBox; 
@@ -1312,7 +1315,7 @@ window.exportUserDataPDF = async function() {
 
                 const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
 
-                // GRÁFICOS: Más espacio, ticks limitados para no amontonarse
+                // GRÁFICOS OPTIMIZADOS PARA NO APELMAZARSE (maxTicksLimit: 5)
                 const tempChart = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -1320,8 +1323,8 @@ window.exportUserDataPDF = async function() {
                         datasets: [{
                             data: maxData,
                             borderColor: accent,
-                            backgroundColor: isDark ? 'rgba(245, 73, 39, 0.08)' : 'rgba(245, 73, 39, 0.15)',
-                            borderWidth: 5, tension: 0.3, pointRadius: 5, fill: true
+                            backgroundColor: isDark ? 'rgba(245, 73, 39, 0.1)' : 'rgba(245, 73, 39, 0.15)',
+                            borderWidth: 6, tension: 0.3, pointRadius: 6, fill: true
                         }]
                     },
                     options: {
@@ -1331,18 +1334,18 @@ window.exportUserDataPDF = async function() {
                         scales: {
                             y: { 
                                 grid: { color: borderCol, lineWidth: 2 }, 
-                                ticks: { color: textMuted, font: {size: 26, weight: '600'}, maxTicksLimit: 6, padding: 12 }, 
-                                title: {display: true, text: titleY, color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} 
+                                ticks: { color: textMuted, font: {size: 28, weight: 'bold'}, maxTicksLimit: 5, padding: 12 }, 
+                                title: {display: true, text: titleY, color: textMuted, font: {size: 32, weight: 'bold'}, padding: {bottom: 15}} 
                             },
                             x: { 
                                 grid: { display: false }, 
-                                ticks: { color: textMuted, font: {size: 24, weight: '600'}, maxTicksLimit: 8, padding: 12 } 
+                                ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } 
                             }
                         }
                     }
                 });
 
-                await new Promise(r => setTimeout(r, 50)); 
+                await new Promise(r => setTimeout(r, 80)); 
                 const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 1.0); 
                 tempChart.destroy(); 
 
@@ -1377,8 +1380,9 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible.</p>`;
         }
 
-        // FOOTER Y RELLENO MÁGICO
-        htmlContent += `<div id="pdf-filler"></div>`;
+        // Div invisible que usaremos para rellenar la última página
+        htmlContent += `<div id="pdf-filler" style="width: 100%;"></div>`;
+        htmlContent += `</div>`; // Cierra pdf-content
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker | ${isDark ? 'Modo Oscuro' : 'Modo Impresión'}</div>`;
 
         element.innerHTML = htmlContent;
@@ -1386,26 +1390,26 @@ window.exportUserDataPDF = async function() {
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // Magia Matemática: Rellenar la última hoja con el color del tema
-        const rect = element.getBoundingClientRect();
-        // A4 ratio 1.414. Si el ancho es 800px, el alto de página es ~1131px
-        const pageHeight = 1131; 
-        const remainder = rect.height % pageHeight;
+        // 3. ALGORITMO MATEMÁTICO: Calcular y pintar el espacio en blanco sobrante
+        // La proporción A4 es 1.4142. Si el ancho es 800, el alto exacto de página es ~1131.42px
+        const pageHeight = 1131.42; 
+        const currentTotalHeight = element.offsetHeight;
+        const remainder = currentTotalHeight % pageHeight;
+        
         if (remainder > 0) {
-            const padBottom = pageHeight - remainder;
-            // Solo si el hueco es significativo, lo rellenamos para empujar el footer
-            if (padBottom > 20) {
-                document.getElementById('pdf-filler').style.height = `${padBottom - 50}px`; // -50px por el alto del footer
-            }
+            // Cuánto falta para terminar la hoja
+            const paddingToFill = pageHeight - remainder;
+            // Lo aplicamos al filler para que empuje el footer hacia abajo
+            document.getElementById('pdf-filler').style.height = `${paddingToFill - 60}px`; // Restamos los píxeles que ocupa el footer
         }
 
-        // CONFIGURACIÓN FINAL: Márgenes de 15mm para que parezca un libro y nada se corte.
+        // 4. CONFIGURACIÓN DEL MOTOR PDF: margin 0 para que nuestro fondo tiña toda la hoja
         const opt = {
-            margin:       [15, 10, 15, 10], // top, left, bottom, right en mm
+            margin:       0, 
             filename:     filename,
             image:        { type: 'jpeg', quality: 1.0 },
-            html2canvas:  { scale: 3, useCORS: true, backgroundColor: bgPage, logging: false, width: 800, windowWidth: 800 }, 
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' } 
+            html2canvas:  { scale: 3, useCORS: true, backgroundColor: bgPage, logging: false }, 
+            jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' } 
         };
 
         await html2pdf().set(opt).from(element).save();
