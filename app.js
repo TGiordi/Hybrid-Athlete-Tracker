@@ -985,59 +985,16 @@ function promptEditLog(exId, exName, dateStr, exType) {
 }
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - BASE ESTABLE Y PULIDA) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - VERSIÓN PERFECCIONADA) ---
 // =========================================================================
-
-window.askPdfTheme = function() {
-    return new Promise((resolve) => {
-        const modalHtml = `
-            <div id="pdf-theme-modal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[999999] flex items-center justify-center p-4 transition-opacity">
-                <div class="bg-custom-card border border-custom-border p-6 md:p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl">
-                    <div class="w-16 h-16 bg-[#171717] border border-[#262626] text-white rounded-full flex items-center justify-center mx-auto mb-4">
-                        <svg class="w-8 h-8 text-custom-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
-                    </div>
-                    <h3 class="text-xl font-black italic text-white uppercase tracking-tight mb-2">Formato del Reporte</h3>
-                    <p class="text-sm text-custom-textMuted mb-6">Elegí el estilo visual para generar tu documento.</p>
-                    <div class="flex flex-col gap-3">
-                        <button id="btn-theme-dark" class="w-full bg-[#0a0a0a] border border-[#262626] hover:border-custom-primary text-white py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg">
-                            🌙 Modo Oscuro <span class="text-[10px] text-custom-textMuted font-normal uppercase tracking-widest">(Digital)</span>
-                        </button>
-                        <button id="btn-theme-light" class="w-full bg-white border border-gray-300 hover:bg-gray-100 text-black py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg">
-                            ☀️ Modo Claro <span class="text-[10px] text-[#404040] font-bold uppercase tracking-widest">(Imprimir)</span>
-                        </button>
-                        <button id="btn-theme-cancel" class="mt-3 text-xs text-custom-textMuted hover:text-red-500 uppercase tracking-widest font-bold transition-colors py-2">Cancelar</button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-        const modalEl = document.getElementById('pdf-theme-modal');
-        
-        const closeModal = (result) => {
-            modalEl.remove();
-            if(result) window.playTap(); else window.playPop();
-            resolve(result);
-        };
-
-        document.getElementById('btn-theme-dark').onclick = () => closeModal('dark');
-        document.getElementById('btn-theme-light').onclick = () => closeModal('light');
-        document.getElementById('btn-theme-cancel').onclick = () => closeModal(null);
-        
-        // Cerrar si el usuario toca la zona oscura fuera del modal
-        modalEl.addEventListener('click', (e) => {
-            if (e.target === modalEl) closeModal(null);
-        });
-    });
-};
-
 window.exportUserDataPDF = async function() {
     const themeChoice = await window.askPdfTheme();
     if (!themeChoice) return;
 
+    window.playPop();
     const isDark = (themeChoice === 'dark');
 
-    // Paletas de colores dinámicas
+    // Paletas de colores dinámicas pulidas (Modo claro impecable)
     const bgPage = isDark ? '#000000' : '#ffffff';
     const bgCard = isDark ? '#171717' : '#ffffff';
     const bgBox = isDark ? '#0a0a0a' : '#f8fafc'; // Color claro para fondo de gráficos en modo claro
@@ -1046,15 +1003,22 @@ window.exportUserDataPDF = async function() {
     const borderCol = isDark ? '#262626' : '#cbd5e1';
     const accent = '#F54927';
 
+    // Función auxiliar para formatear segundos a H:M:S (Punto 1)
+    const formatSecondsToHMS = (seconds) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = Math.floor(seconds % 60);
+        return [h, m, s].map(v => v < 10 ? "0" + v : v).join(":");
+    };
+
     // Pantalla de carga sólida
     const overlay = document.getElementById('ai-loading-overlay');
     overlay.style.zIndex = "999999";
     overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
     overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
     document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-    document.getElementById('loading-desc').innerText = "Dibujando gráficos y estructurando páginas. Aguardá...";
+    document.getElementById('loading-desc').innerText = "Dibujando páginas, calibrando gráficos y ajustando márgenes. Aguardá...";
 
-    // Ocultar App
     const viewApp = document.getElementById('view-app');
     if (viewApp) viewApp.style.display = 'none';
     
@@ -1066,12 +1030,12 @@ window.exportUserDataPDF = async function() {
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    // Contenedor principal: Ancho 800px. Sin hacks locos de position.
     const element = document.createElement('div');
     element.id = containerId;
-    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box;`;
+    // Ancho estricto 800px. El color de fondo cubre todo.
+    element.style.cssText = `width: 800px; margin: 0 auto; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; position: relative; display: flex; flex-direction: column;`;
 
-    // Lienzo temporal para gráficos
+    // Lienzo temporal 4K para gráficos
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
     const tempCanvas = document.createElement('canvas');
@@ -1088,7 +1052,6 @@ window.exportUserDataPDF = async function() {
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
         const filename = `HAT_Reporte_${isDark ? 'Oscuro' : 'Claro'}_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.pdf`;
 
-        // Orden de días de Lunes a Domingo
         const daysOrder = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 7 };
         routines.sort((a, b) => {
             const dayA = daysOrder[a.day_of_week.toLowerCase().trim()] || 8;
@@ -1106,12 +1069,12 @@ window.exportUserDataPDF = async function() {
         const logExNames = [...new Set(logs.map(l => l.exercise_name))];
         logExNames.forEach(ex => { if(!orderedExNames.includes(ex)) orderedExNames.push(ex); });
 
-        // CSS Estricto. Fijate el .page-break: le damos padding-top para simular margen superior en hojas nuevas.
+        // CSS Estricto (Punto 2: Mejorados márgenes internos y espacios)
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
                 #${containerId} * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
-                .pdf-wrapper { padding: 40px; width: 100%; min-height: 100vh; background-color: ${bgPage}; }
+                .pdf-inner-content { padding: 40px; width: 100%; }
                 
                 .pdf-header { text-align: center; border-bottom: 2px solid ${borderCol}; padding-bottom: 20px; margin-bottom: 30px; }
                 .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; color: ${textMain}; }
@@ -1119,19 +1082,21 @@ window.exportUserDataPDF = async function() {
                 .report-title { font-size: 16px; font-weight: 700; color: ${textMuted}; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px; }
                 .report-subtitle { color: ${textMuted}; font-size: 12px; margin-top: 8px; }
                 
-                h2 { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; color: ${textMain}; margin-bottom: 20px; margin-top: 10px;}
+                h2 { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; color: ${textMain}; margin-bottom: 20px; margin-top: 20px;}
                 h2 span { color: ${accent}; margin-right: 8px; }
                 
-                .day-title { font-size: 15px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 20px; }
+                .day-title { font-size: 14px; font-weight: 700; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 20px; }
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 15px; }
                 
-                /* Truco de márgenes: El salto de página fuerza la bajada, y el padding empuja el texto hacia abajo simulando un margen nativo */
+                /* Truco de márgenes: El salto de página fuerza la bajada, y el padding empuja el texto hacia abajo */
                 .page-break { page-break-before: always; clear: both; padding-top: 40px; }
                 
-                .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 30px; margin-bottom: 15px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
+                /* PUNTO 2: Margen superior en títulos de evolución para no pegarse al techo */
+                .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 40px; margin-bottom: 15px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
                 
-                .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; background-color: ${bgBox}; }
+                /* PUNTO 2 y 4: Gráficos limpios y con espacio muerto reducido */
+                .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 10px; display: block; background-color: ${bgBox}; }
                 
                 .log-table { width: 100%; border-collapse: collapse; font-size: 12px; background-color: ${bgBox}; border-radius: 8px; border: 1px solid ${borderCol}; overflow: hidden; }
                 .log-table th { background-color: ${bgCard}; color: ${textMuted}; padding: 12px 10px; text-align: left; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid ${borderCol};}
@@ -1140,13 +1105,14 @@ window.exportUserDataPDF = async function() {
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
                 
-                .footer { text-align: center; color: ${textMuted}; font-size: 11px; font-weight: bold; padding: 20px 0; margin-top: 40px; border-top: 1px solid ${borderCol}; width: 100%; }
+                /* PUNTO 3: Footer calibrado para el algoritmo de relleno */
+                .footer { text-align: center; color: ${textMuted}; font-size: 11px; font-weight: bold; border-top: 1px solid ${borderCol}; padding-top: 15px; padding-bottom: 15px; width: 100%; margin-top: auto; }
             </style>
         `;
 
         let htmlContent = `
             ${styles}
-            <div class="pdf-wrapper">
+            <div class="pdf-inner-content">
                 <div class="pdf-header">
                     <div class="hat-logo"><span>H</span>AT</div>
                     <div class="report-title">Reporte de Alto Rendimiento</div>
@@ -1154,7 +1120,9 @@ window.exportUserDataPDF = async function() {
                 </div>
         `;
 
-        // --- 01: ESTADÍSTICAS GLOBALES ---
+        // ---------------------------------------------------------
+        // SECCIÓN 01: ESTADÍSTICAS GLOBALES
+        // ---------------------------------------------------------
         htmlContent += `<h2><span>01</span> Resumen Global de Entrenamiento</h2>`;
         if (sessions && sessions.length > 0) {
             const groupedSessions = {};
@@ -1163,8 +1131,9 @@ window.exportUserDataPDF = async function() {
                 groupedSessions[s.session_date] += s.duration_seconds;
             });
             const sessionDates = Object.keys(groupedSessions);
-            const sessionMins = sessionDates.map(d => Math.round(groupedSessions[d] / 60)); 
+            const sessionMins = sessionDates.map(d => Math.round(groupedSessions[d] / 60)); // Minutos para el gráfico de barras
 
+            // PUNTO 4: Limpieza de lienzo y fondo con el color del tema
             const ctx = tempCanvas.getContext('2d');
             ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
             ctx.fillStyle = bgBox; 
@@ -1184,10 +1153,17 @@ window.exportUserDataPDF = async function() {
                 options: {
                     responsive: false, animation: false, 
                     plugins: { legend: { display: false } },
-                    layout: { padding: { top: 20, bottom: 20, left: 15, right: 30 } },
+                    layout: { padding: { top: 20, bottom: 20, left: 10, right: 30 } },
                     scales: {
-                        y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 6, padding: 12 }, title: {display: true, text: "Minutos", color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
-                        x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
+                        y: { 
+                            grid: { color: borderCol, lineWidth: 2 }, 
+                            ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 6, padding: 12 }, 
+                            title: {display: true, text: "Minutos", color: textMuted, font: {size: 26, weight: 'bold'}, padding: {bottom: 15}} 
+                        },
+                        x: { 
+                            grid: { display: false }, 
+                            ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 10, padding: 12 } 
+                        }
                     }
                 }
             });
@@ -1198,24 +1174,25 @@ window.exportUserDataPDF = async function() {
 
             htmlContent += `
                 <div class="pdf-avoid-break" style="margin-bottom: 30px;">
-                    <img src="${globalChartImg}" class="chart-img" style="background-color: ${bgBox};" />
+                    <img src="${globalChartImg}" class="chart-img" />
                     <table class="log-table">
-                        <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido</th></tr></thead>
+                        <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido (H:M:S)</th></tr></thead>
                         <tbody>
             `;
+            // PUNTO 1: Aplicación de H:M:S en la tabla global
             [...sessionDates].reverse().forEach(date => {
-                const mins = Math.round(groupedSessions[date] / 60);
-                htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="text-align: right; color: ${textMuted}; font-weight: bold;">${mins} min</td></tr>`;
+                htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="text-align: right; color: ${textMuted}; font-weight: bold;">${formatSecondsToHMS(groupedSessions[date])}</td></tr>`;
             });
             htmlContent += `</tbody></table></div>`;
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">Aún no hay sesiones de entrenamiento global registradas.</p>`;
         }
 
-        // Salto de página antes de Rutina
         htmlContent += `<div class="page-break"></div>`;
 
-        // --- 02: RUTINA ---
+        // ---------------------------------------------------------
+        // SECCIÓN 02: RUTINA
+        // ---------------------------------------------------------
         htmlContent += `<h2><span>02</span> Rutina Semanal Detallada</h2>`;
         if (routines && routines.length > 0) {
             let currentDay = "";
@@ -1250,10 +1227,11 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay rutina configurada.</p>`;
         }
 
-        // Salto de página antes del Historial
         htmlContent += `<div class="page-break"></div>`;
 
-        // --- 03: HISTORIAL POR EJERCICIO ---
+        // ---------------------------------------------------------
+        // SECCIÓN 03: HISTORIAL POR EJERCICIO (Punto 2: Espacios muertos arreglados)
+        // ---------------------------------------------------------
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
         if (logs && logs.length > 0) {
@@ -1276,7 +1254,7 @@ window.exportUserDataPDF = async function() {
             }
             for (const exName in groupedLogs) {
                 if (!printedExercises.has(exName)) {
-                    orderedChartTasks.push({ dayGroup: 'Otros Ejercicios', exName: exName, logs: groupedLogs[exName] });
+                    orderedChartTasks.push({ dayGroup: 'Otros Ejercicios (Fuera de rutina)', exName: exName, logs: groupedLogs[exName] });
                 }
             }
 
@@ -1286,6 +1264,7 @@ window.exportUserDataPDF = async function() {
                 if (task.dayGroup !== currentSubDay) {
                     currentSubDay = task.dayGroup;
                     let dayLabel = currentSubDay.includes('Otros') ? currentSubDay : `DÍA: ${currentSubDay}`;
+                    // PUNTO 2: El sub-day-title tiene maring-top: 40px en el CSS de arriba
                     htmlContent += `<div class="sub-day-title">${dayLabel}</div>`;
                 }
 
@@ -1308,7 +1287,7 @@ window.exportUserDataPDF = async function() {
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
 
-                // LIMPIAR Y PINTAR EL LIENZO CON EL COLOR DEL TEMA
+                // PUNTO 4: Limpieza de lienzo y fondo con el color del tema (bgBox)
                 const ctx = tempCanvas.getContext('2d');
                 ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
                 ctx.fillStyle = bgBox; 
@@ -1316,7 +1295,7 @@ window.exportUserDataPDF = async function() {
 
                 const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
 
-                // GRÁFICOS: Espaciado con maxTicksLimit para evitar amontonamiento
+                // PUNTO 4: Gráficos adaptados. Chart.js usará las fuentes textMuted que ya calculamos dinámicamente.
                 const tempChart = new Chart(ctx, {
                     type: 'line',
                     data: {
@@ -1324,24 +1303,17 @@ window.exportUserDataPDF = async function() {
                         datasets: [{
                             data: maxData,
                             borderColor: accent,
-                            backgroundColor: isDark ? 'rgba(245, 73, 39, 0.1)' : 'rgba(245, 73, 39, 0.15)',
+                            backgroundColor: isDark ? 'rgba(245, 73, 39, 0.08)' : 'rgba(245, 73, 39, 0.15)',
                             borderWidth: 6, tension: 0.3, pointRadius: 6, fill: true
                         }]
                     },
                     options: {
                         responsive: false, animation: false, 
                         plugins: { legend: { display: false } },
-                        layout: { padding: { top: 20, bottom: 20, left: 15, right: 30 } },
+                        layout: { padding: { top: 20, bottom: 20, left: 10, right: 30 } },
                         scales: {
-                            y: { 
-                                grid: { color: borderCol, lineWidth: 2 }, 
-                                ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 5, padding: 12 }, 
-                                title: {display: true, text: titleY, color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} 
-                            },
-                            x: { 
-                                grid: { display: false }, 
-                                ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } 
-                            }
+                            y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 6, padding: 12 }, title: {display: true, text: titleY, color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
+                            x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
                         }
                     }
                 });
@@ -1352,8 +1324,8 @@ window.exportUserDataPDF = async function() {
 
                 htmlContent += `
                     <div class="pdf-avoid-break" style="margin-bottom: 30px;">
-                        <div style="font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 12px;">${escapeHTML(task.exName)}</div>
-                        <img src="${chartImageBase64}" class="chart-img" style="background-color: ${bgBox};" />
+                        <div style="font-size: 20px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 12px;">${escapeHTML(task.exName)}</div>
+                        <img src="${chartImageBase64}" class="chart-img" />
                         <table class="log-table">
                             <thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>
                             <tbody>
@@ -1381,21 +1353,37 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible.</p>`;
         }
 
+        // Div invisible que usaremos para rellenar la última página (Punto 3)
+        htmlContent += `<div id="pdf-filler" style="width: 100%;"></div>`;
+        htmlContent += `</div>`; // Cierra pdf-inner-content
         htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker | ${isDark ? 'Modo Oscuro' : 'Modo Impresión'}</div>`;
-        htmlContent += `</div>`; 
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // MOTOR DEL PDF: Le pasamos un margin 0, el color de fondo garantiza que llene cualquier hoja sobrante
+        // PUNTO 3: Algoritmo de Relleno Matemático para empujar el footer al final y pintar toda la hoja
+        const rect = element.getBoundingClientRect();
+        // La proporción A4 es 1.414. Si el ancho es 800px, el alto exacto de página es ~1131.42px
+        const pageHeightPixels = 1131.42; 
+        const currentTotalHeight = element.offsetHeight;
+        const remainder = currentTotalHeight % pageHeightPixels;
+        
+        if (remainder > 0) {
+            // Cuánto falta para terminar la hoja actual
+            const paddingToFill = pageHeightPixels - remainder;
+            // Lo aplicamos al filler para que empuje el footer hacia abajo
+            document.getElementById('pdf-filler').style.height = `${paddingToFill}px`;
+        }
+
+        // MOTOR DEL PDF: Pasamos un margin 0, el padding interno CSS y el algoritmo de relleno garantizan márgenes y fondo total
         const opt = {
-            margin:       0, 
+            margin:       0, // Vital: 0 margen nativo para pintar toda la hoja
             filename:     filename,
             image:        { type: 'jpeg', quality: 1.0 },
             html2canvas:  { scale: 3, useCORS: true, backgroundColor: bgPage, logging: false }, 
-            jsPDF:        { unit: 'px', format: [800, 1131], orientation: 'portrait' } 
+            jsPDF:        { unit: 'px', format: [800, 1131.42], orientation: 'portrait' } 
         };
 
         await html2pdf().set(opt).from(element).save();
