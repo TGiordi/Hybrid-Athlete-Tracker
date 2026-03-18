@@ -1038,61 +1038,76 @@ window.askPdfTheme = function() {
 };
 
 window.exportUserDataPDF = async function() {
-    try {
-        const themeChoice = await window.askPdfTheme();
-        if (!themeChoice) return;
+    const themeChoice = await window.askPdfTheme();
+    if (!themeChoice) return;
 
-        const isDark = (themeChoice === 'dark');
+    const isDark = (themeChoice === 'dark');
 
-        // Paletas de colores estrictas
-        const bgPage = isDark ? '#000000' : '#ffffff';
-        const bgCard = isDark ? '#171717' : '#ffffff';
-        const bgBox = isDark ? '#0a0a0a' : '#f8fafc'; 
-        const chartBgColor = isDark ? '#0a0a0a' : '#ffffff'; // Blanco puro para los gráficos en modo claro
-        const textMain = isDark ? '#ffffff' : '#0f172a';
-        const textMuted = isDark ? '#94A3B8' : '#475569';
-        const borderCol = isDark ? '#262626' : '#cbd5e1';
-        const accent = '#F54927';
+    // Paletas de colores
+    const bgPage = isDark ? '#000000' : '#ffffff';
+    const bgCard = isDark ? '#171717' : '#ffffff';
+    const bgBox = isDark ? '#0a0a0a' : '#f8fafc'; 
+    const chartBgColor = isDark ? '#0a0a0a' : '#f8fafc'; // Obligamos a que el fondo del gráfico sea blanco/grisáceo en modo claro
+    const textMain = isDark ? '#ffffff' : '#0f172a';
+    const textMuted = isDark ? '#94A3B8' : '#475569';
+    const borderCol = isDark ? '#262626' : '#cbd5e1';
+    const accent = '#F54927';
 
-        // Convertir segundos a formato 00:00:00
-        const formatTimeHMS = (totalSeconds) => {
-            const h = Math.floor(totalSeconds / 3600);
-            const m = Math.floor((totalSeconds % 3600) / 60);
-            const s = Math.floor(totalSeconds % 60);
-            return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
-        };
+    // Plugin mágico para arreglar el fondo negro de Chart.js en modo claro
+    const customBackgroundPlugin = {
+        id: 'customCanvasBackgroundColor',
+        beforeDraw: (chart) => {
+            const ctx = chart.canvas.getContext('2d');
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-over';
+            ctx.fillStyle = chartBgColor;
+            ctx.fillRect(0, 0, chart.width, chart.height);
+            ctx.restore();
+        }
+    };
 
-        const overlay = document.getElementById('ai-loading-overlay');
+    const formatSecondsToHMS = (seconds) => {
+        const h = Math.floor(seconds / 3600);
+        const m = Math.floor((seconds % 3600) / 60);
+        const s = Math.floor(seconds % 60);
+        return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
+    };
+
+    // Pantalla de carga segura
+    const overlay = document.getElementById('ai-loading-overlay');
+    if(overlay) {
         overlay.style.zIndex = "999999";
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
-        document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Dibujando gráficos y estructurando páginas. Aguardá...";
+    }
+    document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
+    document.getElementById('loading-desc').innerText = "Pintando gráficos y formateando hojas. Aguardá...";
 
-        const viewApp = document.getElementById('view-app');
-        if (viewApp) viewApp.style.display = 'none';
-        
-        const originalScrollY = window.scrollY;
-        document.body.style.overflow = 'visible';
-        document.documentElement.style.overflow = 'visible';
-        window.scrollTo(0, 0);
+    const viewApp = document.getElementById('view-app');
+    if (viewApp) viewApp.style.display = 'none';
+    
+    const originalScrollY = window.scrollY;
+    document.body.style.overflow = 'visible';
+    document.documentElement.style.overflow = 'visible';
+    window.scrollTo(0, 0);
 
-        const containerId = 'pdf-export-container-safe';
-        if (document.getElementById(containerId)) document.getElementById(containerId).remove();
+    const containerId = 'pdf-export-container-safe';
+    if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-        const element = document.createElement('div');
-        element.id = containerId;
-        // Position relative es fundamental para anclar el footer al fondo matemático
-        element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden; padding-bottom: 80px;`;
+    const element = document.createElement('div');
+    element.id = containerId;
+    element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; overflow: hidden;`;
 
-        const hiddenDiv = document.createElement('div');
-        hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = 1600;  
-        tempCanvas.height = 600; 
-        hiddenDiv.appendChild(tempCanvas);
-        document.body.appendChild(hiddenDiv);
+    // Lienzo temporal achatado (Proporción 4:1) para que entren 2 ejercicios por página y no haya espacios muertos
+    const hiddenDiv = document.createElement('div');
+    hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = 2400;  
+    tempCanvas.height = 600; 
+    hiddenDiv.appendChild(tempCanvas);
+    document.body.appendChild(hiddenDiv);
 
+    try {
         const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId);
         const { data: logs } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: true });
         const { data: sessions } = await supabaseClient.from('workout_sessions').select('*').eq('user_id', currentUserId).order('session_date', { ascending: true });
@@ -1121,7 +1136,7 @@ window.exportUserDataPDF = async function() {
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
                 #${containerId} * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
-                .pdf-wrapper { padding: 40px 40px 0 40px; width: 100%; }
+                .pdf-wrapper { padding: 40px; width: 100%; }
                 
                 .pdf-header { text-align: center; border-bottom: 2px solid ${borderCol}; padding-bottom: 20px; margin-bottom: 30px; }
                 .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; color: ${textMain}; }
@@ -1134,15 +1149,15 @@ window.exportUserDataPDF = async function() {
                 
                 .day-title { font-size: 15px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; }
                 
-                .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
+                /* Padding-top 20px crea un margen superior "seguro" si el elemento cae primero en una página nueva */
+                .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 25px; padding-top: 15px; }
                 
-                /* Márgenes controlados post salto de página */
-                .page-break { page-break-before: always; clear: both; }
-                .spacer { height: 40px; width: 100%; }
+                .page-break { page-break-before: always; clear: both; height: 1px; }
+                .spacer { height: 20px; width: 100%; }
                 
                 .sub-day-title { font-size: 12px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 10px; margin-bottom: 20px; border-bottom: 1px dashed ${borderCol}; padding-bottom: 5px; }
                 
-                .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; background-color: ${chartBgColor}; }
+                .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; }
                 
                 .log-table { width: 100%; border-collapse: collapse; font-size: 12px; background-color: ${bgBox}; border-radius: 8px; border: 1px solid ${borderCol}; overflow: hidden; }
                 .log-table th { background-color: ${bgCard}; color: ${textMuted}; padding: 12px 10px; text-align: left; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid ${borderCol};}
@@ -1151,8 +1166,7 @@ window.exportUserDataPDF = async function() {
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
                 
-                /* Footer pegado al fondo absoluto */
-                .footer { position: absolute; bottom: 30px; left: 0; width: 100%; text-align: center; color: ${textMuted}; font-size: 11px; font-weight: bold; border-top: 1px solid ${borderCol}; padding-top: 20px; }
+                .footer { text-align: center; color: ${textMuted}; font-size: 11px; font-weight: bold; padding: 20px 0; border-top: 1px solid ${borderCol}; width: 100%; }
             </style>
         `;
 
@@ -1179,8 +1193,6 @@ window.exportUserDataPDF = async function() {
 
             const ctx = tempCanvas.getContext('2d');
             ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-            ctx.fillStyle = chartBgColor; 
-            ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
             const globalChart = new Chart(ctx, {
                 type: 'bar',
@@ -1198,32 +1210,32 @@ window.exportUserDataPDF = async function() {
                     plugins: { legend: { display: false } },
                     layout: { padding: { top: 20, bottom: 20, left: 15, right: 30 } },
                     scales: {
-                        y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 6, padding: 12 }, title: {display: true, text: "Minutos", color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
-                        x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
+                        y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 32, weight: 'bold'}, maxTicksLimit: 6, padding: 12 }, title: {display: true, text: "Minutos", color: textMuted, font: {size: 34, weight: 'bold'}, padding: {bottom: 15}} },
+                        x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 30, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
                     }
-                }
+                },
+                plugins: [customBackgroundPlugin] // Aplica el plugin del fondo
             });
 
             await new Promise(r => setTimeout(r, 60)); 
-            const globalChartImg = tempCanvas.toDataURL('image/jpeg', 1.0); 
+            const globalChartImg = tempCanvas.toDataURL('image/png', 1.0); // Usamos PNG para preservar pureza
             globalChart.destroy(); 
 
             htmlContent += `
-                <div class="pdf-avoid-break" style="margin-bottom: 30px;">
-                    <img src="${globalChartImg}" class="chart-img" style="background-color: ${chartBgColor};" />
+                <div class="pdf-avoid-break">
+                    <img src="${globalChartImg}" class="chart-img" />
                     <table class="log-table">
-                        <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido</th></tr></thead>
+                        <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido (H:M:S)</th></tr></thead>
                         <tbody>
             `;
             [...sessionDates].reverse().forEach(date => {
-                htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="text-align: right; color: ${textMuted}; font-weight: bold;">${formatTimeHMS(groupedSessions[date])}</td></tr>`;
+                htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="text-align: right; color: ${textMuted}; font-weight: bold;">${formatSecondsToHMS(groupedSessions[date])}</td></tr>`;
             });
             htmlContent += `</tbody></table></div>`;
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">Aún no hay sesiones de entrenamiento global registradas.</p>`;
         }
 
-        // Salto de página con espaciador
         htmlContent += `<div class="page-break"></div><div class="spacer"></div>`;
 
         // --- 02: RUTINA ---
@@ -1319,8 +1331,6 @@ window.exportUserDataPDF = async function() {
 
                 const ctx = tempCanvas.getContext('2d');
                 ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-                ctx.fillStyle = chartBgColor; 
-                ctx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
 
                 const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
 
@@ -1331,8 +1341,8 @@ window.exportUserDataPDF = async function() {
                         datasets: [{
                             data: maxData,
                             borderColor: accent,
-                            backgroundColor: isDark ? 'rgba(245, 73, 39, 0.1)' : 'rgba(245, 73, 39, 0.15)',
-                            borderWidth: 6, tension: 0.3, pointRadius: 6, fill: true
+                            backgroundColor: isDark ? 'rgba(245, 73, 39, 0.15)' : 'rgba(245, 73, 39, 0.2)',
+                            borderWidth: 8, tension: 0.3, pointRadius: 8, fill: true
                         }]
                     },
                     options: {
@@ -1341,26 +1351,27 @@ window.exportUserDataPDF = async function() {
                         layout: { padding: { top: 20, bottom: 20, left: 15, right: 30 } },
                         scales: {
                             y: { 
-                                grid: { color: borderCol, lineWidth: 2 }, 
-                                ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 5, padding: 12 }, 
-                                title: {display: true, text: titleY, color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} 
+                                grid: { color: borderCol, lineWidth: 3 }, 
+                                ticks: { color: textMuted, font: {size: 32, weight: 'bold'}, maxTicksLimit: 5, padding: 12 }, 
+                                title: {display: true, text: titleY, color: textMuted, font: {size: 34, weight: 'bold'}, padding: {bottom: 15}} 
                             },
                             x: { 
                                 grid: { display: false }, 
-                                ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } 
+                                ticks: { color: textMuted, font: {size: 30, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } 
                             }
                         }
-                    }
+                    },
+                    plugins: [customBackgroundPlugin] // Magia blanca/negra según el tema
                 });
 
                 await new Promise(r => setTimeout(r, 60)); 
-                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 1.0); 
+                const chartImageBase64 = tempCanvas.toDataURL('image/png', 1.0); 
                 tempChart.destroy(); 
 
                 htmlContent += `
                     <div class="pdf-avoid-break">
                         <div style="font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 12px;">${escapeHTML(task.exName)}</div>
-                        <img src="${chartImageBase64}" class="chart-img" style="background-color: ${chartBgColor};" />
+                        <img src="${chartImageBase64}" class="chart-img" />
                         <table class="log-table">
                             <thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>
                             <tbody>
@@ -1388,51 +1399,63 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible.</p>`;
         }
 
+        // Relleno matemático
+        htmlContent += `<div id="pdf-filler" style="width: 100%;"></div>`;
+        htmlContent += `<div class="footer">Generado por Hybrid Athlete Tracker | ${isDark ? 'Modo Oscuro' : 'Modo Impresión'}</div>`;
         htmlContent += `</div>`; // Cierra pdf-wrapper
-        
-        // Footer flotante
-        htmlContent += `<div class="footer"><div style="width: 800px; margin: 0 auto; padding: 0 40px;">Generado por Hybrid Athlete Tracker | ${isDark ? 'Modo Oscuro' : 'Modo Impresión'}</div></div>`;
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
-        await new Promise(resolve => setTimeout(resolve, 800));
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Magia para eliminar la hoja blanca: Forzamos la altura a múltiplos de A4
-        const pageHeight = 1131.37; // A4 exacto para width 800px
-        const currentHeight = element.offsetHeight;
-        const totalPages = Math.ceil(currentHeight / pageHeight);
-        element.style.height = `${totalPages * pageHeight}px`;
+        // Algoritmo de relleno (Previene hojas blancas extra y ancla el footer al piso)
+        const pageHeightPixels = 1131.42; 
+        const currentTotalHeight = element.scrollHeight;
+        const remainder = currentTotalHeight % pageHeightPixels;
+        
+        if (remainder > 0) {
+            const paddingToFill = pageHeightPixels - remainder;
+            // Solo rellenamos si el hueco es mayor a 60px para evitar forzar una página extra en blanco por 1 pixel
+            if (paddingToFill > 60) {
+                document.getElementById('pdf-filler').style.height = `${paddingToFill - 50}px`; 
+            }
+        }
 
         const opt = {
             margin:       0, 
             filename:     filename,
             image:        { type: 'jpeg', quality: 1.0 },
             html2canvas:  { scale: 3, useCORS: true, backgroundColor: bgPage, logging: false }, 
-            jsPDF:        { unit: 'px', format: [800, 1131.37], orientation: 'portrait' } 
+            jsPDF:        { unit: 'px', format: [800, 1131.42], orientation: 'portrait' } 
         };
 
         await html2pdf().set(opt).from(element).save();
 
-        window.showToast("¡Reporte descargado exitosamente!");
-        window.playVictory();
+        // Si existe el toast, lo mostramos, sino no tiramos error
+        if(window.showToast) window.showToast("¡Reporte descargado exitosamente!");
+        if(window.playVictory) window.playVictory();
 
     } catch (error) {
         console.error("Error al generar PDF:", error);
-        window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
+        if(window.showMessage) window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
     } finally {
-        if (document.getElementById(containerId)) document.getElementById(containerId).remove();
-        if (hiddenDiv) hiddenDiv.remove(); 
-        
-        if (viewApp) viewApp.style.display = '';
-        
-        document.body.style.overflow = '';
-        document.documentElement.style.overflow = '';
-        window.scrollTo(0, originalScrollY);
-        
-        overlay.classList.remove('flex', 'bg-[#0a0a0a]');
-        overlay.classList.add('hidden', 'bg-black/90', 'backdrop-blur-md');
-        overlay.style.zIndex = ""; 
+        // Blindaje final: Esto se ejecuta SIEMPRE, haya error o no.
+        setTimeout(() => {
+            if (document.getElementById(containerId)) document.getElementById(containerId).remove();
+            if (hiddenDiv) hiddenDiv.remove(); 
+            if (viewApp) viewApp.style.display = '';
+            
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+            window.scrollTo(0, originalScrollY);
+            
+            if(overlay) {
+                overlay.classList.remove('flex', 'bg-[#0a0a0a]');
+                overlay.classList.add('hidden', 'bg-black/90', 'backdrop-blur-md');
+                overlay.style.zIndex = ""; 
+            }
+        }, 500);
     }
 };
 
