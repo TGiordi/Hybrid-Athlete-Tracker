@@ -52,7 +52,11 @@
 
     <nav class="border-b border-custom-border bg-custom-bg/90 backdrop-blur-md sticky top-0 z-40">
         <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
-            <div class="flex items-center gap-3 cursor-pointer" onclick="location.reload()">
+           <div class="flex items-center gap-3 cursor-pointer" onclick="location.reload()">
+                <button id="hat-install-btn" style="display: none;" class="items-center justify-center gap-1.5 bg-[#262626] hover:bg-custom-primary text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-[#404040] hover:border-custom-primary transition-colors shadow-sm" title="Instalar Aplicación">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    <span class="hidden sm:inline uppercase tracking-wider">App</span>
+                </button>
                 <svg class="w-8 h-8 text-custom-primary" viewBox="0 0 100 100" fill="currentColor"><rect width="100" height="100" rx="20"/><path d="M20 30h15v40H20zM65 30h15v40H65zM35 45h30v10H35z" fill="#0a0a0a"/></svg>
                 <span class="font-bold text-xl tracking-tighter hidden sm:block">Hybrid Athlete <span class="text-custom-primary">Tracker</span></span>
                 <span class="font-bold text-xl tracking-tighter sm:hidden">HAT</span>
@@ -304,10 +308,6 @@
             });
           }
     </script>
-    <button id="hat-install-btn" style="display: none;" class="items-center justify-center gap-1.5 bg-[#262626] hover:bg-custom-primary text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-[#404040] hover:border-custom-primary transition-colors shadow-sm" title="Instalar Aplicación">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
-        <span class="hidden sm:inline uppercase tracking-wider">App</span>
-    </button>
 
     <div id="hat-install-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-[999999] items-center justify-center p-4 transition-opacity">
     <div class="bg-[#171717] border border-[#262626] p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl relative overflow-hidden">
