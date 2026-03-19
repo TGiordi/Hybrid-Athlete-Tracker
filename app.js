@@ -1045,6 +1045,10 @@ function promptEditLog(exId, exName, dateStr, exType) {
 // --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - VERSIÓN DEFINITIVA) ---
 // =========================================================================
 
+// =========================================================================
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - VERSIÓN DEFINITIVA) ---
+// =========================================================================
+
 // 1. LA FUNCIÓN DEL CARTEL
 window.askPdfTheme = function() {
     return new Promise((resolve) => {
@@ -1103,9 +1107,16 @@ window.exportUserDataPDF = async function() {
     const textMuted = isDark ? '#94A3B8' : '#475569';
     const borderCol = isDark ? '#262626' : '#cbd5e1';
     
-    const accent = '#F54927'; // naranja
-    const teal = '#14b8a6';   // verde agua
-    const violet = '#a855f7'; // violeta
+    const accent = '#F54927'; 
+    const teal = '#14b8a6';   
+    const violet = '#a855f7'; 
+
+    // Colores puros RGBA para evitar fallos de parseo
+    const chartThemeColors = {
+        max: { border: accent, fillDark: 'rgba(245, 73, 39, 0.2)', fillLight: 'rgba(245, 73, 39, 0.15)' },
+        avg: { border: teal, fillDark: 'rgba(20, 184, 166, 0.2)', fillLight: 'rgba(20, 184, 166, 0.15)' },
+        dur: { border: violet, fillDark: 'rgba(168, 85, 247, 0.2)', fillLight: 'rgba(168, 85, 247, 0.15)' }
+    };
 
     const customBgPlugin = {
         id: 'customCanvasBg',
@@ -1113,7 +1124,7 @@ window.exportUserDataPDF = async function() {
             const ctx = chart.canvas.getContext('2d');
             ctx.save();
             ctx.globalCompositeOperation = 'destination-over';
-            ctx.fillStyle = bgPage; // 1. Solución: Fondo exacto de la página
+            ctx.fillStyle = bgPage; // Fondo 100% igual al papel
             ctx.fillRect(0, 0, chart.width, chart.height);
             ctx.restore();
         }
@@ -1143,7 +1154,7 @@ window.exportUserDataPDF = async function() {
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
         document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Renderizando gráficos finales. Aguardá unos segundos...";
+        document.getElementById('loading-desc').innerText = "Procesando gráficos de alto rendimiento. Aguardá unos segundos...";
     }
 
     const viewApp = document.getElementById('view-app');
@@ -1248,7 +1259,6 @@ window.exportUserDataPDF = async function() {
                 .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; }
                 .chart-title { font-size: 14px; font-weight: 700; color: ${textMain}; margin: 10px 0 5px; text-transform: uppercase; letter-spacing: 1px; }
                 
-                /* 2. Solución: Espaciado reducido a la mitad */
                 .chart-title.avg, .chart-title.dur { margin-top: 5px; } 
                 .chart-container { page-break-inside: avoid; margin-bottom: 20px; } 
                 
@@ -1261,13 +1271,13 @@ window.exportUserDataPDF = async function() {
                 
                 .hat-signature { text-align: center; margin-top: 40px; padding-top: 30px; padding-bottom: 30px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; page-break-before: avoid; }
                 
-                .exercise-header { margin-bottom: 20px; }
+                .exercise-header { margin-bottom: 10px; }
                 .exercise-name { font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; }
                 .table-header { font-size: 14px; font-weight: 700; color: ${textMain}; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: 1px; }
                 
-                .section-title { margin-top: 0; margin-bottom: 20px; }
-                .page-content { padding-top: 40px; padding-left: 40px; padding-right: 40px; }
-                .page-content.first-page { padding-top: 0; }
+                .section-title { margin-top: 0; margin-bottom: 10px; }
+                .page-content { padding-top: 30px; padding-left: 40px; padding-right: 40px; }
+                .page-content.first-page { padding-top: 10px; } /* Ajuste perfecto para el 1er ejercicio */
                 
                 .no-data-box { background-color: ${bgCard}; border: 1px dashed ${borderCol}; border-radius: 12px; padding: 40px; text-align: center; margin-top: 20px; margin-bottom: 40px; }
             </style>
@@ -1283,7 +1293,6 @@ window.exportUserDataPDF = async function() {
                 </div>
         `;
 
-        // Sección 01: Resumen Global
         htmlContent += `<h2><span>01</span> Resumen Global de Entrenamiento</h2>`;
         if (sessions && sessions.length > 0) {
             const groupedSessions = {};
@@ -1332,7 +1341,6 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div>`;
 
-        // Sección 02: Rutina Semanal
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>02</span> Rutina Semanal Detallada</h2>`;
         if (routines && routines.length > 0) {
@@ -1374,7 +1382,6 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
-        // Sección 03: Evolución y Progreso Visual
         if (logs && logs.length > 0) {
             const groupedLogs = {};
 
@@ -1411,9 +1418,8 @@ window.exportUserDataPDF = async function() {
                 const daysArray = Array.from(daysSet);
                 const dayLabel = daysArray.length > 1 ? `DÍAS: ${daysArray.join(', ')}` : `DÍA: ${daysArray[0]}`;
 
-                if (idx > 0) {
-                    htmlContent += `<div style="page-break-before: always;"></div>`;
-                }
+                // Salto de página estricto antes de iniciar el bloque de cada ejercicio (incluido el primero)
+                htmlContent += `<div style="page-break-before: always; width: 100%; height: 1px;"></div>`;
 
                 const pageContentClass = idx === 0 ? 'page-content first-page' : 'page-content';
                 htmlContent += `<div class="${pageContentClass}">`;
@@ -1427,7 +1433,6 @@ window.exportUserDataPDF = async function() {
                 htmlContent += `<div class="exercise-name">${escapeHTML(exName)}</div>`;
                 htmlContent += `</div>`;
 
-                // 5. Solución: Mensaje "Sin Datos" estilo HAT con su firma
                 if (!exLogs || exLogs.data.length === 0) {
                     htmlContent += `
                         <div class="no-data-box">
@@ -1445,7 +1450,6 @@ window.exportUserDataPDF = async function() {
                     continue; 
                 }
 
-                // Generación de Gráficos (Si hay datos)
                 const type = exLogs.type;
                 const chartGroupedData = {};
 
@@ -1476,17 +1480,15 @@ window.exportUserDataPDF = async function() {
                 const avgTitle = type === 'tiempo' ? 'Promedio por set (seg)' : 'Promedio reps';
                 const durTitle = 'Tiempo total (min)';
 
-                const colors = { max: accent, avg: teal, dur: violet };
-
-                const generateChart = async (data, label, color) => {
+                const generateChart = async (data, label, colorObj) => {
                     const ctx = tempCanvas.getContext('2d');
                     ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-                    const backgroundColor = isDark ? `rgba(${parseInt(color.slice(1,3),16)}, ${parseInt(color.slice(3,5),16)}, ${parseInt(color.slice(5,7),16)}, 0.2)` : `rgba(${parseInt(color.slice(1,3),16)}, ${parseInt(color.slice(3,5),16)}, ${parseInt(color.slice(5,7),16)}, 0.15)`;
+                    const backgroundColor = isDark ? colorObj.fillDark : colorObj.fillLight;
                     
                     const tempChart = new Chart(ctx, {
                         type: 'line',
-                        data: { labels: dates, datasets: [{ data: data, borderColor: color, backgroundColor: backgroundColor, borderWidth: 6, tension: 0.3, pointRadius: 6, fill: true }] },
+                        data: { labels: dates, datasets: [{ data: data, borderColor: colorObj.border, backgroundColor: backgroundColor, borderWidth: 6, tension: 0.3, pointRadius: 6, fill: true }] },
                         options: {
                             responsive: false, animation: false,
                             plugins: { legend: { display: false }, tooltip: { enabled: false } },
@@ -1507,24 +1509,23 @@ window.exportUserDataPDF = async function() {
 
                 htmlContent += `<div class="chart-container">`;
                 htmlContent += `<div class="chart-title max">${maxTitle}</div>`;
-                htmlContent += `<img src="${await generateChart(maxData, maxTitle, colors.max)}" class="chart-img" style="background-color: ${bgPage};" />`;
+                htmlContent += `<img src="${await generateChart(maxData, maxTitle, chartThemeColors.max)}" class="chart-img" style="background-color: ${bgPage};" />`;
                 htmlContent += `</div>`;
 
                 htmlContent += `<div class="chart-container">`;
                 htmlContent += `<div class="chart-title avg">${avgTitle}</div>`;
-                htmlContent += `<img src="${await generateChart(avgData, avgTitle, colors.avg)}" class="chart-img" style="background-color: ${bgPage};" />`;
+                htmlContent += `<img src="${await generateChart(avgData, avgTitle, chartThemeColors.avg)}" class="chart-img" style="background-color: ${bgPage};" />`;
                 htmlContent += `</div>`;
 
                 htmlContent += `<div class="chart-container">`;
                 htmlContent += `<div class="chart-title dur">${durTitle}</div>`;
-                htmlContent += `<img src="${await generateChart(totalDurData, durTitle, colors.dur)}" class="chart-img" style="background-color: ${bgPage};" />`;
+                htmlContent += `<img src="${await generateChart(totalDurData, durTitle, chartThemeColors.dur)}" class="chart-img" style="background-color: ${bgPage};" />`;
                 htmlContent += `</div>`;
-                htmlContent += `</div>`; // Cierra hoja de gráficos
+                htmlContent += `</div>`; 
 
-                // 3. Solución: Tabla forzada en hoja nueva con sus encabezados
                 const sortedDates = [...dates].reverse();
                 const totalRows = sortedDates.length;
-                const rowsPerPage = 15; // Límite super seguro
+                const rowsPerPage = 15; 
                 let start = 0;
 
                 while (start < totalRows) {
@@ -1532,7 +1533,7 @@ window.exportUserDataPDF = async function() {
                     const fragmentDates = sortedDates.slice(start, end);
 
                     htmlContent += `<div style="page-break-before: always;"></div>`;
-                    htmlContent += `<div class="page-content" style="padding-top: 40px;">`; // Margen superior asegurado
+                    htmlContent += `<div class="page-content" style="padding-top: 40px;">`; 
                     
                     htmlContent += `<div class="exercise-header">`;
                     htmlContent += `<div class="sub-day-title">${dayLabel}</div>`;
@@ -1563,7 +1564,6 @@ window.exportUserDataPDF = async function() {
 
                     htmlContent += `</tbody></table>`;
 
-                    // 4. Solución: Firma únicamente en la última hoja de la tabla
                     if (end === totalRows) {
                         htmlContent += `
                         <div class="hat-signature">
@@ -1573,7 +1573,7 @@ window.exportUserDataPDF = async function() {
                         </div>`;
                     }
 
-                    htmlContent += `</div>`; // Cierra hoja de tabla
+                    htmlContent += `</div>`; 
                     start = end;
                 }
             }
@@ -1585,15 +1585,23 @@ window.exportUserDataPDF = async function() {
         await document.fonts.ready;
         await new Promise(resolve => requestAnimationFrame(resolve));
         await new Promise(resolve => requestAnimationFrame(resolve));
-        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Tiempo extra para asegurar que hojas muy largas se armen completas
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Relleno final intacto (El que pinta la hoja hasta abajo)
         const PAGE_HEIGHT = 1131.428;
+        const totalHeight = element.scrollHeight;
+
+        // Escala Dinámica: Evita que el navegador corte documentos inmensos (límite de 32k píxeles)
+        let pdfScale = 2;
+        if (totalHeight > 14000) pdfScale = 1.5;
+        if (totalHeight > 20000) pdfScale = 1.2;
+
         const opt = {
             margin: 0,
             filename: filename,
             image: { type: 'jpeg', quality: 1.0 },
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: bgPage, logging: false, width: 800, height: element.scrollHeight },
+            html2canvas: { scale: pdfScale, useCORS: true, backgroundColor: bgPage, logging: false, width: 800, height: totalHeight },
             jsPDF: { unit: 'px', format: [800, PAGE_HEIGHT], orientation: 'portrait' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
@@ -1604,11 +1612,12 @@ window.exportUserDataPDF = async function() {
 
         const pageWidth = pdf.internal.pageSize.getWidth();
         const pageHeight = pdf.internal.pageSize.getHeight();
-        const totalHeight = element.scrollHeight;
-        const remainder = totalHeight % pageHeight;
+        const finalHeight = element.scrollHeight;
+        const remainder = finalHeight % pageHeight;
 
+        // Relleno nativo del PDF en la última hoja
         if (remainder > 5) {
-            const totalPages = Math.ceil(totalHeight / pageHeight);
+            const totalPages = Math.ceil(finalHeight / pageHeight);
             pdf.setPage(totalPages);
             const contentEndY = remainder;
             const rectHeight = pageHeight - contentEndY;
