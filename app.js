@@ -1036,21 +1036,8 @@ function promptEditLog(exId, exName, dateStr, exType) {
     openModal('modal-edit-log');
 }
 
-
-
-
-
-
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - VERSIÓN DEFINITIVA) ---
-// =========================================================================
-
-// =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - VERSIÓN DEFINITIVA) ---
-// =========================================================================
-
-// =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - ALTA RESOLUCIÓN) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL) ---
 // =========================================================================
 
 // 1. LA FUNCIÓN DEL CARTEL
@@ -1147,7 +1134,7 @@ window.exportUserDataPDF = async function() {
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
         document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Ensamblando páginas en alta resolución (x2). Aguardá unos segundos...";
+        document.getElementById('loading-desc').innerText = "Ensamblando páginas en alta resolución. Aguardá unos segundos...";
     }
 
     const viewApp = document.getElementById('view-app');
@@ -1606,8 +1593,6 @@ window.exportUserDataPDF = async function() {
 };
 
 window.exportUserData = window.exportUserDataPDF;
-
-
 
 // =========================================================================
 // EXPORTACIÓN GLOBAL 
