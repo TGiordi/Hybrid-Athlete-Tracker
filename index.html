@@ -304,5 +304,32 @@
             });
           }
     </script>
+    <button id="hat-install-btn" class="hidden fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-custom-primary text-white px-6 py-3 rounded-full font-black italic uppercase tracking-widest shadow-[0_10px_40px_rgba(245,73,39,0.4)] hover:scale-105 transition-transform z-40 flex items-center gap-2 border border-[#ff6a4d]">
+    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+    Instalar App
+    </button>
+
+    <div id="hat-install-modal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-[999999] items-center justify-center p-4 transition-opacity">
+    <div class="bg-[#171717] border border-[#262626] p-8 rounded-3xl w-full max-w-sm text-center shadow-2xl relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-32 h-32 bg-custom-primary/10 rounded-full blur-2xl"></div>
+        
+        <div class="w-20 h-20 bg-[#0a0a0a] border border-[#262626] text-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-inner">
+            <img src="icon-192.png" alt="HAT Logo" class="w-14 h-14 rounded-lg">
+        </div>
+        
+        <h3 class="text-2xl font-black italic text-white uppercase tracking-tight mb-2">HAT Alto Rendimiento</h3>
+        
+        <p id="install-modal-text" class="text-sm text-custom-textMuted mb-8 font-medium">Instalá la aplicación oficial para acceder a tus métricas más rápido, sin conexión y a pantalla completa.</p>
+        
+        <div class="flex flex-col gap-3">
+            <button id="btn-confirm-install" class="w-full bg-custom-primary hover:bg-[#d93d1f] text-white py-3.5 rounded-xl font-bold uppercase tracking-widest transition-all shadow-[0_5px_20px_rgba(245,73,39,0.3)]">
+                Confirmar Instalación
+            </button>
+            <button id="btn-cancel-install" class="mt-2 text-xs text-custom-textMuted hover:text-white uppercase tracking-widest font-bold transition-colors py-2">
+                Ahora no
+            </button>
+        </div>
+    </div>
+    </div>
 </body>
 </html>
