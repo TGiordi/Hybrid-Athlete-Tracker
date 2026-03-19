@@ -1292,14 +1292,13 @@ window.exportUserDataPDF = async function() {
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
                 
-                .hat-signature { text-align: center; margin-top: 80px; padding-top: 30px; padding-bottom: 30px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; page-break-before: avoid; }
-                .exercise-block { margin-top: 40px; }
-                .exercise-block:first-of-type { margin-top: 0; }
+                .hat-signature { text-align: center; margin-top: 150px; padding-top: 30px; padding-bottom: 30px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; page-break-before: avoid; }
                 .exercise-header { margin-bottom: 20px; }
                 .exercise-name { font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; }
                 .table-header { font-size: 14px; font-weight: 700; color: ${textMain}; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: 1px; }
                 .chart-container { page-break-inside: avoid; margin-bottom: 40px; }
                 .section-title { margin-top: 0; margin-bottom: 20px; }
+                .page-content { padding-top: 30px; }
             </style>
         `;
 
@@ -1426,14 +1425,12 @@ window.exportUserDataPDF = async function() {
                 if (routineNameMap[normLogName]) {
                     finalName = routineNameMap[normLogName];
                 } else {
-                    // Búsqueda más amplia: si el nombre del log contiene el nombre de rutina o viceversa
-                    const possibleMatch = Object.keys(routineNameMap).find(normRoutine =>
+                    const partialMatch = Object.keys(routineNameMap).find(normRoutine =>
                         normRoutine.includes(normLogName) || normLogName.includes(normRoutine)
                     );
-                    if (possibleMatch) finalName = routineNameMap[possibleMatch];
+                    if (partialMatch) finalName = routineNameMap[partialMatch];
                 }
 
-                // Si aún no hay match, intentar una comparación más flexible (eliminar espacios extras)
                 if (!finalName) {
                     const normalizedLog = normLogName.replace(/\s+/g, '');
                     const found = Object.keys(routineNameMap).find(key => key.replace(/\s+/g, '') === normalizedLog);
@@ -1443,8 +1440,6 @@ window.exportUserDataPDF = async function() {
                 if (finalName) {
                     if (!groupedLogs[finalName]) groupedLogs[finalName] = { type: l.exercise_type, data: [] };
                     groupedLogs[finalName].data.push(l);
-                } else {
-                    console.warn('Log sin match en rutina:', l.exercise_name);
                 }
             });
 
@@ -1568,6 +1563,9 @@ window.exportUserDataPDF = async function() {
                     htmlContent += `<div style="page-break-before: always;"></div>`;
                 }
 
+                // Contenedor con padding superior uniforme
+                htmlContent += `<div class="page-content">`;
+
                 // Título de sección
                 htmlContent += `<h2 class="section-title"><span>03</span> Evolución y Progreso Visual</h2>`;
 
@@ -1593,6 +1591,8 @@ window.exportUserDataPDF = async function() {
                 htmlContent += `<img src="${await generateChart(totalDurData, durTitle, colors.dur)}" class="chart-img" style="background-color: ${bgBox};" />`;
                 htmlContent += `</div>`;
 
+                htmlContent += `</div>`; // Cierre de page-content
+
                 // --- Páginas de tabla ---
                 const sortedDates = [...dates].reverse();
                 const totalRows = sortedDates.length;
@@ -1600,7 +1600,7 @@ window.exportUserDataPDF = async function() {
                 // Alturas estimadas
                 const pageHeight = 1131.428;
                 const wrapperPadding = 80; // 40+40
-                const headerHeight = 180; // altura del título sección + encabezado ejercicio
+                const headerHeight = 200; // título sección + encabezado ejercicio + padding
                 const tableTitleHeight = 30;
                 const rowHeight = 50;
                 const safetyMargin = 30;
@@ -1619,6 +1619,8 @@ window.exportUserDataPDF = async function() {
                     if (fragmentIndex > 0) {
                         htmlContent += `<div style="page-break-before: always;"></div>`;
                     }
+
+                    htmlContent += `<div class="page-content">`;
 
                     // Repetir título de sección, encabezado del ejercicio y título de tabla
                     htmlContent += `<h2 class="section-title"><span>03</span> Evolución y Progreso Visual</h2>`;
@@ -1659,6 +1661,8 @@ window.exportUserDataPDF = async function() {
                         htmlContent += `<div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>`;
                         htmlContent += `</div>`;
                     }
+
+                    htmlContent += `</div>`; // Cierre de page-content
 
                     start = end;
                     fragmentIndex++;
@@ -1741,7 +1745,6 @@ window.exportUserDataPDF = async function() {
         }, 500);
     }
 };
-
 
 
 
