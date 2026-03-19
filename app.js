@@ -1104,7 +1104,6 @@ window.exportUserDataPDF = async function() {
     const borderCol = isDark ? '#262626' : '#cbd5e1';
     const accent = '#F54927';
 
-    // Plugin para fondo de gráficos
     const customBgPlugin = {
         id: 'customCanvasBg',
         beforeDraw: (chart) => {
@@ -1128,7 +1127,6 @@ window.exportUserDataPDF = async function() {
         return name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ' '); 
     };
 
-    // Helper para convertir color hex a RGB (necesario para jsPDF)
     function hexToRgb(hex) {
         const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
         hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
@@ -1164,7 +1162,6 @@ window.exportUserDataPDF = async function() {
     element.id = containerId;
     element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: block;`;
 
-    // Canvas oculto para generar gráficos temporalmente
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
     const tempCanvas = document.createElement('canvas');
@@ -1174,7 +1171,6 @@ window.exportUserDataPDF = async function() {
     document.body.appendChild(hiddenDiv);
 
     try {
-        // Obtener datos de Supabase
         const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId);
         const { data: logs } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: true });
         const { data: sessions } = await supabaseClient.from('workout_sessions').select('*').eq('user_id', currentUserId).order('session_date', { ascending: true });
@@ -1182,7 +1178,6 @@ window.exportUserDataPDF = async function() {
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
         const filename = `HAT_Reporte_${isDark ? 'Oscuro' : 'Claro'}_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.pdf`;
 
-        // Ordenar rutinas por día
         const daysOrder = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 7 };
         routines.sort((a, b) => {
             const dayA = daysOrder[a.day_of_week.toLowerCase().trim()] || 8;
@@ -1196,7 +1191,6 @@ window.exportUserDataPDF = async function() {
             return map[day.toLowerCase().trim()] || day.toUpperCase();
         };
 
-        // Construir mapas de nombres normalizados
         const orderedExNames = [];
         const exerciseDaysMap = {};
         const routineNameMap = {};
@@ -1213,7 +1207,6 @@ window.exportUserDataPDF = async function() {
             exerciseDaysMap[officialName].add(formatDay(ex.day_of_week));
         });
 
-        // Estilos CSS para el PDF
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
@@ -1231,13 +1224,15 @@ window.exportUserDataPDF = async function() {
                 .day-title { font-size: 15px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 0; }
                 
                 .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
-                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 50px; padding-top: 15px; border-top: 1px solid transparent; }
+                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 50px; padding-top: 15px; border-top: 1px solid transparent; margin-top: 20px; }
+                .pdf-avoid-break-chart:first-of-type { margin-top: 5px; } /* Ajuste para el primer bloque después del título */
                 
                 .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
                 
                 .sub-day-title { font-size: 11px; color: ${textMuted}; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
                 
                 .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; }
+                .chart-title { font-size: 14px; font-weight: 700; color: ${textMain}; margin: 10px 0 5px; text-transform: uppercase; letter-spacing: 1px; }
                 
                 .log-table { width: 100%; border-collapse: collapse; font-size: 12px; background-color: ${bgBox}; border-radius: 8px; border: 1px solid ${borderCol}; overflow: hidden; }
                 .log-table th { background-color: ${bgCard}; color: ${textMuted}; padding: 12px 10px; text-align: left; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid ${borderCol};}
@@ -1245,10 +1240,11 @@ window.exportUserDataPDF = async function() {
                 .log-table tr:last-child td { border-bottom: none; }
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
+                
+                .hat-signature { text-align: center; margin-top: 40px; padding-top: 30px; padding-bottom: 30px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; page-break-before: avoid; }
             </style>
         `;
 
-        // Construcción del HTML del contenido
         let htmlContent = `
             ${styles}
             <div class="pdf-wrapper">
@@ -1358,7 +1354,7 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
-        // Sección 03: Evolución y Progreso
+        // Sección 03: Evolución y Progreso Visual (MEJORADA)
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
@@ -1402,68 +1398,115 @@ window.exportUserDataPDF = async function() {
                 htmlContent += `<p style="color: ${textMuted}; text-align: center; margin-top: 20px;">Aún no hay progreso registrado para los ejercicios de tu rutina actual.</p>`;
             }
 
-            for (const task of orderedChartTasks) {
+            // Variables para agrupar el último ejercicio con la firma
+            let lastExerciseIndex = orderedChartTasks.length - 1;
+
+            for (let idx = 0; idx < orderedChartTasks.length; idx++) {
+                const task = orderedChartTasks[idx];
                 const exLogs = task.logs;
                 const type = exLogs.type;
 
+                // Agrupar datos por fecha
                 const chartGroupedData = {};
 
                 exLogs.data.forEach(log => {
                     const [year, month, day] = log.log_date.split('-');
                     const dateStr = new Date(year, month - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
-                    if (!chartGroupedData[dateStr]) chartGroupedData[dateStr] = { maxStat: 0, sets: [] };
+                    if (!chartGroupedData[dateStr]) chartGroupedData[dateStr] = { 
+                        maxStat: 0, 
+                        sumReps: 0, 
+                        countSets: 0,
+                        totalDuration: 0,
+                        sets: [] 
+                    };
+                    
+                    // Para máximo
                     if (type === 'tiempo') {
                         if (log.time_seconds > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.time_seconds;
                     } else {
                         if (log.weight > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.weight;
                     }
+                    
+                    // Para promedios (reps o tiempo)
+                    if (type === 'fuerza') {
+                        chartGroupedData[dateStr].sumReps += log.reps;
+                    } else {
+                        // Para tiempo, podríamos promediar time_seconds por set
+                        chartGroupedData[dateStr].sumReps += log.time_seconds; // reusamos sumReps para acumular tiempo
+                    }
+                    chartGroupedData[dateStr].countSets++;
+                    
+                    // Duración total del ejercicio (exercise_duration)
+                    if (log.exercise_duration) {
+                        chartGroupedData[dateStr].totalDuration += log.exercise_duration;
+                    }
+                    
                     chartGroupedData[dateStr].sets.push(log);
                 });
 
                 const dates = Object.keys(chartGroupedData);
                 const maxData = dates.map(d => chartGroupedData[d].maxStat);
+                const avgData = dates.map(d => chartGroupedData[d].countSets > 0 ? chartGroupedData[d].sumReps / chartGroupedData[d].countSets : 0);
+                const totalDurData = dates.map(d => Math.round(chartGroupedData[d].totalDuration / 60)); // en minutos
 
-                const ctx = tempCanvas.getContext('2d');
-                ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+                // Determinar títulos según tipo
+                let maxTitle = type === 'tiempo' ? 'Máximo (segundos)' : 'Máximo (kg)';
+                let avgTitle = type === 'tiempo' ? 'Promedio por set (seg)' : 'Promedio reps';
+                let durTitle = 'Tiempo total (min)';
 
-                const titleY = type === 'tiempo' ? 'Segundos' : 'Kilogramos';
-
-                const tempChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: dates,
-                        datasets: [{
-                            data: maxData,
-                            borderColor: accent,
-                            backgroundColor: isDark ? 'rgba(245, 73, 39, 0.1)' : 'rgba(245, 73, 39, 0.15)',
-                            borderWidth: 6, tension: 0.3, pointRadius: 6, fill: true
-                        }]
-                    },
-                    options: {
-                        responsive: false, animation: false,
-                        plugins: { legend: { display: false } },
-                        layout: { padding: { top: 20, bottom: 20, left: 15, right: 30 } },
-                        scales: {
-                            y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 5, padding: 12 }, title: {display: true, text: titleY, color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
-                            x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
-                        }
-                    },
-                    plugins: [customBgPlugin]
-                });
-
-                await new Promise(r => setTimeout(r, 60));
-                const chartImageBase64 = tempCanvas.toDataURL('image/jpeg', 1.0);
-                tempChart.destroy();
-
-                htmlContent += `
+                // Inicio del bloque del ejercicio
+                let exerciseBlock = `
                     <div class="pdf-avoid-break-chart">
                         <div class="sub-day-title">${task.dayLabel}</div>
                         <div style="font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; margin-bottom: 12px;">${escapeHTML(task.exName)}</div>
-                        <img src="${chartImageBase64}" class="chart-img" style="background-color: ${bgBox};" />
-                        <table class="log-table">
-                            <thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>
-                            <tbody>
                 `;
+
+                // Función auxiliar para generar un gráfico
+                const generateChart = async (data, label, title) => {
+                    const ctx = tempCanvas.getContext('2d');
+                    ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                    const tempChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: dates,
+                            datasets: [{
+                                data: data,
+                                borderColor: accent,
+                                backgroundColor: isDark ? 'rgba(245, 73, 39, 0.1)' : 'rgba(245, 73, 39, 0.15)',
+                                borderWidth: 6, tension: 0.3, pointRadius: 6, fill: true
+                            }]
+                        },
+                        options: {
+                            responsive: false, animation: false,
+                            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                            layout: { padding: { top: 20, bottom: 20, left: 15, right: 30 } },
+                            scales: {
+                                y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 5, padding: 12 }, title: {display: true, text: label, color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
+                                x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
+                            }
+                        },
+                        plugins: [customBgPlugin]
+                    });
+
+                    await new Promise(r => setTimeout(r, 60));
+                    const imgBase64 = tempCanvas.toDataURL('image/jpeg', 1.0);
+                    tempChart.destroy();
+                    return imgBase64;
+                };
+
+                // Generar gráficos secuencialmente
+                const maxImg = await generateChart(maxData, maxTitle, 'Máximo');
+                exerciseBlock += `<div class="chart-title">${maxTitle}</div><img src="${maxImg}" class="chart-img" style="background-color: ${bgBox};" />`;
+
+                const avgImg = await generateChart(avgData, avgTitle, 'Promedio');
+                exerciseBlock += `<div class="chart-title">${avgTitle}</div><img src="${avgImg}" class="chart-img" style="background-color: ${bgBox};" />`;
+
+                const durImg = await generateChart(totalDurData, durTitle, 'Duración');
+                exerciseBlock += `<div class="chart-title">${durTitle}</div><img src="${durImg}" class="chart-img" style="background-color: ${bgBox};" />`;
+
+                // Tabla de series
+                exerciseBlock += `<table class="log-table"><thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead><tbody>`;
 
                 [...dates].reverse().forEach(date => {
                     const dayData = chartGroupedData[date];
@@ -1479,25 +1522,38 @@ window.exportUserDataPDF = async function() {
 
                     let totalDur = dayData.sets[0].exercise_duration || 0;
                     let durText = totalDur > 0 ? `${Math.floor(totalDur/60)}m ${totalDur%60}s` : '-';
-                    htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="color:${textMuted};">${durText}</td><td>${badges}</td></tr>`;
+                    exerciseBlock += `<tr><td style="font-weight:700;">${date}</td><td style="color:${textMuted};">${durText}</td><td>${badges}</td></tr>`;
                 });
-                htmlContent += `</tbody></table></div>`;
+
+                exerciseBlock += `</tbody></table>`;
+
+                // Si es el último ejercicio, agregar la firma dentro del mismo bloque
+                if (idx === lastExerciseIndex) {
+                    exerciseBlock += `
+                        <div class="hat-signature">
+                            <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
+                            <div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>
+                            <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
+                        </div>
+                    `;
+                }
+
+                exerciseBlock += `</div>`; // Cierre del bloque pdf-avoid-break-chart
+                htmlContent += exerciseBlock;
             }
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
         }
 
-        // Se eliminó el div #pdf-filler y sus cálculos; ahora el relleno se hace en el PDF directamente.
-        htmlContent += `</div></div>`; 
+        htmlContent += `</div></div>`; // Cierre de page-break-container y pdf-wrapper
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
-        // Dar tiempo para que se rendericen las imágenes (especialmente los canvas convertidos a img)
         await new Promise(resolve => setTimeout(resolve, 800));
 
         // --- Configuración del PDF ---
-        const PAGE_HEIGHT = 1131.428; // mismo valor usado en jsPDF.format
+        const PAGE_HEIGHT = 1131.428;
         const opt = {
             margin:       0,
             filename:     filename,
@@ -1512,46 +1568,28 @@ window.exportUserDataPDF = async function() {
             pagebreak:    { mode: ['css', 'legacy'] }
         };
 
-        // Iniciar worker
         const worker = html2pdf().set(opt).from(element);
-
-        // Generar el PDF y obtener el objeto jsPDF
         await worker.toPdf();
         const pdf = await worker.get('pdf');
 
-        // --- AJUSTE DE LA ÚLTIMA PÁGINA (elimina franja blanca) ---
-        const pageWidth = pdf.internal.pageSize.getWidth();   // 800 px
-        const pageHeight = pdf.internal.pageSize.getHeight(); // 1131.428 px
-
-        // Altura total del contenido renderizado (en píxeles del DOM)
+        // Ajuste de la última página (relleno de color)
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
         const totalHeight = element.scrollHeight;
-
-        // Espacio restante en la última página (0 si el contenido llena justo o sobra muy poco)
         const remainder = totalHeight % pageHeight;
 
-        // Tolerancia para evitar dibujar rectángulos por errores de redondeo
         if (remainder > 0.1) {
             const totalPages = Math.ceil(totalHeight / pageHeight);
-            pdf.setPage(totalPages); // Nos movemos a la última página
-
-            // Coordenada Y donde termina el contenido (desde arriba)
+            pdf.setPage(totalPages);
             const contentEndY = remainder;
-
-            // Altura del rectángulo a rellenar
             const rectHeight = pageHeight - contentEndY;
-
-            // Convertir color de fondo a RGB
             const rgb = hexToRgb(bgPage);
             pdf.setFillColor(rgb.r, rgb.g, rgb.b);
-
-            // Dibujar rectángulo relleno en la zona vacía
             pdf.rect(0, contentEndY, pageWidth, rectHeight, 'F');
         }
 
-        // Guardar el PDF modificado
         pdf.save(filename);
 
-        // Notificaciones de éxito
         if(window.showToast) window.showToast("¡Reporte descargado exitosamente!");
         if(window.playVictory) window.playVictory();
 
@@ -1559,7 +1597,6 @@ window.exportUserDataPDF = async function() {
         console.error("Error al generar PDF:", error);
         if(window.showMessage) window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
     } finally {
-        // Limpieza: remover elementos temporales y restaurar scroll
         setTimeout(() => {
             if (document.getElementById(containerId)) document.getElementById(containerId).remove();
             if (hiddenDiv) hiddenDiv.remove();
@@ -1577,7 +1614,6 @@ window.exportUserDataPDF = async function() {
         }, 500);
     }
 };
-
 // Asignar al objeto global para compatibilidad
 window.exportUserData = window.exportUserDataPDF;
 
