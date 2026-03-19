@@ -1189,6 +1189,11 @@ window.exportUserDataPDF = async function() {
     if (viewApp) viewApp.style.display = 'none';
     
     const originalScrollY = window.scrollY;
+    // Asegurar que body y html no tengan márgenes/paddings que desplacen el contenido
+    document.body.style.margin = '0';
+    document.body.style.padding = '0';
+    document.documentElement.style.margin = '0';
+    document.documentElement.style.padding = '0';
     document.body.style.overflow = 'visible';
     document.documentElement.style.overflow = 'visible';
     window.scrollTo(0, 0);
@@ -1196,10 +1201,21 @@ window.exportUserDataPDF = async function() {
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
+    // Crear el elemento con posicionamiento absoluto en la esquina superior izquierda
     const element = document.createElement('div');
     element.id = containerId;
-    // Eliminamos margin: 0 auto para evitar posibles desplazamientos laterales
-    element.style.cssText = `width: 800px; margin: 0; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: block;`;
+    element.style.cssText = `
+        width: 800px;
+        margin: 0;
+        padding: 0;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-color: ${bgPage};
+        color: ${textMain};
+        box-sizing: border-box;
+        display: block;
+    `;
 
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
@@ -1398,7 +1414,7 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
-        // Sección 03: Evolución y Progreso Visual (SIMPLIFICADA)
+        // Sección 03: Evolución y Progreso Visual
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
@@ -1572,13 +1588,12 @@ window.exportUserDataPDF = async function() {
                 htmlContent += `<img src="${await generateChart(totalDurData, durTitle, colors.dur)}" class="chart-img" style="background-color: ${bgBox};" />`;
                 htmlContent += `</div>`;
 
-                // Tabla (puede dividirse en varias páginas naturalmente)
+                // Tabla
                 htmlContent += `<div class="table-header">Detalle de series</div>`;
                 htmlContent += `<table class="log-table">`;
                 htmlContent += `<thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>`;
                 htmlContent += `<tbody>`;
 
-                // Ordenar fechas descendente para la tabla
                 const sortedDates = [...dates].reverse();
                 sortedDates.forEach(date => {
                     const dayData = chartGroupedData[date];
@@ -1616,23 +1631,26 @@ window.exportUserDataPDF = async function() {
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
+        // Esperar a que se renderice completamente
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // --- Configuración del PDF ---
+        // --- Configuración del PDF (ahora con dimensiones forzadas) ---
         const PAGE_HEIGHT = 1131.428;
         const opt = {
-            margin:       0,
-            filename:     filename,
-            image:        { type: 'jpeg', quality: 1.0 },
-            html2canvas:  {
-                scale: 3,
+            margin: 0,
+            filename: filename,
+            image: { type: 'jpeg', quality: 1.0 },
+            html2canvas: {
+                scale: 2, // buena calidad
                 useCORS: true,
                 backgroundColor: bgPage,
                 logging: false,
-                windowWidth: 800
+                // Forzar el ancho y alto exactos del elemento
+                width: 800,
+                height: element.scrollHeight
             },
-            jsPDF:        { unit: 'px', format: [800, PAGE_HEIGHT], orientation: 'portrait' },
-            pagebreak:    { mode: ['css', 'legacy'] }
+            jsPDF: { unit: 'px', format: [800, PAGE_HEIGHT], orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] }
         };
 
         const worker = html2pdf().set(opt).from(element);
@@ -1669,6 +1687,11 @@ window.exportUserDataPDF = async function() {
             if (hiddenDiv) hiddenDiv.remove();
             if (viewApp) viewApp.style.display = '';
 
+            // Restaurar estilos del body
+            document.body.style.margin = '';
+            document.body.style.padding = '';
+            document.documentElement.style.margin = '';
+            document.documentElement.style.padding = '';
             document.body.style.overflow = '';
             document.documentElement.style.overflow = '';
             window.scrollTo(0, originalScrollY);
