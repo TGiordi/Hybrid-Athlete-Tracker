@@ -1,7 +1,7 @@
 {
   "name": "HAT - Alto Rendimiento",
   "short_name": "HAT",
-  "start_url": "/",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#F54927",
