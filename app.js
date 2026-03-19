@@ -1049,6 +1049,10 @@ function promptEditLog(exId, exName, dateStr, exType) {
 // --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - VERSIÓN DEFINITIVA) ---
 // =========================================================================
 
+// =========================================================================
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - ALTA RESOLUCIÓN) ---
+// =========================================================================
+
 // 1. LA FUNCIÓN DEL CARTEL
 window.askPdfTheme = function() {
     return new Promise((resolve) => {
@@ -1093,7 +1097,7 @@ window.askPdfTheme = function() {
     });
 };
 
-// 2. EL GENERADOR DEL PDF
+// 2. EL GENERADOR DEL PDF (RESOLUCIÓN DOBLE - PÁGINA POR PÁGINA)
 window.exportUserDataPDF = async function() {
     const themeChoice = await window.askPdfTheme();
     if (!themeChoice) return;
@@ -1107,15 +1111,11 @@ window.exportUserDataPDF = async function() {
     const textMuted = isDark ? '#94A3B8' : '#475569';
     const borderCol = isDark ? '#262626' : '#cbd5e1';
     
-    const accent = '#F54927'; 
-    const teal = '#14b8a6';   
-    const violet = '#a855f7'; 
-
-    // Colores puros RGBA para evitar fallos de parseo
+    // Configuración exacta de colores
     const chartThemeColors = {
-        max: { border: accent, fillDark: 'rgba(245, 73, 39, 0.2)', fillLight: 'rgba(245, 73, 39, 0.15)' },
-        avg: { border: teal, fillDark: 'rgba(20, 184, 166, 0.2)', fillLight: 'rgba(20, 184, 166, 0.15)' },
-        dur: { border: violet, fillDark: 'rgba(168, 85, 247, 0.2)', fillLight: 'rgba(168, 85, 247, 0.15)' }
+        max: { border: '#F54927', fillDark: 'rgba(245, 73, 39, 0.2)', fillLight: 'rgba(245, 73, 39, 0.15)' }, // Naranja
+        avg: { border: '#3b82f6', fillDark: 'rgba(59, 130, 246, 0.2)', fillLight: 'rgba(59, 130, 246, 0.15)' }, // Azul HAT
+        dur: { border: '#a855f7', fillDark: 'rgba(168, 85, 247, 0.2)', fillLight: 'rgba(168, 85, 247, 0.15)' }  // Violeta
     };
 
     const customBgPlugin = {
@@ -1124,7 +1124,7 @@ window.exportUserDataPDF = async function() {
             const ctx = chart.canvas.getContext('2d');
             ctx.save();
             ctx.globalCompositeOperation = 'destination-over';
-            ctx.fillStyle = bgPage; // Fondo 100% igual al papel
+            ctx.fillStyle = bgPage; 
             ctx.fillRect(0, 0, chart.width, chart.height);
             ctx.restore();
         }
@@ -1141,30 +1141,19 @@ window.exportUserDataPDF = async function() {
         return name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ' ');
     };
 
-    function hexToRgb(hex) {
-        const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
-        hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-        return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null;
-    }
-
     const overlay = document.getElementById('ai-loading-overlay');
     if(overlay) {
         overlay.style.zIndex = "999999";
         overlay.classList.remove('hidden', 'bg-black/90', 'backdrop-blur-md');
         overlay.classList.add('flex', 'bg-[#0a0a0a]'); 
         document.getElementById('loading-title').innerText = `Compilando Reporte ${isDark ? 'Oscuro' : 'Claro'}...`;
-        document.getElementById('loading-desc').innerText = "Procesando gráficos de alto rendimiento. Aguardá unos segundos...";
+        document.getElementById('loading-desc').innerText = "Ensamblando páginas en alta resolución (x2). Aguardá unos segundos...";
     }
 
     const viewApp = document.getElementById('view-app');
     if (viewApp) viewApp.style.display = 'none';
     
     const originalScrollY = window.scrollY;
-    document.body.style.margin = '0';
-    document.body.style.padding = '0';
-    document.documentElement.style.margin = '0';
-    document.documentElement.style.padding = '0';
     document.body.style.overflow = 'visible';
     document.documentElement.style.overflow = 'visible';
     window.scrollTo(0, 0);
@@ -1172,23 +1161,9 @@ window.exportUserDataPDF = async function() {
     const containerId = 'pdf-export-container-safe';
     if (document.getElementById(containerId)) document.getElementById(containerId).remove();
 
-    const element = document.createElement('div');
-    element.id = containerId;
-    element.style.cssText = `
-        width: 800px;
-        margin: 0;
-        padding: 0;
-        position: absolute;
-        top: 0;
-        left: 0;
-        background-color: ${bgPage};
-        color: ${textMain};
-        box-sizing: border-box;
-        display: block;
-    `;
-
+    // Contenedor invisible general
     const hiddenDiv = document.createElement('div');
-    hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
+    hiddenDiv.style.cssText = "position: absolute; top: -99999px; left: -99999px; width: 800px;";
     const tempCanvas = document.createElement('canvas');
     tempCanvas.width = 1600;
     tempCanvas.height = 600; 
@@ -1236,64 +1211,47 @@ window.exportUserDataPDF = async function() {
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
-                #${containerId} * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
-                .pdf-wrapper { padding: 40px; width: 100%; }
-                
+                .pdf-page-node { width: 800px; height: 1131px; background-color: ${bgPage}; color: ${textMain}; position: relative; overflow: hidden; padding: 40px; box-sizing: border-box; display: flex; flex-direction: column; font-family: 'Montserrat', sans-serif !important; }
+                .pdf-page-node * { font-family: 'Montserrat', sans-serif !important; box-sizing: border-box; }
                 .pdf-header { text-align: center; border-bottom: 2px solid ${borderCol}; padding-bottom: 20px; margin-bottom: 30px; }
                 .hat-logo { font-weight: 900; font-style: italic; font-size: 38px; letter-spacing: -2px; color: ${textMain}; }
-                .hat-logo span { color: ${accent}; }
+                .hat-logo span { color: ${chartThemeColors.max.border}; }
                 .report-title { font-size: 16px; font-weight: 700; color: ${textMuted}; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px; }
-                
-                h2 { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; color: ${textMain}; margin-bottom: 20px; margin-top: 10px;}
-                h2 span { color: ${accent}; margin-right: 8px; }
-                
-                .day-title { font-size: 15px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${accent}; margin-top: 0; }
-                
-                .pdf-avoid-break { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 20px; }
-                .pdf-avoid-break-chart { page-break-inside: avoid !important; break-inside: avoid !important; display: block; width: 100%; margin-bottom: 50px; padding-top: 15px; border-top: 1px solid transparent; margin-top: 20px; }
-                
-                .page-break-container { page-break-before: always; clear: both; padding-top: 40px; border-top: 1px solid transparent; width: 100%; }
-                
+                .section-title { font-size: 22px; font-weight: 900; font-style: italic; text-transform: uppercase; color: ${textMain}; margin-top: 0; margin-bottom: 20px; }
+                .section-title span { color: ${chartThemeColors.max.border}; margin-right: 8px; }
+                .day-title { font-size: 15px; font-weight: 900; color: ${chartThemeColors.max.border}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; padding-left: 10px; border-left: 3px solid ${chartThemeColors.max.border}; margin-top: 0; }
                 .sub-day-title { font-size: 11px; color: ${textMuted}; font-weight: bold; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
-                
-                .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; margin-bottom: 15px; display: block; }
-                .chart-title { font-size: 14px; font-weight: 700; color: ${textMain}; margin: 10px 0 5px; text-transform: uppercase; letter-spacing: 1px; }
-                
-                .chart-title.avg, .chart-title.dur { margin-top: 5px; } 
-                .chart-container { page-break-inside: avoid; margin-bottom: 20px; } 
-                
+                .chart-container { margin-bottom: 15px; }
+                .chart-title { font-size: 14px; font-weight: 700; color: ${textMain}; margin: 5px 0; text-transform: uppercase; letter-spacing: 1px; }
+                .chart-img { width: 100%; height: auto; border: 1px solid ${borderCol}; border-radius: 12px; display: block; }
                 .log-table { width: 100%; border-collapse: collapse; font-size: 12px; background-color: ${bgBox}; border-radius: 8px; border: 1px solid ${borderCol}; overflow: hidden; }
-                .log-table th { background-color: ${bgCard}; color: ${textMuted}; padding: 12px 10px; text-align: left; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid ${borderCol};}
+                .log-table th { background-color: ${bgCard}; color: ${textMuted}; padding: 12px 10px; text-align: left; text-transform: uppercase; font-weight: 700; border-bottom: 1px solid ${borderCol}; }
                 .log-table td { padding: 12px 10px; border-bottom: 1px solid ${borderCol}; color: ${textMain}; }
                 .log-table tr:last-child td { border-bottom: none; }
-                
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
-                
-                .hat-signature { text-align: center; margin-top: 40px; padding-top: 30px; padding-bottom: 30px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; page-break-before: avoid; }
-                
-                .exercise-header { margin-bottom: 10px; }
-                .exercise-name { font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; }
+                .exercise-header { margin-bottom: 15px; }
+                .exercise-name { font-size: 18px; color: ${chartThemeColors.max.border}; font-style: italic; font-weight: 900; text-transform: uppercase; }
                 .table-header { font-size: 14px; font-weight: 700; color: ${textMain}; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: 1px; }
-                
-                .section-title { margin-top: 0; margin-bottom: 10px; }
-                .page-content { padding-top: 30px; padding-left: 40px; padding-right: 40px; }
-                .page-content.first-page { padding-top: 10px; } /* Ajuste perfecto para el 1er ejercicio */
-                
                 .no-data-box { background-color: ${bgCard}; border: 1px dashed ${borderCol}; border-radius: 12px; padding: 40px; text-align: center; margin-top: 20px; margin-bottom: 40px; }
+                .hat-signature { margin-top: auto; text-align: center; padding-top: 25px; border-top: 1px dashed ${borderCol}; }
             </style>
         `;
 
-        let htmlContent = `
-            ${styles}
-            <div class="pdf-wrapper">
-                <div class="pdf-header">
-                    <div class="hat-logo"><span>H</span>AT</div>
-                    <div class="report-title">Reporte de Alto Rendimiento</div>
-                    <div style="color: ${textMuted}; font-size: 12px; margin-top: 8px;">Atleta: ${userEmail} | Generado: ${new Date().toLocaleDateString('es-AR')}</div>
-                </div>
+        let pagesHtml = '';
+        const openPage = () => `<div class="pdf-page-node">`;
+        const closePage = () => `</div>`;
+
+        // ================= PÁGINA 1: RESUMEN GLOBAL =================
+        pagesHtml += openPage();
+        pagesHtml += `
+            <div class="pdf-header">
+                <div class="hat-logo"><span>H</span>AT</div>
+                <div class="report-title">Reporte de Alto Rendimiento</div>
+                <div style="color: ${textMuted}; font-size: 12px; margin-top: 8px;">Atleta: ${userEmail} | Generado: ${new Date().toLocaleDateString('es-AR')}</div>
+            </div>
+            <h2 class="section-title"><span>01</span> Resumen Global de Entrenamiento</h2>
         `;
 
-        htmlContent += `<h2><span>01</span> Resumen Global de Entrenamiento</h2>`;
         if (sessions && sessions.length > 0) {
             const groupedSessions = {};
             sessions.forEach(s => {
@@ -1325,63 +1283,77 @@ window.exportUserDataPDF = async function() {
             const globalChartImg = tempCanvas.toDataURL('image/jpeg', 1.0); 
             globalChart.destroy();
 
-            htmlContent += `
-                <div class="pdf-avoid-break-chart" style="padding-top: 0; border-top: none;">
-                    <img src="${globalChartImg}" class="chart-img" style="background-color: ${bgPage};" />
-                    <table class="log-table">
-                        <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido (H:M:S)</th></tr></thead>
-                        <tbody>
+            pagesHtml += `
+                <img src="${globalChartImg}" class="chart-img" style="background-color: ${bgPage}; margin-bottom: 20px;" />
+                <table class="log-table">
+                    <thead><tr><th>Fecha de Sesión</th><th style="text-align: right;">Tiempo Invertido (H:M:S)</th></tr></thead>
+                    <tbody>
             `;
-            [...sessionDates].reverse().forEach(date => {
-                htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="text-align: right; color: ${textMuted}; font-weight: bold;">${formatHMS(groupedSessions[date])}</td></tr>`;
+            // Limitamos a 12 filas para garantizar que quepa en la primera página
+            const recentDates = [...sessionDates].reverse().slice(0, 12);
+            recentDates.forEach(date => {
+                pagesHtml += `<tr><td style="font-weight:700;">${date}</td><td style="text-align: right; color: ${textMuted}; font-weight: bold;">${formatHMS(groupedSessions[date])}</td></tr>`;
             });
-            htmlContent += `</tbody></table></div>`;
+            pagesHtml += `</tbody></table>`;
         } else {
-            htmlContent += `<p style="color: ${textMuted}; text-align: center;">Aún no hay sesiones de entrenamiento global registradas.</p>`;
+            pagesHtml += `<p style="color: ${textMuted}; text-align: center;">Aún no hay sesiones de entrenamiento global registradas.</p>`;
         }
-        htmlContent += `</div>`;
+        pagesHtml += closePage();
 
-        htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
-        htmlContent += `<h2><span>02</span> Rutina Semanal Detallada</h2>`;
+        // ================= PÁGINAS 2+: RUTINA SEMANAL =================
         if (routines && routines.length > 0) {
-            let currentDay = "";
-            let isFirstExerciseOfDay = true;
+            pagesHtml += openPage();
+            pagesHtml += `<h2 class="section-title"><span>02</span> Rutina Semanal Detallada</h2>`;
             
-            routines.forEach(ex => {
+            let currentDay = "";
+            let pageRowsHeight = 0; 
+            const MAX_RUTINA_HEIGHT = 880; 
+
+            routines.forEach((ex, idx) => {
+                let itemHeight = 85; 
+                let dayTitleHtml = '';
+                
                 if (ex.day_of_week !== currentDay) {
-                    if (currentDay !== "") {
-                        htmlContent += `</div></div><div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
-                    }
-                    currentDay = ex.day_of_week;
-                    htmlContent += `<div class="day-title">${formatDay(currentDay)}</div>`;
-                    isFirstExerciseOfDay = true;
+                    itemHeight += 45; 
+                    dayTitleHtml = `<div class="day-title">${formatDay(ex.day_of_week)}</div>`;
                 }
 
-                const extraMargin = isFirstExerciseOfDay ? 'margin-top: 0;' : 'margin-top: 20px;';
-                isFirstExerciseOfDay = false;
+                if (pageRowsHeight + itemHeight > MAX_RUTINA_HEIGHT) {
+                    pagesHtml += closePage();
+                    pagesHtml += openPage();
+                    pageRowsHeight = 0;
+                    
+                    if (ex.day_of_week === currentDay) {
+                        dayTitleHtml = `<div class="day-title">${formatDay(ex.day_of_week)} (Cont.)</div>`;
+                        itemHeight += 45;
+                    }
+                }
 
-                htmlContent += `
-                    <div class="pdf-avoid-break" style="background-color: ${bgCard}; border: 1px solid ${borderCol}; border-radius: 12px; padding: 18px; ${extraMargin}">
+                currentDay = ex.day_of_week;
+                pageRowsHeight += itemHeight;
+
+                pagesHtml += dayTitleHtml;
+                pagesHtml += `
+                    <div style="background-color: ${bgCard}; border: 1px solid ${borderCol}; border-radius: 12px; padding: 16px; margin-bottom: 16px; width: 100%; box-sizing: border-box;">
                         <table style="width: 100%; border-collapse: collapse;">
                             <tr>
                                 <td style="text-align: left; vertical-align: middle;">
-                                    <div style="font-weight: 700; font-size: 16px; color: ${textMain}; margin-bottom: 4px;">${escapeHTML(ex.exercise_name)}</div>
-                                    <div style="font-size: 12px; color: ${textMuted}; font-weight: 700; text-transform: uppercase;">Objetivo: ${escapeHTML(ex.target_reps)}</div>
+                                    <div style="font-weight: 700; font-size: 15px; color: ${textMain}; margin-bottom: 2px;">${escapeHTML(ex.exercise_name)}</div>
+                                    <div style="font-size: 11px; color: ${textMuted}; font-weight: 700; text-transform: uppercase;">Objetivo: ${escapeHTML(ex.target_reps)}</div>
                                 </td>
                                 <td style="text-align: right; vertical-align: middle; width: 80px;">
-                                    <span style="font-weight: 900; font-size: 26px; color: ${textMain}; font-style: italic;">${ex.sets}</span>
-                                    <span style="font-size: 12px; color: ${textMuted}; margin-left: 2px;">sets</span>
+                                    <span style="font-weight: 900; font-size: 24px; color: ${textMain}; font-style: italic;">${ex.sets}</span>
+                                    <span style="font-size: 11px; color: ${textMuted}; margin-left: 2px;">sets</span>
                                 </td>
                             </tr>
                         </table>
                     </div>
                 `;
             });
-        } else {
-            htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay rutina configurada.</p>`;
+            pagesHtml += closePage();
         }
-        htmlContent += `</div></div>`; 
 
+        // ================= PÁGINAS N+: EVOLUCIÓN VISUAL =================
         if (logs && logs.length > 0) {
             const groupedLogs = {};
 
@@ -1418,35 +1390,32 @@ window.exportUserDataPDF = async function() {
                 const daysArray = Array.from(daysSet);
                 const dayLabel = daysArray.length > 1 ? `DÍAS: ${daysArray.join(', ')}` : `DÍA: ${daysArray[0]}`;
 
-                // Salto de página estricto antes de iniciar el bloque de cada ejercicio (incluido el primero)
-                htmlContent += `<div style="page-break-before: always; width: 100%; height: 1px;"></div>`;
-
-                const pageContentClass = idx === 0 ? 'page-content first-page' : 'page-content';
-                htmlContent += `<div class="${pageContentClass}">`;
-
+                // Hoja de Gráficos (Fija por cada ejercicio)
+                pagesHtml += openPage();
+                
                 if (idx === 0) {
-                    htmlContent += `<h2 class="section-title"><span>03</span> Evolución y Progreso Visual</h2>`;
+                    pagesHtml += `<h2 class="section-title" style="margin-top: 0;"><span>03</span> Evolución y Progreso Visual</h2>`;
                 }
 
-                htmlContent += `<div class="exercise-header">`;
-                htmlContent += `<div class="sub-day-title">${dayLabel}</div>`;
-                htmlContent += `<div class="exercise-name">${escapeHTML(exName)}</div>`;
-                htmlContent += `</div>`;
+                pagesHtml += `<div class="exercise-header">`;
+                pagesHtml += `<div class="sub-day-title">${dayLabel}</div>`;
+                pagesHtml += `<div class="exercise-name">${escapeHTML(exName)}</div>`;
+                pagesHtml += `</div>`;
 
                 if (!exLogs || exLogs.data.length === 0) {
-                    htmlContent += `
+                    pagesHtml += `
                         <div class="no-data-box">
-                            <div style="font-size: 13px; font-weight: 900; color: ${accent}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;">Fase de Preparación</div>
+                            <div style="font-size: 13px; font-weight: 900; color: ${chartThemeColors.max.border}; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 10px;">Fase de Preparación</div>
                             <div style="font-size: 12px; color: ${textMuted}; font-weight: bold;">AÚN NO HAY DATOS DE ALTO RENDIMIENTO REGISTRADOS PARA ESTE EJERCICIO.</div>
                         </div>`;
                     
-                    htmlContent += `
+                    pagesHtml += `
                         <div class="hat-signature">
                             <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
                             <div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>
-                            <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
+                            <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 8px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
                         </div>`;
-                    htmlContent += `</div>`; 
+                    pagesHtml += closePage();
                     continue; 
                 }
 
@@ -1507,43 +1476,43 @@ window.exportUserDataPDF = async function() {
                     return imgBase64;
                 };
 
-                htmlContent += `<div class="chart-container">`;
-                htmlContent += `<div class="chart-title max">${maxTitle}</div>`;
-                htmlContent += `<img src="${await generateChart(maxData, maxTitle, chartThemeColors.max)}" class="chart-img" style="background-color: ${bgPage};" />`;
-                htmlContent += `</div>`;
+                pagesHtml += `<div class="chart-container">`;
+                pagesHtml += `<div class="chart-title">${maxTitle}</div>`;
+                pagesHtml += `<img src="${await generateChart(maxData, maxTitle, chartThemeColors.max)}" class="chart-img" style="background-color: ${bgPage};" />`;
+                pagesHtml += `</div>`;
 
-                htmlContent += `<div class="chart-container">`;
-                htmlContent += `<div class="chart-title avg">${avgTitle}</div>`;
-                htmlContent += `<img src="${await generateChart(avgData, avgTitle, chartThemeColors.avg)}" class="chart-img" style="background-color: ${bgPage};" />`;
-                htmlContent += `</div>`;
+                pagesHtml += `<div class="chart-container">`;
+                pagesHtml += `<div class="chart-title">${avgTitle}</div>`;
+                pagesHtml += `<img src="${await generateChart(avgData, avgTitle, chartThemeColors.avg)}" class="chart-img" style="background-color: ${bgPage};" />`;
+                pagesHtml += `</div>`;
 
-                htmlContent += `<div class="chart-container">`;
-                htmlContent += `<div class="chart-title dur">${durTitle}</div>`;
-                htmlContent += `<img src="${await generateChart(totalDurData, durTitle, chartThemeColors.dur)}" class="chart-img" style="background-color: ${bgPage};" />`;
-                htmlContent += `</div>`;
-                htmlContent += `</div>`; 
+                pagesHtml += `<div class="chart-container">`;
+                pagesHtml += `<div class="chart-title">${durTitle}</div>`;
+                pagesHtml += `<img src="${await generateChart(totalDurData, durTitle, chartThemeColors.dur)}" class="chart-img" style="background-color: ${bgPage};" />`;
+                pagesHtml += `</div>`;
+                
+                pagesHtml += closePage();
 
+                // Hojas de Tablas
                 const sortedDates = [...dates].reverse();
                 const totalRows = sortedDates.length;
-                const rowsPerPage = 15; 
+                const rowsPerPage = 14; 
                 let start = 0;
 
                 while (start < totalRows) {
                     const end = Math.min(start + rowsPerPage, totalRows);
                     const fragmentDates = sortedDates.slice(start, end);
 
-                    htmlContent += `<div style="page-break-before: always;"></div>`;
-                    htmlContent += `<div class="page-content" style="padding-top: 40px;">`; 
+                    pagesHtml += openPage();
+                    pagesHtml += `<div class="exercise-header" style="margin-bottom: 10px;">`;
+                    pagesHtml += `<div class="sub-day-title">${dayLabel}</div>`;
+                    pagesHtml += `<div class="exercise-name">${escapeHTML(exName)}</div>`;
+                    pagesHtml += `</div>`;
                     
-                    htmlContent += `<div class="exercise-header">`;
-                    htmlContent += `<div class="sub-day-title">${dayLabel}</div>`;
-                    htmlContent += `<div class="exercise-name">${escapeHTML(exName)}</div>`;
-                    htmlContent += `</div>`;
-                    
-                    htmlContent += `<div class="table-header">Detalle de series</div>`;
-                    htmlContent += `<table class="log-table">`;
-                    htmlContent += `<thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>`;
-                    htmlContent += `<tbody>`;
+                    pagesHtml += `<div class="table-header">Detalle de series</div>`;
+                    pagesHtml += `<table class="log-table">`;
+                    pagesHtml += `<thead><tr><th>Día</th><th>Tiempo Ej.</th><th>Detalle de Series</th></tr></thead>`;
+                    pagesHtml += `<tbody>`;
 
                     fragmentDates.forEach(date => {
                         const dayData = chartGroupedData[date];
@@ -1559,74 +1528,58 @@ window.exportUserDataPDF = async function() {
 
                         let totalDur = dayData.sets[0].exercise_duration || 0;
                         let durText = totalDur > 0 ? `${Math.floor(totalDur/60)}m ${totalDur%60}s` : '-';
-                        htmlContent += `<tr><td style="font-weight:700;">${date}</td><td style="color:${textMuted};">${durText}</td><td>${badges}</td></tr>`;
+                        pagesHtml += `<tr><td style="font-weight:700;">${date}</td><td style="color:${textMuted};">${durText}</td><td>${badges}</td></tr>`;
                     });
 
-                    htmlContent += `</tbody></table>`;
+                    pagesHtml += `</tbody></table>`;
 
+                    // Firma inyectada al fondo dinámicamente con Flexbox (margin-top: auto)
                     if (end === totalRows) {
-                        htmlContent += `
+                        pagesHtml += `
                         <div class="hat-signature">
                             <div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>
                             <div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>
-                            <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 10px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
+                            <div style="font-size: 9px; color: ${textMuted}; opacity: 0.7; margin-top: 8px;">${isDark ? 'MODO OSCURO' : 'MODO IMPRESIÓN'}</div>
                         </div>`;
                     }
 
-                    htmlContent += `</div>`; 
+                    pagesHtml += closePage();
                     start = end;
                 }
             }
         }
-        
-        element.innerHTML = htmlContent;
-        document.body.appendChild(element);
 
+        const pagesContainer = document.createElement('div');
+        pagesContainer.innerHTML = styles + pagesHtml;
+        hiddenDiv.appendChild(pagesContainer);
+
+        // Dejamos que el navegador asimile toda la inyección HTML
         await document.fonts.ready;
         await new Promise(resolve => requestAnimationFrame(resolve));
         await new Promise(resolve => requestAnimationFrame(resolve));
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        const pageNodes = pagesContainer.querySelectorAll('.pdf-page-node');
         
-        // Tiempo extra para asegurar que hojas muy largas se armen completas
-        await new Promise(resolve => setTimeout(resolve, 2000));
-
-        const PAGE_HEIGHT = 1131.428;
-        const totalHeight = element.scrollHeight;
-
-        // Escala Dinámica: Evita que el navegador corte documentos inmensos (límite de 32k píxeles)
-        let pdfScale = 2;
-        if (totalHeight > 14000) pdfScale = 1.5;
-        if (totalHeight > 20000) pdfScale = 1.2;
-
+        // Escala en 4 (Resolución Doble)
         const opt = {
             margin: 0,
             filename: filename,
             image: { type: 'jpeg', quality: 1.0 },
-            html2canvas: { scale: pdfScale, useCORS: true, backgroundColor: bgPage, logging: false, width: 800, height: totalHeight },
-            jsPDF: { unit: 'px', format: [800, PAGE_HEIGHT], orientation: 'portrait' },
-            pagebreak: { mode: ['css', 'legacy'] }
+            html2canvas: { scale: 4, useCORS: true, backgroundColor: bgPage, logging: false },
+            jsPDF: { unit: 'px', format: [800, 1131], orientation: 'portrait' }
         };
 
-        const worker = html2pdf().set(opt).from(element);
-        await worker.toPdf();
-        const pdf = await worker.get('pdf');
-
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const finalHeight = element.scrollHeight;
-        const remainder = finalHeight % pageHeight;
-
-        // Relleno nativo del PDF en la última hoja
-        if (remainder > 5) {
-            const totalPages = Math.ceil(finalHeight / pageHeight);
-            pdf.setPage(totalPages);
-            const contentEndY = remainder;
-            const rectHeight = pageHeight - contentEndY;
-            const rgb = hexToRgb(bgPage);
-            pdf.setFillColor(rgb.r, rgb.g, rgb.b);
-            pdf.rect(0, contentEndY, pageWidth, rectHeight, 'F');
+        // Procesamiento en Cadena: Tomamos captura hoja por hoja para evitar Crash del Navegador
+        let worker = html2pdf().set(opt).from(pageNodes[0]).toPdf();
+        
+        for (let i = 1; i < pageNodes.length; i++) {
+            worker = worker.get('pdf').then(pdf => {
+                pdf.addPage();
+            }).from(pageNodes[i]).toContainer().toCanvas().toPdf();
         }
-
-        pdf.save(filename);
+        
+        await worker.save();
 
         if(window.showToast) window.showToast("¡Reporte descargado exitosamente!");
         if(window.playVictory) window.playVictory();
@@ -1636,14 +1589,9 @@ window.exportUserDataPDF = async function() {
         if(window.showMessage) window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
     } finally {
         setTimeout(() => {
-            if (document.getElementById(containerId)) document.getElementById(containerId).remove();
             if (hiddenDiv) hiddenDiv.remove();
             if (viewApp) viewApp.style.display = '';
 
-            document.body.style.margin = '';
-            document.body.style.padding = '';
-            document.documentElement.style.margin = '';
-            document.documentElement.style.padding = '';
             document.body.style.overflow = '';
             document.documentElement.style.overflow = '';
             window.scrollTo(0, originalScrollY);
