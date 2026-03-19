@@ -1615,17 +1615,15 @@ if (!isStandalone) {
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        // CAMBIAR 'flex' POR 'inline-flex'
         installBtn.style.display = 'inline-flex'; 
     });
 
     // 2. COMPORTAMIENTO PARA iPHONE (iOS)
     if (isIOS) {
-        // CAMBIAR 'flex' POR 'inline-flex'
         installBtn.style.display = 'inline-flex'; 
     }
 
-    // Al hacer clic en el botón de la barra, abrimos nuestro Modal HAT
+    // Al hacer clic en el botón de la barra, abrimos el Modal HAT
     installBtn.addEventListener('click', () => {
         if (isIOS) {
             installModalText.innerHTML = `Para instalar HAT en tu iPhone:<br><br>1. Tocá el botón de <b>Compartir</b> <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> en la barra inferior.<br>2. Seleccioná <b>"Agregar a Inicio"</b>.`;
@@ -1637,16 +1635,25 @@ if (!isStandalone) {
         installModal.classList.add('flex');
     });
 
-    // Botón Cancelar del Modal
-    btnCancelInstall.addEventListener('click', () => {
+    // Función para cerrar el modal
+    const closeModal = () => {
         installModal.classList.add('hidden');
         installModal.classList.remove('flex');
+    };
+
+    // Botón Cancelar del Modal
+    btnCancelInstall.addEventListener('click', closeModal);
+
+    // NUEVO: Cerrar al tocar por fuera del cartel (en el fondo oscuro)
+    installModal.addEventListener('click', (e) => {
+        if (e.target === installModal) {
+            closeModal();
+        }
     });
 
     // Botón Confirmar del Modal (Solo Android/PC)
     btnConfirmInstall.addEventListener('click', async () => {
-        installModal.classList.add('hidden');
-        installModal.classList.remove('flex');
+        closeModal();
         
         if (deferredPrompt) {
             deferredPrompt.prompt();
