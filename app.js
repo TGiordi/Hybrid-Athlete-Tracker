@@ -1595,6 +1595,79 @@ window.exportUserDataPDF = async function() {
 window.exportUserData = window.exportUserDataPDF;
 
 // =========================================================================
+// --- LÓGICA DE INSTALACIÓN DE LA PWA (ESTILO HAT) ---
+// =========================================================================
+
+let deferredPrompt;
+const installBtn = document.getElementById('hat-install-btn');
+const installModal = document.getElementById('hat-install-modal');
+const btnConfirmInstall = document.getElementById('btn-confirm-install');
+const btnCancelInstall = document.getElementById('btn-cancel-install');
+const installModalText = document.getElementById('install-modal-text');
+
+// Detectar si es un dispositivo Apple (iOS)
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+// Detectar si la app ya está instalada y corriendo de forma nativa
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+// Solo mostramos el botón si la app NO está instalada
+if (!isStandalone) {
+
+    // 1. COMPORTAMIENTO PARA ANDROID / PC
+    window.addEventListener('beforeinstallprompt', (e) => {
+        // Prevenir que Chrome muestre el mini-cartel feo por defecto
+        e.preventDefault();
+        // Guardar el evento para dispararlo cuando nosotros queramos
+        deferredPrompt = e;
+        // Mostrar nuestro botón flotante HAT
+        installBtn.classList.remove('hidden');
+    });
+
+    // 2. COMPORTAMIENTO PARA iPHONE (iOS)
+    // Apple no soporta 'beforeinstallprompt', así que lo mostramos manualmente
+    if (isIOS) {
+        installBtn.classList.remove('hidden');
+    }
+
+    // Al hacer clic en el botón flotante, abrimos nuestro Modal HAT
+    installBtn.addEventListener('click', () => {
+        if (isIOS) {
+            // Mensaje especial para iPhone
+            installModalText.innerHTML = `Para instalar HAT en tu iPhone:<br><br>1. Tocá el botón de <b>Compartir</b> <svg class="w-4 h-4 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg> en la barra inferior.<br>2. Seleccioná <b>"Agregar a Inicio"</b>.`;
+            btnConfirmInstall.classList.add('hidden'); // Ocultamos el botón de confirmar porque Apple no deja automatizarlo
+            btnCancelInstall.innerText = "Entendido";
+        }
+        
+        installModal.classList.remove('hidden');
+        installModal.classList.add('flex');
+    });
+
+    // Botón Cancelar del Modal
+    btnCancelInstall.addEventListener('click', () => {
+        installModal.classList.add('hidden');
+        installModal.classList.remove('flex');
+    });
+
+    // Botón Confirmar del Modal (Solo Android/PC)
+    btnConfirmInstall.addEventListener('click', async () => {
+        installModal.classList.add('hidden');
+        installModal.classList.remove('flex');
+        
+        if (deferredPrompt) {
+            // Disparar el aviso nativo del sistema
+            deferredPrompt.prompt();
+            // Esperar a que el usuario responda al aviso nativo
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                console.log('El atleta instaló HAT');
+                installBtn.classList.add('hidden'); // Ocultar el botón flotante
+            }
+            deferredPrompt = null;
+        }
+    });
+}
+
+// =========================================================================
 // EXPORTACIÓN GLOBAL 
 // =========================================================================
 window.openModal = openModal;
