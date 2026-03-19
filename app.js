@@ -1042,7 +1042,7 @@ function promptEditLog(exId, exName, dateStr, exType) {
 
 
 // =========================================================================
-// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - CÓDIGO COMPLETO) ---
+// --- EXPORTACIÓN DE DATOS (REPORTE PDF PROFESIONAL - VERSIÓN DEFINITIVA) ---
 // =========================================================================
 
 // 1. LA FUNCIÓN DEL CARTEL (La que faltaba y rompió el botón)
@@ -1089,14 +1089,7 @@ window.askPdfTheme = function() {
     });
 };
 
-
-
-
-
-
-
-
-// 2. EL GENERADOR DEL PDF
+// 2. EL GENERADOR DEL PDF (VERSIÓN MEJORADA SIN FRANJA BLANCA)
 window.exportUserDataPDF = async function() {
     const themeChoice = await window.askPdfTheme();
     if (!themeChoice) return;
@@ -1111,6 +1104,7 @@ window.exportUserDataPDF = async function() {
     const borderCol = isDark ? '#262626' : '#cbd5e1';
     const accent = '#F54927';
 
+    // Plugin para fondo de gráficos
     const customBgPlugin = {
         id: 'customCanvasBg',
         beforeDraw: (chart) => {
@@ -1133,6 +1127,18 @@ window.exportUserDataPDF = async function() {
     const normalizeName = (name) => {
         return name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, ' '); 
     };
+
+    // Helper para convertir color hex a RGB (necesario para jsPDF)
+    function hexToRgb(hex) {
+        const shorthandRegex = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
+        hex = hex.replace(shorthandRegex, (m, r, g, b) => r + r + g + g + b + b);
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : null;
+    }
 
     const overlay = document.getElementById('ai-loading-overlay');
     if(overlay) {
@@ -1158,6 +1164,7 @@ window.exportUserDataPDF = async function() {
     element.id = containerId;
     element.style.cssText = `width: 800px; margin: 0 auto; position: relative; background-color: ${bgPage}; color: ${textMain}; box-sizing: border-box; display: block;`;
 
+    // Canvas oculto para generar gráficos temporalmente
     const hiddenDiv = document.createElement('div');
     hiddenDiv.style.cssText = "position: absolute; top: -9999px; left: -9999px;";
     const tempCanvas = document.createElement('canvas');
@@ -1167,6 +1174,7 @@ window.exportUserDataPDF = async function() {
     document.body.appendChild(hiddenDiv);
 
     try {
+        // Obtener datos de Supabase
         const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId);
         const { data: logs } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: true });
         const { data: sessions } = await supabaseClient.from('workout_sessions').select('*').eq('user_id', currentUserId).order('session_date', { ascending: true });
@@ -1174,6 +1182,7 @@ window.exportUserDataPDF = async function() {
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
         const filename = `HAT_Reporte_${isDark ? 'Oscuro' : 'Claro'}_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.pdf`;
 
+        // Ordenar rutinas por día
         const daysOrder = { 'lunes': 1, 'martes': 2, 'miercoles': 3, 'miércoles': 3, 'jueves': 4, 'viernes': 5, 'sabado': 6, 'sábado': 6, 'domingo': 7 };
         routines.sort((a, b) => {
             const dayA = daysOrder[a.day_of_week.toLowerCase().trim()] || 8;
@@ -1187,6 +1196,7 @@ window.exportUserDataPDF = async function() {
             return map[day.toLowerCase().trim()] || day.toUpperCase();
         };
 
+        // Construir mapas de nombres normalizados
         const orderedExNames = [];
         const exerciseDaysMap = {};
         const routineNameMap = {};
@@ -1203,6 +1213,7 @@ window.exportUserDataPDF = async function() {
             exerciseDaysMap[officialName].add(formatDay(ex.day_of_week));
         });
 
+        // Estilos CSS para el PDF
         const styles = `
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,400;0,700;0,900;1,900&display=swap');
@@ -1237,6 +1248,7 @@ window.exportUserDataPDF = async function() {
             </style>
         `;
 
+        // Construcción del HTML del contenido
         let htmlContent = `
             ${styles}
             <div class="pdf-wrapper">
@@ -1247,6 +1259,7 @@ window.exportUserDataPDF = async function() {
                 </div>
         `;
 
+        // Sección 01: Resumen Global
         htmlContent += `<h2><span>01</span> Resumen Global de Entrenamiento</h2>`;
         if (sessions && sessions.length > 0) {
             const groupedSessions = {};
@@ -1303,6 +1316,7 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div>`; 
 
+        // Sección 02: Rutina Semanal
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>02</span> Rutina Semanal Detallada</h2>`;
         if (routines && routines.length > 0) {
@@ -1344,6 +1358,7 @@ window.exportUserDataPDF = async function() {
         }
         htmlContent += `</div></div>`; 
 
+        // Sección 03: Evolución y Progreso
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
         htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
@@ -1472,29 +1487,17 @@ window.exportUserDataPDF = async function() {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
         }
 
-        htmlContent += `<div id="pdf-filler" style="width: 100%; background-color: ${bgPage};"></div>`;
+        // Se eliminó el div #pdf-filler y sus cálculos; ahora el relleno se hace en el PDF directamente.
         htmlContent += `</div></div>`; 
 
         element.innerHTML = htmlContent;
         document.body.appendChild(element);
 
+        // Dar tiempo para que se rendericen las imágenes (especialmente los canvas convertidos a img)
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        const pageBreaks = element.querySelectorAll('.page-break-container');
-        let topOfLastSegment = element.getBoundingClientRect().top;
-        if (pageBreaks.length > 0) {
-            topOfLastSegment = pageBreaks[pageBreaks.length - 1].getBoundingClientRect().top;
-        }
-        
-        const lastSegmentHeight = element.getBoundingClientRect().bottom - topOfLastSegment;
-        const PAGE_HEIGHT = 1131.428;
-        const remainder = lastSegmentHeight % PAGE_HEIGHT;
-
-        if (remainder > 0 && remainder < (PAGE_HEIGHT - 5)) {
-            const fillHeight = PAGE_HEIGHT - remainder - 5;
-            document.getElementById('pdf-filler').style.height = `${fillHeight}px`;
-        }
-
+        // --- Configuración del PDF ---
+        const PAGE_HEIGHT = 1131.428; // mismo valor usado en jsPDF.format
         const opt = {
             margin:       0,
             filename:     filename,
@@ -1505,12 +1508,50 @@ window.exportUserDataPDF = async function() {
                 backgroundColor: bgPage,
                 logging: false
             },
-            jsPDF:        { unit: 'px', format: [800, 1131.428], orientation: 'portrait' },
+            jsPDF:        { unit: 'px', format: [800, PAGE_HEIGHT], orientation: 'portrait' },
             pagebreak:    { mode: ['css', 'legacy'] }
         };
 
-        await html2pdf().set(opt).from(element).save();
+        // Iniciar worker
+        const worker = html2pdf().set(opt).from(element);
 
+        // Generar el PDF y obtener el objeto jsPDF
+        await worker.toPdf();
+        const pdf = await worker.get('pdf');
+
+        // --- AJUSTE DE LA ÚLTIMA PÁGINA (elimina franja blanca) ---
+        const pageWidth = pdf.internal.pageSize.getWidth();   // 800 px
+        const pageHeight = pdf.internal.pageSize.getHeight(); // 1131.428 px
+
+        // Altura total del contenido renderizado (en píxeles del DOM)
+        const totalHeight = element.scrollHeight;
+
+        // Espacio restante en la última página (0 si el contenido llena justo o sobra muy poco)
+        const remainder = totalHeight % pageHeight;
+
+        // Tolerancia para evitar dibujar rectángulos por errores de redondeo
+        if (remainder > 0.1) {
+            const totalPages = Math.ceil(totalHeight / pageHeight);
+            pdf.setPage(totalPages); // Nos movemos a la última página
+
+            // Coordenada Y donde termina el contenido (desde arriba)
+            const contentEndY = remainder;
+
+            // Altura del rectángulo a rellenar
+            const rectHeight = pageHeight - contentEndY;
+
+            // Convertir color de fondo a RGB
+            const rgb = hexToRgb(bgPage);
+            pdf.setFillColor(rgb.r, rgb.g, rgb.b);
+
+            // Dibujar rectángulo relleno en la zona vacía
+            pdf.rect(0, contentEndY, pageWidth, rectHeight, 'F');
+        }
+
+        // Guardar el PDF modificado
+        pdf.save(filename);
+
+        // Notificaciones de éxito
         if(window.showToast) window.showToast("¡Reporte descargado exitosamente!");
         if(window.playVictory) window.playVictory();
 
@@ -1518,6 +1559,7 @@ window.exportUserDataPDF = async function() {
         console.error("Error al generar PDF:", error);
         if(window.showMessage) window.showMessage("❌ Error al armar el PDF. Por favor intentá de nuevo.", true);
     } finally {
+        // Limpieza: remover elementos temporales y restaurar scroll
         setTimeout(() => {
             if (document.getElementById(containerId)) document.getElementById(containerId).remove();
             if (hiddenDiv) hiddenDiv.remove();
@@ -1536,6 +1578,7 @@ window.exportUserDataPDF = async function() {
     }
 };
 
+// Asignar al objeto global para compatibilidad
 window.exportUserData = window.exportUserDataPDF;
 
 
