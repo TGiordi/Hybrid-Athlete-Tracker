@@ -1615,12 +1615,14 @@ if (!isStandalone) {
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        installBtn.style.display = 'flex'; // Mostramos el botón de forma segura
+        // CAMBIAR 'flex' POR 'inline-flex'
+        installBtn.style.display = 'inline-flex'; 
     });
 
     // 2. COMPORTAMIENTO PARA iPHONE (iOS)
     if (isIOS) {
-        installBtn.style.display = 'flex'; // En iOS lo forzamos a mostrarse
+        // CAMBIAR 'flex' POR 'inline-flex'
+        installBtn.style.display = 'inline-flex'; 
     }
 
     // Al hacer clic en el botón de la barra, abrimos nuestro Modal HAT
