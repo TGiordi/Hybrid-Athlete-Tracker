@@ -1292,13 +1292,14 @@ window.exportUserDataPDF = async function() {
                 
                 .badge { background-color: ${bgCard}; color: ${textMain}; padding: 5px 8px; border-radius: 6px; font-weight: 700; margin-right: 4px; display: inline-block; margin-bottom: 4px; border: 1px solid ${borderCol}; }
                 
-                .hat-signature { text-align: center; margin-top: 100px; padding-top: 30px; padding-bottom: 30px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; page-break-before: avoid; }
-                .exercise-page { page-break-before: always; padding-top: 30px; }
-                .exercise-page:first-of-type { page-break-before: auto; } /* El primer ejercicio no lleva salto de página antes */
+                .hat-signature { text-align: center; margin-top: 80px; padding-top: 30px; padding-bottom: 30px; border-top: 1px dashed ${borderCol}; width: 100%; page-break-inside: avoid; page-break-before: avoid; }
+                .exercise-block { margin-top: 40px; }
+                .exercise-block:first-of-type { margin-top: 0; }
                 .exercise-header { margin-bottom: 20px; }
                 .exercise-name { font-size: 18px; color: ${accent}; font-style: italic; font-weight: 900; text-transform: uppercase; }
                 .table-header { font-size: 14px; font-weight: 700; color: ${textMain}; margin: 20px 0 10px; text-transform: uppercase; letter-spacing: 1px; }
-                .chart-container { page-break-inside: avoid; margin-bottom: 30px; }
+                .chart-container { page-break-inside: avoid; margin-bottom: 40px; }
+                .section-title { margin-top: 0; margin-bottom: 20px; }
             </style>
         `;
 
@@ -1340,7 +1341,7 @@ window.exportUserDataPDF = async function() {
                 options: {
                     responsive: false, animation: false, 
                     plugins: { legend: { display: false } },
-                    layout: { padding: { top: 10, bottom: 10, left: 15, right: 30 } }, // reducido para que no se corte
+                    layout: { padding: { top: 10, bottom: 10, left: 15, right: 30 } },
                     scales: {
                         y: { grid: { color: borderCol, lineWidth: 2 }, ticks: { color: textMuted, font: {size: 26, weight: 'bold'}, maxTicksLimit: 6, padding: 12 }, title: {display: true, text: "Minutos", color: textMuted, font: {size: 28, weight: 'bold'}, padding: {bottom: 15}} },
                         x: { grid: { display: false }, ticks: { color: textMuted, font: {size: 24, weight: 'bold'}, maxTicksLimit: 8, padding: 12 } }
@@ -1413,8 +1414,6 @@ window.exportUserDataPDF = async function() {
 
         // Sección 03: Evolución y Progreso Visual (CORREGIDA)
         htmlContent += `<div class="page-break-container"><div class="pdf-wrapper" style="padding-top: 0;">`;
-        // El título principal de la sección lo ponemos aquí, pero luego cada ejercicio tendrá su propio bloque con el mismo título
-        htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
 
         if (logs && logs.length > 0) {
             const groupedLogs = {};
@@ -1427,15 +1426,25 @@ window.exportUserDataPDF = async function() {
                 if (routineNameMap[normLogName]) {
                     finalName = routineNameMap[normLogName];
                 } else {
-                    const partialMatch = Object.keys(routineNameMap).find(normRoutine =>
+                    // Búsqueda más amplia: si el nombre del log contiene el nombre de rutina o viceversa
+                    const possibleMatch = Object.keys(routineNameMap).find(normRoutine =>
                         normRoutine.includes(normLogName) || normLogName.includes(normRoutine)
                     );
-                    if (partialMatch) finalName = routineNameMap[partialMatch];
+                    if (possibleMatch) finalName = routineNameMap[possibleMatch];
+                }
+
+                // Si aún no hay match, intentar una comparación más flexible (eliminar espacios extras)
+                if (!finalName) {
+                    const normalizedLog = normLogName.replace(/\s+/g, '');
+                    const found = Object.keys(routineNameMap).find(key => key.replace(/\s+/g, '') === normalizedLog);
+                    if (found) finalName = routineNameMap[found];
                 }
 
                 if (finalName) {
                     if (!groupedLogs[finalName]) groupedLogs[finalName] = { type: l.exercise_type, data: [] };
                     groupedLogs[finalName].data.push(l);
+                } else {
+                    console.warn('Log sin match en rutina:', l.exercise_name);
                 }
             });
 
@@ -1478,10 +1487,10 @@ window.exportUserDataPDF = async function() {
                     
                     if (type === 'tiempo') {
                         if (log.time_seconds > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.time_seconds;
-                        chartGroupedData[dateStr].sumReps += log.time_seconds; // para promedio
+                        chartGroupedData[dateStr].sumReps += log.time_seconds;
                     } else {
                         if (log.weight > chartGroupedData[dateStr].maxStat) chartGroupedData[dateStr].maxStat = log.weight;
-                        chartGroupedData[dateStr].sumReps += log.reps; // para promedio de reps
+                        chartGroupedData[dateStr].sumReps += log.reps;
                     }
                     chartGroupedData[dateStr].countSets++;
                     
@@ -1507,7 +1516,6 @@ window.exportUserDataPDF = async function() {
                     dur: violet
                 };
 
-                // Función para generar gráfico con padding reducido
                 const generateChart = async (data, label, color) => {
                     const ctx = tempCanvas.getContext('2d');
                     ctx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
@@ -1532,7 +1540,7 @@ window.exportUserDataPDF = async function() {
                             responsive: false,
                             animation: false,
                             plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                            layout: { padding: { top: 10, bottom: 10, left: 15, right: 30 } }, // reducido
+                            layout: { padding: { top: 10, bottom: 10, left: 15, right: 30 } },
                             scales: {
                                 y: { 
                                     grid: { color: borderCol, lineWidth: 2 }, 
@@ -1554,17 +1562,16 @@ window.exportUserDataPDF = async function() {
                     return imgBase64;
                 };
 
-                // --- Bloque del ejercicio con salto de página y padding superior ---
-                // El primer ejercicio no lleva page-break-before, los siguientes sí
-                const pageBreakClass = idx === 0 ? '' : 'exercise-page';
-                htmlContent += `<div class="${pageBreakClass}" style="padding-top: ${idx === 0 ? '0' : '30px'};">`;
-
-                // Título de sección repetido en cada bloque de ejercicio (excepto el primero, que ya está arriba)
+                // --- Página de gráficos ---
+                // Forzar salto de página antes de cada ejercicio (excepto el primero)
                 if (idx > 0) {
-                    htmlContent += `<h2><span>03</span> Evolución y Progreso Visual</h2>`;
+                    htmlContent += `<div style="page-break-before: always;"></div>`;
                 }
 
-                // Encabezado específico del ejercicio
+                // Título de sección
+                htmlContent += `<h2 class="section-title"><span>03</span> Evolución y Progreso Visual</h2>`;
+
+                // Encabezado del ejercicio
                 htmlContent += `<div class="exercise-header">`;
                 htmlContent += `<div class="sub-day-title">${task.dayLabel}</div>`;
                 htmlContent += `<div class="exercise-name">${escapeHTML(task.exName)}</div>`;
@@ -1586,17 +1593,17 @@ window.exportUserDataPDF = async function() {
                 htmlContent += `<img src="${await generateChart(totalDurData, durTitle, colors.dur)}" class="chart-img" style="background-color: ${bgBox};" />`;
                 htmlContent += `</div>`;
 
-                // --- Tabla con fragmentación ---
+                // --- Páginas de tabla ---
                 const sortedDates = [...dates].reverse();
                 const totalRows = sortedDates.length;
 
-                // Alturas estimadas (en px)
+                // Alturas estimadas
                 const pageHeight = 1131.428;
-                const wrapperPadding = 80; // 40px arriba + 40px abajo del .pdf-wrapper
-                const headerHeight = 120; // altura del encabezado del ejercicio (días + nombre)
-                const tableTitleHeight = 30; // "Detalle de series"
-                const rowHeight = 50; // altura por fila (reducida)
-                const safetyMargin = 20; // margen extra
+                const wrapperPadding = 80; // 40+40
+                const headerHeight = 180; // altura del título sección + encabezado ejercicio
+                const tableTitleHeight = 30;
+                const rowHeight = 50;
+                const safetyMargin = 30;
 
                 const availableHeight = pageHeight - wrapperPadding - headerHeight - tableTitleHeight - safetyMargin;
                 const rowsPerPage = Math.floor(availableHeight / rowHeight);
@@ -1608,15 +1615,17 @@ window.exportUserDataPDF = async function() {
                     const end = Math.min(start + effectiveRowsPerPage, totalRows);
                     const fragmentDates = sortedDates.slice(start, end);
 
+                    // Forzar salto de página antes de cada fragmento excepto el primero
                     if (fragmentIndex > 0) {
                         htmlContent += `<div style="page-break-before: always;"></div>`;
-                        // Repetir encabezado del ejercicio en las páginas siguientes de tabla
-                        htmlContent += `<div class="exercise-header">`;
-                        htmlContent += `<div class="sub-day-title">${task.dayLabel}</div>`;
-                        htmlContent += `<div class="exercise-name">${escapeHTML(task.exName)}</div>`;
-                        htmlContent += `</div>`;
                     }
 
+                    // Repetir título de sección, encabezado del ejercicio y título de tabla
+                    htmlContent += `<h2 class="section-title"><span>03</span> Evolución y Progreso Visual</h2>`;
+                    htmlContent += `<div class="exercise-header">`;
+                    htmlContent += `<div class="sub-day-title">${task.dayLabel}</div>`;
+                    htmlContent += `<div class="exercise-name">${escapeHTML(task.exName)}</div>`;
+                    htmlContent += `</div>`;
                     htmlContent += `<div class="table-header">Detalle de series</div>`;
 
                     htmlContent += `<table class="log-table">`;
@@ -1642,8 +1651,8 @@ window.exportUserDataPDF = async function() {
 
                     htmlContent += `</tbody></table>`;
 
-                    // Si es el último fragmento del último ejercicio, agregar la firma
-                    if (idx === orderedChartTasks.length - 1 && end === totalRows) {
+                    // Si es el último fragmento de este ejercicio, agregar la firma
+                    if (end === totalRows) {
                         htmlContent += `<div class="hat-signature">`;
                         htmlContent += `<div style="font-weight: 900; font-style: italic; font-size: 26px; color: ${textMain};"><span>H</span>AT</div>`;
                         htmlContent += `<div style="font-size: 10px; color: ${textMuted}; letter-spacing: 2px; text-transform: uppercase; margin-top: 5px;">Reporte de Alto Rendimiento</div>`;
@@ -1654,8 +1663,6 @@ window.exportUserDataPDF = async function() {
                     start = end;
                     fragmentIndex++;
                 }
-
-                htmlContent += `</div>`; // Cierre del bloque exercise-page
             }
         } else {
             htmlContent += `<p style="color: ${textMuted}; text-align: center;">No hay historial de progreso disponible para la rutina actual.</p>`;
@@ -1734,7 +1741,6 @@ window.exportUserDataPDF = async function() {
         }, 500);
     }
 };
-
 
 
 
