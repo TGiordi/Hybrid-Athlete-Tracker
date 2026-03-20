@@ -1,6 +1,11 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./*.{html,js}"], // Le dice que busque clases en tu index y tu app.js
+  // CONFIGURACIÓN DE RUTAS MÁS ROBUSTA PARA CODESPACES
+  content: [
+    "./index.html",    // Tu HTML principal en la raíz
+    "./app.js",        // Tu JS principal en la raíz
+    "./index (4).html" // Por las dudas, si estás usando este otro HTML
+  ],
   theme: {
     extend: {
       fontFamily: { sans: ['Montserrat', 'sans-serif'] },
