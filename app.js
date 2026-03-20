@@ -81,6 +81,13 @@ function showToast(message) {
     }, 3000);
 }
 
+function showHatAlert(title, message) {
+    closeAllModals(); // Cerramos cualquier otro modal que esté abierto por seguridad
+    document.getElementById('generic-alert-title').innerText = title;
+    document.getElementById('generic-alert-msg').innerText = message;
+    openModal('modal-generic-alert');
+}
+
 function formatTime(totalSeconds) {
     if(!totalSeconds || totalSeconds <= 0) return "0s";
     let h = Math.floor(totalSeconds / 3600); 
@@ -275,7 +282,7 @@ function resetExTimer(exId) {
     playPop();
     if(window.exerciseTimers[exId] && window.exerciseTimers[exId].interval) { clearInterval(window.exerciseTimers[exId].interval); }
     window.exerciseTimers[exId] = { interval: null }; clearExTimerState(exId);
-    document.getElementById(`display-extimer-${exId}`).innerText = "0s";
+    document.getElementById(`display-extimer-${exId}`).innerText = "00:00";
     const btn = document.getElementById(`btn-extimer-${exId}`);
     btn.innerHTML = SVG_PLAY; btn.className = `flex items-center justify-center w-12 h-12 bg-[#171717] border border-[#262626] rounded-xl text-green-500 hover:bg-[#262626] transition-colors`;
 }
@@ -474,11 +481,8 @@ async function openGlobalStats() {
     const container = document.getElementById('global-stats-container'); 
     container.innerHTML = '<div class="text-center text-custom-textMuted py-10 font-bold animate-pulse">Cargando métricas...</div>';
     
-    // Función conversora a HH:MM:SS
     const formatHMS = (secs) => {
-        const h = Math.floor(secs / 3600);
-        const m = Math.floor((secs % 3600) / 60);
-        const s = Math.floor(secs % 60);
+        const h = Math.floor(secs / 3600); const m = Math.floor((secs % 3600) / 60); const s = Math.floor(secs % 60);
         return [h, m, s].map(v => v.toString().padStart(2, '0')).join(':');
     };
 
@@ -489,30 +493,27 @@ async function openGlobalStats() {
         
         const grouped = {};
         data.forEach(d => { 
-            if(!grouped[d.session_date]) grouped[d.session_date] = { totalSecs: 0, ids: [] }; 
+            if(!grouped[d.session_date]) grouped[d.session_date] = { totalSecs: 0 }; 
             grouped[d.session_date].totalSecs += d.duration_seconds; 
-            grouped[d.session_date].ids.push(d.id); 
         });
         
         const dates = Object.keys(grouped); 
-        // Para el gráfico seguimos usando minutos (porque necesita un número decimal para dibujar la barra)
         const durations = dates.map(d => parseFloat((grouped[d].totalSecs / 60).toFixed(2))); 
         
         let htmlList = `<div class="mt-6 border-t border-custom-border pt-4 max-h-[30vh] overflow-y-auto custom-scroll pr-2 space-y-2">`;
         
         [...dates].reverse().forEach(date => {
             const secs = grouped[date].totalSecs;
-            const sessionIds = grouped[date].ids;
             htmlList += `<div class="flex justify-between items-center bg-[#171717] p-3 rounded-xl border border-[#262626]">
                             <div class="flex flex-col">
                                 <span class="text-white font-bold text-sm">${date}</span>
                                 <span class="text-xs text-custom-textMuted font-bold">Tiempo Invertido: <span class="text-custom-primary">${formatHMS(secs)}</span></span>
                             </div>
-                            <div class="flex gap-2">`;
-            sessionIds.forEach(id => {
-                htmlList += `<button onclick="promptDeleteSession('${id}')" class="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>`;
-            });
-            htmlList += `</div></div>`;
+                            <div class="flex gap-2">
+                                <button onclick="promptEditSessionDate('${date}', ${secs})" class="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 transition-colors" title="Editar Tiempo"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                <button onclick="promptDeleteSessionDate('${date}')" class="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors" title="Eliminar Día"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
+                            </div>
+                        </div>`;
         });
         htmlList += `</div>`;
         
@@ -520,28 +521,43 @@ async function openGlobalStats() {
         
         const ctx = document.getElementById('chart-global-time').getContext('2d');
         new Chart(ctx, { 
-            type: 'bar', 
-            data: { labels: dates, datasets: [{ label: 'Minutos', data: durations, backgroundColor: 'rgba(20, 184, 166, 0.8)', borderRadius: 4 }] }, 
-            options: { 
-                responsive: true, 
-                maintainAspectRatio: false, 
-                scales: { y: { beginAtZero: true, grid: { color: '#171717' } }, x: { grid: { display: false } } }, 
-                plugins: { 
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            // Al pasar el mouse, mostramos el formato H:M:S
-                            label: function(context) {
-                                const date = context.label;
-                                const secs = grouped[date].totalSecs;
-                                return 'Tiempo total: ' + formatHMS(secs);
-                            }
-                        }
-                    } 
-                } 
-            } 
+            type: 'bar', data: { labels: dates, datasets: [{ label: 'Minutos', data: durations, backgroundColor: 'rgba(20, 184, 166, 0.8)', borderRadius: 4 }] }, 
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, grid: { color: '#171717' } }, x: { grid: { display: false } } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(context) { return 'Tiempo total: ' + formatHMS(grouped[context.label].totalSecs); } } } } } 
         });
     } catch(e) { container.innerHTML = `<div class="text-xs text-red-500">Error: ${e.message}</div>`; }
+}
+
+function promptDeleteSessionDate(date) {
+    window.pendingDeleteSessionDate = date; closeAllModals(); openModal('modal-confirm-delete-session-date');
+}
+
+async function confirmDeleteSessionDate() {
+    const btn = document.getElementById('btn-confirm-delete-session-date'); btn.innerText = "Borrando..."; btn.disabled = true;
+    try { await supabaseClient.from('workout_sessions').delete().eq('user_id', currentUserId).eq('session_date', window.pendingDeleteSessionDate); openGlobalStats(); } 
+    catch(e) { showToast("Error: " + e.message); } finally { btn.innerText = "Sí, Borrar"; btn.disabled = false; }
+}
+
+function promptEditSessionDate(date, secs) {
+    closeAllModals();
+    document.getElementById('edit-session-date-label').innerText = "Modificar los datos del día " + date;
+    document.getElementById('edit-session-date-val').value = date;
+    document.getElementById('edit-sess-h').value = Math.floor(secs / 3600);
+    document.getElementById('edit-sess-m').value = Math.floor((secs % 3600) / 60);
+    openModal('modal-edit-session');
+}
+
+async function saveEditedSession() {
+    const date = document.getElementById('edit-session-date-val').value;
+    const h = parseInt(document.getElementById('edit-sess-h').value) || 0;
+    const m = parseInt(document.getElementById('edit-sess-m').value) || 0;
+    const totalSecs = (h * 3600) + (m * 60);
+    
+    const btn = document.getElementById('btn-save-session-edit'); btn.innerText = "Guardando..."; btn.disabled = true;
+    try {
+        await supabaseClient.from('workout_sessions').delete().eq('user_id', currentUserId).eq('session_date', date);
+        if (totalSecs > 0) { await supabaseClient.from('workout_sessions').insert([{ user_id: currentUserId, session_date: date, duration_seconds: totalSecs }]); }
+        openGlobalStats();
+    } catch(e) { showToast("Error: " + e.message); } finally { btn.innerText = "Guardar"; btn.disabled = false; }
 }
 
 function promptDeleteSession(id) {
@@ -600,7 +616,10 @@ async function submitSupportTicket() {
         document.getElementById('support-text').value = ''; document.getElementById('support-text').classList.add('hidden'); btn.classList.add('hidden');
         document.getElementById('support-msg-feedback').innerText = "¡Recibimos tu mensaje! Lo leeremos pronto."; document.getElementById('support-msg-feedback').classList.remove('hidden');
         setTimeout(() => { closeAllModals(); setTimeout(() => { document.getElementById('support-text').classList.remove('hidden'); btn.classList.remove('hidden'); document.getElementById('support-msg-feedback').classList.add('hidden'); btn.innerText = "Enviar Mensaje"; btn.disabled = false; }, 500); }, 2000);
-    } catch(e) { alert("Error: " + e.message); btn.innerText = "Enviar Mensaje"; btn.disabled = false; }
+    } catch(e) { 
+        showHatAlert("Error al enviar", e.message); 
+        btn.innerText = "Enviar Mensaje"; btn.disabled = false; 
+    }
 }
 
 // --- COACH IA ---
@@ -665,7 +684,21 @@ async function sendChatMessage() {
 }
 
 function promptDeleteEntireRoutine() { openModal('modal-confirm-delete-all'); }
-async function confirmDeleteEntireRoutine() { closeAllModals(); document.getElementById('loading-title').innerText = "Borrando Semana..."; document.getElementById('loading-desc').innerText = "Limpiando todos los ejercicios de tu plan..."; document.getElementById('ai-loading-overlay').classList.remove('hidden'); document.getElementById('ai-loading-overlay').classList.add('flex'); try { const { error } = await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId); if(error) throw error; changeDay('lunes'); } catch(e) { alert("Error al borrar rutina: " + e.message); } finally { document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); } }
+async function confirmDeleteEntireRoutine() { 
+    closeAllModals(); 
+    document.getElementById('loading-title').innerText = "Borrando Semana..."; 
+    document.getElementById('loading-desc').innerText = "Limpiando todos los ejercicios de tu plan..."; 
+    document.getElementById('ai-loading-overlay').classList.remove('hidden'); document.getElementById('ai-loading-overlay').classList.add('flex'); 
+    try { 
+        const { error } = await supabaseClient.from('user_routines').delete().eq('user_id', currentUserId); 
+        if(error) throw error; 
+        changeDay('lunes'); 
+    } catch(e) { 
+        showHatAlert("Error al borrar rutina", e.message); 
+    } finally { 
+        document.getElementById('ai-loading-overlay').classList.add('hidden'); document.getElementById('ai-loading-overlay').classList.remove('flex'); 
+    } 
+}
 function toggleMediaInput(type) { const checkbox = document.getElementById(`check-${type}`); const container = document.getElementById(`input-${type}-container`); checkbox.checked = !checkbox.checked; if(checkbox.checked) { container.classList.remove('hidden'); } else { container.classList.add('hidden'); document.getElementById(`new-ex-${type}`).value = ''; } }
 
 // --- RENDERIZADO VISUAL DE EJERCICIOS ---
@@ -690,7 +723,12 @@ async function changeDay(day, event) {
         const { data: exercises, error } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId).eq('day_of_week', day).order('order_index', { ascending: true }).order('created_at', { ascending: true });
         if (error) throw error; window.currentDayExercises = exercises;
         
-        if (exercises.length === 0) { container.innerHTML = `<div class="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 flex flex-col items-center justify-center p-10 bg-custom-card border border-dashed border-custom-border rounded-3xl text-center"><div class="w-16 h-16 bg-[#171717] rounded-full flex items-center justify-center mb-4"><svg class="w-8 h-8 text-custom-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg></div><h3 class="text-xl font-bold text-white mb-2">Día libre o sin configurar</h3><p class="text-custom-textMuted text-sm mb-4">Aún no agregaste ejercicios para el día seleccionado.</p></div>`; return; }
+        if (exercises.length === 0) { 
+            document.getElementById('btn-start-workout').classList.add('hidden'); // Escondemos el inicio
+            container.innerHTML = `<div class="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 flex flex-col items-center justify-center p-10 bg-custom-card border border-dashed border-custom-border rounded-3xl text-center"><div class="w-16 h-16 bg-[#171717] rounded-full flex items-center justify-center mb-4"><svg class="w-8 h-8 text-custom-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg></div><h3 class="text-xl font-bold text-white mb-2">Día libre o sin configurar</h3><p class="text-custom-textMuted text-sm mb-4">Aún no agregaste ejercicios para el día seleccionado.</p></div>`; return; 
+        }
+        
+        document.getElementById('btn-start-workout').classList.remove('hidden'); // Mostramos el inicio
         
         container.innerHTML = '';
         exercises.forEach(ex => {
@@ -699,7 +737,9 @@ async function changeDay(day, event) {
             const safeId = escapeHTML(ex.id); const exType = ex.exercise_type || 'carga';
             
             let state = getExTimerState(safeId); let currentExSecs = getExCurrentSeconds(safeId);
-            let tDisplay = currentExSecs > 0 ? formatTime(currentExSecs) : "0s";
+            let mDisp = Math.floor(currentExSecs / 60).toString().padStart(2, '0');
+            let sDisp = (currentExSecs % 60).toString().padStart(2, '0');
+            let tDisplay = `${mDisp}:${sDisp}`; // Formato 00:00 por defecto
             let tIcon = state.running ? SVG_PAUSE : SVG_PLAY;
             let tColorClass = state.running ? 'text-orange-500' : 'text-green-500';
 
@@ -854,7 +894,16 @@ async function confirmCopyExercise() {
     const targetDay = document.getElementById('copy-target-day').value; const btn = document.getElementById('btn-confirm-copy'); btn.innerText = "Copiando..."; btn.disabled = true;
     const { data: destExercises } = await supabaseClient.from('user_routines').select('id').eq('user_id', currentUserId).eq('day_of_week', targetDay); const newOrderIndex = destExercises ? destExercises.length : 0;
     const newEx = { user_id: currentUserId, day_of_week: targetDay, exercise_name: exerciseToCopy.exercise_name, sets: exerciseToCopy.sets, target_reps: exerciseToCopy.target_reps, exercise_type: exerciseToCopy.exercise_type, has_video: exerciseToCopy.has_video, youtube_url: exerciseToCopy.youtube_url, has_image: exerciseToCopy.has_image, image_url: exerciseToCopy.image_url, order_index: newOrderIndex };
-    try { const {error} = await supabaseClient.from('user_routines').insert([newEx]); if(error) throw error; closeAllModals(); showToast("¡Ejercicio copiado exitosamente!"); if(targetDay === currentActiveDay) { changeDay(currentActiveDay); } } catch(e) { alert("Error al copiar: " + e.message); } finally { btn.innerText = "Copiar"; btn.disabled = false; }
+    try { 
+        const {error} = await supabaseClient.from('user_routines').insert([newEx]); 
+        if(error) throw error; 
+        closeAllModals(); showToast("¡Ejercicio copiado exitosamente!"); 
+        if(targetDay === currentActiveDay) { changeDay(currentActiveDay); } 
+    } catch(e) { 
+        showHatAlert("Error al copiar", e.message); 
+    } finally { 
+        btn.innerText = "Copiar"; btn.disabled = false; 
+    }
 }
 
 // --- GUARDAR Y CARGAR HISTORIAL ---
@@ -880,10 +929,15 @@ async function saveToCloud(exId, totalSets, exName, exType, btnEvent) {
                 let m = document.getElementById(`min-${exId}-${i}`).value || 0; let s = document.getElementById(`seg-${exId}-${i}`).value || 0; let totalSecs = (parseInt(m) * 60) + parseInt(s);
                 if(totalSecs > 0) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: 0, reps: 0, time_seconds: totalSecs, exercise_type: 'tiempo', exercise_duration: exTotalSeconds, set_number: i, log_date: dateString }); }
             } else {
-                let w = document.getElementById(`peso-${exId}-${i}`).value; let r = document.getElementById(`reps-${exId}-${i}`).value;
-                if(w && r) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: parseFloat(w), reps: parseInt(r), time_seconds: 0, exercise_type: 'carga', exercise_duration: exTotalSeconds, set_number: i, log_date: dateString }); }
+                let w = document.getElementById(`peso-${exId}-${i}`).value || 0; let r = document.getElementById(`reps-${exId}-${i}`).value;
+                // Dejamos pasar si el peso es 0 o está vacío, pero exigimos que las repeticiones sean mayores a 0
+                if(r && parseInt(r) > 0) { logs.push({ user_id: currentUserId, exercise_name: exName, weight: parseFloat(w), reps: parseInt(r), time_seconds: 0, exercise_type: 'carga', exercise_duration: exTotalSeconds, set_number: i, log_date: dateString }); }
             }
         } 
+    }
+
+    if(logs.length === 0) {
+        const originalText = btnText.innerText; btn.classList.add('bg-red-600'); btnText.innerText = "FALTAN DATOS VÁLIDOS"; setTimeout(() => { btn.classList.remove('bg-red-600'); btnText.innerText = originalText; }, 2000); return; 
     }
 
     btnText.innerText = "GUARDANDO...";
@@ -1161,6 +1215,15 @@ window.exportUserDataPDF = async function() {
         const { data: routines } = await supabaseClient.from('user_routines').select('*').eq('user_id', currentUserId);
         const { data: logs } = await supabaseClient.from('workout_logs').select('*').eq('user_id', currentUserId).order('log_date', { ascending: true });
         const { data: sessions } = await supabaseClient.from('workout_sessions').select('*').eq('user_id', currentUserId).order('session_date', { ascending: true });
+
+       
+      if (routines.length === 0 && logs.length === 0 && sessions.length === 0) {
+            if(window.showMessage) window.showMessage("No hay suficientes datos registrados para generar un reporte.", true);
+            if(window.showToast) window.showToast("Tu historial de entrenamiento está vacío.");
+            throw new Error("Sin datos para exportar");
+        }
+
+       
         
         const userEmail = document.getElementById('user-display').innerText || 'Atleta';
         const filename = `HAT_Reporte_${isDark ? 'Oscuro' : 'Claro'}_${new Date().toLocaleDateString('es-AR').replace(/\//g,'-')}.pdf`;
@@ -1738,3 +1801,8 @@ window.saveToCloud = saveToCloud;
 window.loadEvolucion = loadEvolucion;
 window.promptDeleteLog = promptDeleteLog;
 window.promptEditLog = promptEditLog;
+window.promptDeleteSessionDate = promptDeleteSessionDate;
+window.confirmDeleteSessionDate = confirmDeleteSessionDate;
+window.promptEditSessionDate = promptEditSessionDate;
+window.saveEditedSession = saveEditedSession;
+window.showHatAlert = showHatAlert;
