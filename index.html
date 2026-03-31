@@ -224,17 +224,54 @@
         </div>
 
         <div id="modal-edit-session" class="modal-content hidden bg-custom-card border border-blue-500/30 p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl text-center" onclick="event.stopPropagation()">
-            <h2 class="text-2xl font-bold text-white mb-2">Editar Tiempo</h2>
-            <p id="edit-session-date-label" class="text-sm text-custom-textMuted mb-6"></p>
-            <input type="hidden" id="edit-session-date-val">
-            <div class="flex justify-center items-center gap-2 mb-6">
-                <div class="flex flex-col"><input type="number" id="edit-sess-h" class="w-16 bg-[#0a0a0a] border border-[#262626] p-2 text-center text-white rounded outline-none focus:border-blue-500 font-bold" min="0"><span class="text-[10px] text-custom-textMuted mt-1">Horas</span></div>
-                <span class="text-xl font-bold text-white mb-4">:</span>
-                <div class="flex flex-col"><input type="number" id="edit-sess-m" class="w-16 bg-[#0a0a0a] border border-[#262626] p-2 text-center text-white rounded outline-none focus:border-blue-500 font-bold" min="0" max="59"><span class="text-[10px] text-custom-textMuted mt-1">Min</span></div>
+            <h2 class="text-2xl font-bold text-white mb-2">Editar Sesión</h2>
+            <p class="text-sm text-custom-textMuted mb-6">Corregí la fecha o el tiempo registrado.</p>
+            <input type="hidden" id="edit-session-old-date-val">
+            
+            <div class="mb-4 text-left">
+                <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Fecha del Entrenamiento</label>
+                <input type="date" id="edit-session-date-val" style="color-scheme: dark;" class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl outline-none focus:border-blue-500 text-white font-bold cursor-pointer">
             </div>
+
+            <div class="mb-6 text-left">
+                <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Tiempo (Horas : Minutos)</label>
+                <div class="flex justify-center items-center gap-2">
+                    <div class="flex flex-col"><input type="number" id="edit-sess-h" class="w-20 bg-[#0a0a0a] border border-[#262626] p-3 text-center text-white rounded-xl outline-none focus:border-blue-500 font-bold text-lg" min="0"><span class="text-[10px] text-custom-textMuted mt-1 text-center">Horas</span></div>
+                    <span class="text-2xl font-bold text-white mb-4">:</span>
+                    <div class="flex flex-col"><input type="number" id="edit-sess-m" class="w-20 bg-[#0a0a0a] border border-[#262626] p-3 text-center text-white rounded-xl outline-none focus:border-blue-500 font-bold text-lg" min="0" max="59"><span class="text-[10px] text-custom-textMuted mt-1 text-center">Min</span></div>
+                </div>
+            </div>
+            
             <div class="flex gap-4">
                 <button onclick="openGlobalStats()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl font-bold transition-colors hover:bg-[#262626]">Cancelar</button>
                 <button id="btn-save-session-edit" onclick="saveEditedSession()" class="flex-1 bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg transition-colors hover:bg-blue-500">Guardar</button>
+            </div>
+        </div>
+
+        <div id="modal-add-session" class="modal-content hidden bg-custom-card border border-teal-500/30 p-6 md:p-8 rounded-3xl w-full max-w-sm relative shadow-2xl text-center" onclick="event.stopPropagation()">
+            <div class="w-16 h-16 bg-teal-500/10 text-teal-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2">Agregar Sesión Manual</h2>
+            <p class="text-sm text-custom-textMuted mb-6">Registrá un entrenamiento que no hayas cronometrado en la app.</p>
+
+            <div class="mb-4 text-left">
+                <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Fecha</label>
+                <input type="date" id="add-session-date" style="color-scheme: dark;" class="w-full bg-[#0a0a0a] border border-[#262626] p-3 rounded-xl outline-none focus:border-teal-500 text-white font-bold cursor-pointer">
+            </div>
+
+            <div class="mb-6 text-left">
+                <label class="text-xs font-bold text-custom-textMuted uppercase tracking-wider block mb-1">Tiempo Estimado</label>
+                <div class="flex justify-center items-center gap-2">
+                    <div class="flex flex-col"><input type="number" id="add-sess-h" class="w-20 bg-[#0a0a0a] border border-[#262626] p-3 text-center text-white rounded-xl outline-none focus:border-teal-500 font-bold text-lg" min="0" placeholder="0"><span class="text-[10px] text-custom-textMuted mt-1 text-center">Horas</span></div>
+                    <span class="text-2xl font-bold text-white mb-4">:</span>
+                    <div class="flex flex-col"><input type="number" id="add-sess-m" class="w-20 bg-[#0a0a0a] border border-[#262626] p-3 text-center text-white rounded-xl outline-none focus:border-teal-500 font-bold text-lg" min="0" max="59" placeholder="45"><span class="text-[10px] text-custom-textMuted mt-1 text-center">Min</span></div>
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="openGlobalStats()" class="flex-1 bg-[#171717] border border-[#262626] text-white py-3 rounded-xl font-bold transition-colors hover:bg-[#262626]">Cancelar</button>
+                <button id="btn-save-new-session" onclick="saveNewPastSession()" class="flex-1 bg-teal-600 text-white py-3 rounded-xl font-bold shadow-lg transition-colors hover:bg-teal-500">Agregar</button>
             </div>
         </div>
 
