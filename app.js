@@ -1857,3 +1857,5 @@ window.confirmDeleteSessionDate = confirmDeleteSessionDate;
 window.promptEditSessionDate = promptEditSessionDate;
 window.saveEditedSession = saveEditedSession;
 window.showHatAlert = showHatAlert;
+window.promptAddPastSession = promptAddPastSession;
+window.saveNewPastSession = saveNewPastSession;
