@@ -38,7 +38,13 @@ const SVG_PAUSE = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBo
 const SVG_RESET = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>`;
 
 // --- MOTOR DE SONIDO ---
+// --- MOTOR DE SONIDO Y WAKE LOCK ---
 let audioCtx = null;
+let wakeLock = null; // Evita que la pantalla se apague a mitad de la plancha
+
+async function requestWakeLock() { try { if ('wakeLock' in navigator) { wakeLock = await navigator.wakeLock.request('screen'); } } catch (err) { console.log("Wake lock error:", err); } }
+function releaseWakeLock() { if (wakeLock !== null) { wakeLock.release().then(() => { wakeLock = null; }); } }
+
 function initAudio() { if(!audioCtx) { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } }
 document.addEventListener('click', initAudio, {once: true}); 
 document.addEventListener('touchstart', initAudio, {once: true});
@@ -57,8 +63,10 @@ function playTap() { playTone(1200, 'sine', 0.05, 0.015); }
 function playPop() { playTone(900, 'triangle', 0.08, 0.02); } 
 function playAlarm() {
     if(!audioCtx) return;
+    if(audioCtx.state === 'suspended') audioCtx.resume();
     const notes = [523.25, 659.25, 783.99, 1046.50]; 
-    for(let j=0; j<3; j++) { notes.forEach((freq, i) => { setTimeout(() => playTone(freq, 'square', 0.1, 0.05), (j * 600) + (i * 100)); }); }
+    // Aumentamos el volumen al MÁXIMO (0.8) y lo hacemos sonar 4 veces
+    for(let j=0; j<4; j++) { notes.forEach((freq, i) => { setTimeout(() => playTone(freq, 'square', 0.15, 0.8), (j * 600) + (i * 120)); }); }
 }
 function playVictory() {
     if(!audioCtx) return;
@@ -110,7 +118,21 @@ document.getElementById('modal-overlay').addEventListener('click', function(e) {
 // --- DRAG & DROP DEL MINI TIMER ---
 const miniTimer = document.getElementById('mini-timer-widget');
 let isDraggingTimer = false; let startX, startY, initialX, initialY;
-function timerDragStart(e) { if(e.target.closest('button')) return; isDraggingTimer = true; const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; const rect = miniTimer.getBoundingClientRect(); startX = clientX; startY = clientY; initialX = rect.left; initialY = rect.top; miniTimer.style.transition = 'none'; }
+function timerDragStart(e) { 
+    if(e.target.closest('button')) return; 
+    isDraggingTimer = true; 
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX; 
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY; 
+    const rect = miniTimer.getBoundingClientRect(); 
+    startX = clientX; startY = clientY; 
+    initialX = rect.left; initialY = rect.top; 
+    miniTimer.style.transition = 'none'; 
+    
+    // FIX ESTIRAMIENTO: Anulamos el anclaje derecho y fijamos el ancho
+    miniTimer.style.right = 'auto'; 
+    miniTimer.style.bottom = 'auto';
+    miniTimer.style.width = rect.width + 'px';
+}
 function timerDragMove(e) { if(!isDraggingTimer) return; e.preventDefault(); const clientX = e.touches ? e.touches[0].clientX : e.clientX; const clientY = e.touches ? e.touches[0].clientY : e.clientY; const dx = clientX - startX; const dy = clientY - startY; miniTimer.style.left = `${initialX + dx}px`; miniTimer.style.top = `${initialY + dy}px`; miniTimer.style.bottom = 'auto'; miniTimer.style.right = 'auto'; miniTimer.style.transform = 'none'; }
 function timerDragEnd(e) { if(!isDraggingTimer) return; isDraggingTimer = false; miniTimer.style.transition = 'all 0.3s ease'; const rect = miniTimer.getBoundingClientRect(); const screenWidth = window.innerWidth; if (rect.left + rect.width / 2 < screenWidth / 2) { miniTimer.style.left = '16px'; } else { miniTimer.style.left = `${screenWidth - rect.width - 16}px`; } if(rect.top < 80) miniTimer.style.top = '80px'; if(rect.top > window.innerHeight - 100) miniTimer.style.top = `${window.innerHeight - 100}px`; }
 if(miniTimer) { miniTimer.addEventListener('mousedown', timerDragStart); window.addEventListener('mousemove', timerDragMove); window.addEventListener('mouseup', timerDragEnd); miniTimer.addEventListener('touchstart', timerDragStart, {passive: false}); window.addEventListener('touchmove', timerDragMove, {passive: false}); window.addEventListener('touchend', timerDragEnd); }
@@ -223,18 +245,25 @@ function stopGlobalWorkout() { openModal('modal-confirm-stop-workout'); }
 async function confirmStopGlobalWorkout() {
     if(globalTimerInterval) { clearInterval(globalTimerInterval); globalTimerInterval = null; }
     const today = new Date(); const dateString = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
+    
+    const finalSeconds = globalSeconds; // Guardamos el tiempo exacto
+    
+    // 1. LIMPIEZA INMEDIATA LOCAL (Blindaje contra cortes de WiFi)
+    document.getElementById('global-workout-timer').classList.add('hidden'); 
+    document.getElementById('btn-start-workout').classList.remove('hidden');
+    localStorage.removeItem('hat_workout_start'); // Destruimos el timer de la memoria
+    globalSeconds = 0;
+    closeAllModals();
+
+    // 2. GUARDADO EN LA BASE DE DATOS
     try { 
-        await supabaseClient.from('workout_sessions').insert([{ user_id: currentUserId, session_date: dateString, duration_seconds: globalSeconds }]); 
-        showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(globalSeconds)}`); 
+        await supabaseClient.from('workout_sessions').insert([{ user_id: currentUserId, session_date: dateString, duration_seconds: finalSeconds }]); 
+        showToast(`¡Entrenamiento finalizado! Tiempo: ${formatTime(finalSeconds)}`); 
         playVictory(); 
-    } catch(e) { console.error("Error guardando sesión global:", e); showToast("Error al guardar sesión."); } 
-    finally {
-        document.getElementById('global-workout-timer').classList.add('hidden'); 
-        document.getElementById('btn-start-workout').classList.remove('hidden');
-        localStorage.removeItem('hat_workout_start'); 
-        globalSeconds = 0;
-        closeAllModals(); 
-    }
+    } catch(e) { 
+        console.error("Error guardando sesión global:", e); 
+        showToast("Error de conexión al guardar, pero el tiempo se detuvo."); 
+    } 
 }
 
 function resumeGlobalWorkoutIfActive() {
@@ -304,6 +333,7 @@ function resumeExTimerIfActive(exId) {
 }
 
 // --- CRONÓMETRO DE DESCANSO GENERAL ---
+// --- CRONÓMETRO DE DESCANSO GENERAL ---
 function openTimerModal() {
     document.getElementById('mini-timer-widget').classList.add('translate-x-[-150%]', 'opacity-0'); document.getElementById('mini-timer-widget').classList.remove('translate-x-0', 'opacity-100');
     if (timerSecondsLeft === 0) { document.getElementById('timer-min').value = ''; document.getElementById('timer-seg').value = ''; document.getElementById('timer-inputs').classList.remove('hidden'); document.getElementById('timer-display').classList.add('hidden'); } 
@@ -316,22 +346,28 @@ function toggleTimer() {
     const btn = document.getElementById('btn-timer-start'); const btnMini = document.getElementById('btn-mini-play');
     if (timerInterval) {
         clearInterval(timerInterval); timerInterval = null; localStorage.removeItem('hat_rest_timer_end');
+        releaseWakeLock(); // Liberamos la pantalla al pausar
         btn.innerText = "Reanudar"; btn.classList.replace('bg-orange-600', 'bg-green-600');
         if(btnMini) { btnMini.classList.replace('bg-orange-600', 'bg-green-500'); btnMini.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>'; }
         document.getElementById('timer-countdown').classList.remove('timer-pulse'); document.getElementById('mini-timer-countdown')?.classList.remove('timer-pulse');
     } else {
         if(timerSecondsLeft <= 0) { let m = parseInt(document.getElementById('timer-min').value) || 0; let s = parseInt(document.getElementById('timer-seg').value) || 0; timerSecondsLeft = (m * 60) + s; }
         if(timerSecondsLeft <= 0) return;
+        
+        requestWakeLock(); // Mantenemos la pantalla prendida
         localStorage.setItem('hat_rest_timer_end', (Date.now() + (timerSecondsLeft * 1000)).toString());
         document.getElementById('timer-inputs').classList.add('hidden'); document.getElementById('timer-display').classList.remove('hidden');
         btn.innerText = "Pausar"; btn.classList.replace('bg-green-600', 'bg-orange-600');
         if(btnMini) { btnMini.classList.replace('bg-green-500', 'bg-orange-600'); btnMini.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>'; }
         updateTimerDisplay();
+        
+        if(timerInterval) clearInterval(timerInterval); // BLINDAJE: Evita timers fantasma
         timerInterval = setInterval(() => {
             let endTime = parseInt(localStorage.getItem('hat_rest_timer_end')); timerSecondsLeft = Math.round((endTime - Date.now()) / 1000);
             if(timerSecondsLeft <= 10 && timerSecondsLeft > 0) playTap();
             if(timerSecondsLeft <= 0) { 
-                stopTimer(); playAlarm(); if (navigator.vibrate) navigator.vibrate([500, 200, 500]); 
+                stopTimer(); playAlarm(); 
+                if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 800]); // Vibración más agresiva y larga
                 if(document.getElementById('modal-timer-finished')) { openModal('modal-timer-finished'); } else { closeAllModals(); showToast("¡Descanso Terminado!"); }
             } else { updateTimerDisplay(); }
         }, 1000);
@@ -339,7 +375,9 @@ function toggleTimer() {
 }
 
 function stopTimer() {
-    if(timerInterval) clearInterval(timerInterval); timerInterval = null; timerSecondsLeft = 0; localStorage.removeItem('hat_rest_timer_end');
+    if(timerInterval) { clearInterval(timerInterval); timerInterval = null; } 
+    timerSecondsLeft = 0; localStorage.removeItem('hat_rest_timer_end');
+    releaseWakeLock(); // Liberamos la pantalla
     document.getElementById('timer-inputs').classList.remove('hidden'); document.getElementById('timer-display').classList.add('hidden'); document.getElementById('timer-countdown').classList.remove('timer-pulse');
     const btn = document.getElementById('btn-timer-start'); if(btn) { btn.innerText = "Iniciar"; btn.classList.remove('bg-orange-600'); btn.classList.add('bg-green-600'); }
     const miniWidget = document.getElementById('mini-timer-widget'); if(miniWidget) { miniWidget.classList.add('translate-x-[-150%]', 'opacity-0'); miniWidget.classList.remove('translate-x-0', 'opacity-100'); }
@@ -352,16 +390,23 @@ function resumeRestTimerIfActive() {
         let remaining = Math.round((parseInt(savedEnd) - Date.now()) / 1000);
         if (remaining > 0) {
             timerSecondsLeft = remaining;
+            requestWakeLock(); // Mantenemos la pantalla prendida
             document.getElementById('timer-inputs').classList.add('hidden'); document.getElementById('timer-display').classList.remove('hidden'); 
             const miniWidget = document.getElementById('mini-timer-widget'); if(miniWidget) { miniWidget.classList.remove('translate-x-[-150%]', 'opacity-0', 'hidden'); miniWidget.classList.add('translate-x-0', 'opacity-100'); }
             const btn = document.getElementById('btn-timer-start'); const btnMini = document.getElementById('btn-mini-play');
             if(btn) { btn.innerText = "Pausar"; btn.classList.replace('bg-green-600', 'bg-orange-600'); }
             if(btnMini) { btnMini.classList.replace('bg-green-500', 'bg-orange-600'); btnMini.innerHTML = '<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>'; }
             updateTimerDisplay();
+            
+            if(timerInterval) clearInterval(timerInterval); // BLINDAJE: Evita timers duplicados
             timerInterval = setInterval(() => {
                 let endTime = parseInt(localStorage.getItem('hat_rest_timer_end')); timerSecondsLeft = Math.round((endTime - Date.now()) / 1000);
                 if(timerSecondsLeft <= 10 && timerSecondsLeft > 0) playTap();
-                if(timerSecondsLeft <= 0) { stopTimer(); playAlarm(); if (navigator.vibrate) navigator.vibrate([500, 200, 500]); if(document.getElementById('modal-timer-finished')) { openModal('modal-timer-finished'); } else { closeAllModals(); showToast("¡Descanso Terminado!"); } } else { updateTimerDisplay(); }
+                if(timerSecondsLeft <= 0) { 
+                    stopTimer(); playAlarm(); 
+                    if (navigator.vibrate) navigator.vibrate([500, 200, 500, 200, 800]); 
+                    if(document.getElementById('modal-timer-finished')) { openModal('modal-timer-finished'); } else { closeAllModals(); showToast("¡Descanso Terminado!"); } 
+                } else { updateTimerDisplay(); }
             }, 1000);
         } else {
             localStorage.removeItem('hat_rest_timer_end'); if(document.getElementById('modal-timer-finished')) { openModal('modal-timer-finished'); }
@@ -779,7 +824,12 @@ async function changeDay(day, event) {
             container.innerHTML = `<div class="col-span-1 md:col-span-2 lg:col-span-3 xl:col-span-4 flex flex-col items-center justify-center p-10 bg-custom-card border border-dashed border-custom-border rounded-3xl text-center"><div class="w-16 h-16 bg-[#171717] rounded-full flex items-center justify-center mb-4"><svg class="w-8 h-8 text-custom-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg></div><h3 class="text-xl font-bold text-white mb-2">Día libre o sin configurar</h3><p class="text-custom-textMuted text-sm mb-4">Aún no agregaste ejercicios para el día seleccionado.</p></div>`; return; 
         }
         
-        document.getElementById('btn-start-workout').classList.remove('hidden'); // Mostramos el inicio
+        // Mostramos el botón de inicio SOLO si no hay un entrenamiento corriendo actualmente
+        if (!localStorage.getItem('hat_workout_start')) {
+            document.getElementById('btn-start-workout').classList.remove('hidden'); 
+        } else {
+            document.getElementById('btn-start-workout').classList.add('hidden'); 
+        }
         
         container.innerHTML = '';
         exercises.forEach(ex => {
