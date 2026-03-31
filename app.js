@@ -489,7 +489,22 @@ async function openGlobalStats() {
     try {
         const { data, error } = await supabaseClient.from('workout_sessions').select('id, session_date, duration_seconds').eq('user_id', currentUserId).order('session_date', { ascending: true });
         if(error) throw error;
-        if(data.length === 0) { container.innerHTML = `<p class="text-custom-textMuted text-sm text-center">Aún no hay entrenamientos registrados.</p>`; return; }
+        
+        let htmlList = '';
+        
+        // Botón de Agregar Manual siempre visible arriba de la lista
+        htmlList += `
+        <div class="mt-4 mb-4">
+            <button onclick="promptAddPastSession()" class="w-full bg-teal-500/10 border border-teal-500/30 text-teal-400 hover:text-white hover:bg-teal-500/30 py-3 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 text-sm shadow-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg> 
+                Agregar Sesión Manual
+            </button>
+        </div>`;
+
+        if(data.length === 0) { 
+            container.innerHTML = htmlList + `<p class="text-custom-textMuted text-sm text-center mt-4">Aún no hay entrenamientos registrados.</p>`; 
+            return; 
+        }
         
         const grouped = {};
         data.forEach(d => { 
@@ -500,7 +515,7 @@ async function openGlobalStats() {
         const dates = Object.keys(grouped); 
         const durations = dates.map(d => parseFloat((grouped[d].totalSecs / 60).toFixed(2))); 
         
-        let htmlList = `<div class="mt-6 border-t border-custom-border pt-4 max-h-[30vh] overflow-y-auto custom-scroll pr-2 space-y-2">`;
+        htmlList += `<div class="border-t border-custom-border pt-4 max-h-[30vh] overflow-y-auto custom-scroll pr-2 space-y-2">`;
         
         [...dates].reverse().forEach(date => {
             const secs = grouped[date].totalSecs;
@@ -510,7 +525,7 @@ async function openGlobalStats() {
                                 <span class="text-xs text-custom-textMuted font-bold">Tiempo Invertido: <span class="text-custom-primary">${formatHMS(secs)}</span></span>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="promptEditSessionDate('${date}', ${secs})" class="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 transition-colors" title="Editar Tiempo"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
+                                <button onclick="promptEditSessionDate('${date}', ${secs})" class="p-2 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500/20 transition-colors" title="Editar Fecha o Tiempo"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg></button>
                                 <button onclick="promptDeleteSessionDate('${date}')" class="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors" title="Eliminar Día"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg></button>
                             </div>
                         </div>`;
@@ -539,7 +554,7 @@ async function confirmDeleteSessionDate() {
 
 function promptEditSessionDate(date, secs) {
     closeAllModals();
-    document.getElementById('edit-session-date-label').innerText = "Modificar los datos del día " + date;
+    document.getElementById('edit-session-old-date-val').value = date;
     document.getElementById('edit-session-date-val').value = date;
     document.getElementById('edit-sess-h').value = Math.floor(secs / 3600);
     document.getElementById('edit-sess-m').value = Math.floor((secs % 3600) / 60);
@@ -547,17 +562,53 @@ function promptEditSessionDate(date, secs) {
 }
 
 async function saveEditedSession() {
-    const date = document.getElementById('edit-session-date-val').value;
+    const oldDate = document.getElementById('edit-session-old-date-val').value;
+    const newDate = document.getElementById('edit-session-date-val').value;
     const h = parseInt(document.getElementById('edit-sess-h').value) || 0;
     const m = parseInt(document.getElementById('edit-sess-m').value) || 0;
     const totalSecs = (h * 3600) + (m * 60);
     
+    if (!newDate) return showToast("Por favor seleccioná una fecha válida.");
+    if (totalSecs <= 0) return showToast("El tiempo debe ser mayor a 0.");
+
     const btn = document.getElementById('btn-save-session-edit'); btn.innerText = "Guardando..."; btn.disabled = true;
     try {
-        await supabaseClient.from('workout_sessions').delete().eq('user_id', currentUserId).eq('session_date', date);
-        if (totalSecs > 0) { await supabaseClient.from('workout_sessions').insert([{ user_id: currentUserId, session_date: date, duration_seconds: totalSecs }]); }
+        // Borramos los registros asociados a la fecha vieja
+        await supabaseClient.from('workout_sessions').delete().eq('user_id', currentUserId).eq('session_date', oldDate);
+        
+        // Insertamos el nuevo registro consolidado con la fecha (nueva o misma)
+        await supabaseClient.from('workout_sessions').insert([{ user_id: currentUserId, session_date: newDate, duration_seconds: totalSecs }]);
+        
         openGlobalStats();
+        showToast("¡Sesión actualizada!");
     } catch(e) { showToast("Error: " + e.message); } finally { btn.innerText = "Guardar"; btn.disabled = false; }
+}
+
+function promptAddPastSession() {
+    closeAllModals();
+    const today = new Date();
+    const dateString = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, '0') + "-" + String(today.getDate()).padStart(2, '0');
+    document.getElementById('add-session-date').value = dateString;
+    document.getElementById('add-sess-h').value = '';
+    document.getElementById('add-sess-m').value = '';
+    openModal('modal-add-session');
+}
+
+async function saveNewPastSession() {
+    const newDate = document.getElementById('add-session-date').value;
+    const h = parseInt(document.getElementById('add-sess-h').value) || 0;
+    const m = parseInt(document.getElementById('add-sess-m').value) || 0;
+    const totalSecs = (h * 3600) + (m * 60);
+
+    if (!newDate) return showToast("Por favor seleccioná una fecha.");
+    if (totalSecs <= 0) return showToast("El tiempo estimado debe ser mayor a 0.");
+
+    const btn = document.getElementById('btn-save-new-session'); btn.innerText = "Agregando..."; btn.disabled = true;
+    try {
+        await supabaseClient.from('workout_sessions').insert([{ user_id: currentUserId, session_date: newDate, duration_seconds: totalSecs }]);
+        openGlobalStats();
+        showToast("¡Sesión agregada exitosamente!");
+    } catch(e) { showToast("Error: " + e.message); } finally { btn.innerText = "Agregar"; btn.disabled = false; }
 }
 
 function promptDeleteSession(id) {
