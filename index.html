@@ -396,8 +396,8 @@
             </button>
         </div>
 
-        <div class="flex-grow flex flex-col items-center justify-center text-center transition-all duration-300 transform" id="tutorial-slide-content">
-            <div id="tutorial-icon" class="w-24 h-24 bg-custom-primary/10 text-custom-primary rounded-3xl flex items-center justify-center mb-8 shadow-[0_0_40px_rgba(245,73,39,0.25)] border border-custom-primary/20">
+        <div class="flex-grow flex flex-col items-center justify-center text-center transition-all duration-300 transform touch-pan-y" id="tutorial-slide-content" ontouchstart="handleTutorialTouchStart(event)" ontouchend="handleTutorialTouchEnd(event)">
+            <div id="tutorial-icon" class="w-24 h-24 rounded-3xl flex items-center justify-center mb-8 border transition-colors duration-300">
                 </div>
             <h2 id="tutorial-title" class="text-2xl md:text-3xl font-black text-white mb-4 uppercase tracking-tight italic">Título</h2>
             <div class="max-h-[180px] overflow-y-auto custom-scroll px-2">
@@ -414,7 +414,7 @@
             </div>
         </div>
     </div>
-</div
+</div>
     
     </div>
 
