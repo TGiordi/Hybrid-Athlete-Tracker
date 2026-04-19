@@ -80,6 +80,15 @@
 
             <button onclick="handleSignOut()" class="text-xs font-bold text-custom-primary border border-custom-primary/20 px-3 py-1.5 rounded-md hover:bg-custom-primary/10 transition-all relative z-20 bg-[#0a0a0a]">Salir</button>
         </div>
+        <button onclick="openTutorial()" class="flex items-center gap-1.5 bg-[#262626] hover:bg-[#404040] text-white text-[10px] font-extrabold px-3 py-1.5 rounded-lg border border-[#404040] transition-all shadow-sm uppercase tracking-wider relative overflow-hidden group">
+    <div class="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+    <span>Guía</span>
+    <svg class="w-3.5 h-3.5 text-custom-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+</button>
+
+<div id="modal-tutorial" class="modal-content hidden bg-custom-card border border-custom-primary/20 p-0 rounded-3xl w-full max-w-2xl relative shadow-[0_0_50px_rgba(245,73,39,0.15)] overflow-hidden" onclick="event.stopPropagation()">
+    <div id="tutorial-widget-container"></div>
+</div>
     </div>
 </nav>
 
