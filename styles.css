@@ -54,3 +54,10 @@ input:-webkit-autofill { -webkit-box-shadow: 0 0 0 30px #171717 inset !important
 .timer-display { font-variant-numeric: tabular-nums; letter-spacing: 2px; }
 .timer-pulse { animation: timerPulse 1s infinite alternate; color: #F54927; }
 @keyframes timerPulse { 0% { opacity: 1; } 100% { opacity: 0.5; } }
+
+/* Ajuste para el overlay de modales */
+#modal-overlay {
+    background-color: rgba(0, 0, 0, 0.4); /* Translucidez ajustada */
+    backdrop-filter: blur(8px); /* Efecto de desenfoque del fondo */
+    -webkit-backdrop-filter: blur(8px);
+}
