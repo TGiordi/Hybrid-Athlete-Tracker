@@ -1831,6 +1831,12 @@ if (!isStandalone) {
     });
 }
 
+function openTutorial() {
+    closeAllModals();
+    openModal('modal-tutorial');
+    // Si usas un sistema de guardado, podrías verificar si es la primera vez que entra el usuario.
+}
+
 // =========================================================================
 // EXPORTACIÓN GLOBAL 
 // =========================================================================
