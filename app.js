@@ -1839,52 +1839,90 @@ const tutorialSlides = [
     {
         title: "Central de Mando HAT",
         desc: "Bienvenido a la plataforma definitiva para el atleta híbrido. HAT combina el seguimiento de fuerza del gimnasio con la precisión del atletismo. Gestioná tu progreso, consultá al Coach IA y optimizá cada repetición en una interfaz de alto rendimiento.",
-        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`,
+        theme: { text: "text-custom-primary", bg: "bg-custom-primary/10", border: "border-custom-primary/20", shadow: "shadow-[0_0_40px_rgba(245,73,39,0.25)]" }
     },
     {
         title: "Estadísticas y Registro",
         desc: "Tus entrenamientos se graban automáticamente. Usá el gráfico para ver los minutos invertidos. Si olvidás algo, usá el botón 'Agregar Sesión Manual'. También podés editar la fecha o el tiempo de cualquier registro tocando el lápiz en la lista.",
-        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 20V10M12 20V4M6 20v-6"></path></svg>`
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 20V10M12 20V4M6 20v-6"></path></svg>`,
+        theme: { text: "text-teal-400", bg: "bg-teal-500/10", border: "border-teal-500/20", shadow: "shadow-[0_0_40px_rgba(45,212,191,0.25)]" }
     },
     {
         title: "Gestión de Rutinas",
         desc: "En 'Mis Rutinas' guardá tu semana actual como plantilla. Para añadir ejercicios nuevos a tu día, usá el botón grande '+' al final de la pantalla principal. Mantené presionado el ícono de las tres rayas para reordenar tu sesión.",
-        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>`
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>`,
+        theme: { text: "text-yellow-400", bg: "bg-yellow-500/10", border: "border-yellow-500/20", shadow: "shadow-[0_0_40px_rgba(250,204,21,0.25)]" }
     },
     {
         title: "Coach & Créditos ⚡",
         desc: "Generá planes o resolvé dudas técnicas. Tenés 10 créditos diarios que se recargan 1 por hora automáticamente. Cada consulta o generación consume 1 crédito. ¡Usalos con inteligencia para optimizar tu rendimiento!",
-        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>`
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>`,
+        theme: { text: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/20", shadow: "shadow-[0_0_40px_rgba(168,85,247,0.25)]" }
     },
     {
         title: "Análisis con IA",
         desc: "Dentro de cada ejercicio, tocá 'Ver Progreso' y luego 'Analizar con IA'. La inteligencia artificial estudiará tu historial de cargas y tiempos para darte una devolución técnica precisa sobre tu evolución.",
-        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>`
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>`,
+        theme: { text: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/20", shadow: "shadow-[0_0_40px_rgba(59,130,246,0.25)]" }
     },
     {
         title: "Borrar y Limpiar",
         desc: "'Borrar Semana' limpia tu plan actual para uno nuevo, pero el histórico de cargas NUNCA se borra. Para quitar un solo ejercicio, usá el menú de tres puntos (⋮) en la esquina de su tarjeta.",
-        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`,
+        theme: { text: "text-red-500", bg: "bg-red-500/10", border: "border-red-500/20", shadow: "shadow-[0_0_40px_rgba(239,68,68,0.25)]" }
     },
     {
         title: "Reportes Profesionales",
         desc: "Exportá tu éxito en PDF. 'Modo Oscuro' es ideal para digital, mientras que el 'Modo Claro' está optimizado para imprimir. Incluye tus rutinas activas y gráficos detallados de evolución.",
-        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`,
+        theme: { text: "text-indigo-400", bg: "bg-indigo-500/10", border: "border-indigo-500/20", shadow: "shadow-[0_0_40px_rgba(99,102,241,0.25)]" }
     }
 ];
 
 let currentTutorialSlide = 0;
 
+// Variables para detectar gestos táctiles (Swipe)
+let touchStartX = 0;
+let touchEndX = 0;
+
+function handleTutorialTouchStart(e) {
+    touchStartX = e.changedTouches[0].screenX;
+}
+
+function handleTutorialTouchEnd(e) {
+    touchEndX = e.changedTouches[0].screenX;
+    handleTutorialSwipe();
+}
+
+function handleTutorialSwipe() {
+    const swipeThreshold = 50; // Distancia mínima para considerar que fue un deslizamiento
+    if (touchEndX < touchStartX - swipeThreshold) {
+        // Deslizó hacia la izquierda (Siguiente)
+        nextTutorialSlide();
+    }
+    if (touchEndX > touchStartX + swipeThreshold) {
+        // Deslizó hacia la derecha (Anterior)
+        prevTutorialSlide();
+    }
+}
+
 function renderTutorialSlide() {
     const slide = tutorialSlides[currentTutorialSlide];
     const contentDiv = document.getElementById('tutorial-slide-content');
+    const iconDiv = document.getElementById('tutorial-icon');
     
     // Animación suave de salida
     contentDiv.style.opacity = '0';
     contentDiv.style.transform = 'scale(0.95)';
     
     setTimeout(() => {
-        document.getElementById('tutorial-icon').innerHTML = slide.icon;
+        // Inyectar ícono
+        iconDiv.innerHTML = slide.icon;
+        
+        // Aplicar los colores dinámicos del tema
+        iconDiv.className = `w-24 h-24 rounded-3xl flex items-center justify-center mb-8 border transition-all duration-300 ${slide.theme.bg} ${slide.theme.text} ${slide.theme.border} ${slide.theme.shadow}`;
+        
         document.getElementById('tutorial-title').innerText = slide.title;
         document.getElementById('tutorial-desc').innerText = slide.desc;
         
@@ -1898,12 +1936,17 @@ function renderTutorialSlide() {
         if (currentTutorialSlide === tutorialSlides.length - 1) nextBtn.innerText = "¡A ENTRENAR!";
         else nextBtn.innerText = "Siguiente";
         
-        // Actualizar puntitos
+        // Actualizar puntitos con color dinámico
         const dotsContainer = document.getElementById('tutorial-dots');
         dotsContainer.innerHTML = '';
         tutorialSlides.forEach((_, idx) => {
             const dot = document.createElement('div');
-            dot.className = `h-1.5 rounded-full transition-all duration-500 ${idx === currentTutorialSlide ? 'bg-custom-primary w-8' : 'bg-[#262626] w-2'}`;
+            // Si es el punto activo, le damos el color de la diapositiva actual
+            if (idx === currentTutorialSlide) {
+                dot.className = `h-1.5 rounded-full transition-all duration-500 w-8 bg-current ${slide.theme.text}`;
+            } else {
+                dot.className = `h-1.5 rounded-full transition-all duration-500 w-2 bg-[#262626]`;
+            }
             dotsContainer.appendChild(dot);
         });
         
@@ -1938,11 +1981,6 @@ function prevTutorialSlide() {
         renderTutorialSlide();
     }
 }
-
-// Exportación para que el HTML encuentre las funciones
-window.openTutorial = openTutorial;
-window.nextTutorialSlide = nextTutorialSlide;
-window.prevTutorialSlide = prevTutorialSlide;
 
 // =========================================================================
 // EXPORTACIÓN GLOBAL 
@@ -2025,7 +2063,9 @@ window.saveNewPastSession = saveNewPastSession;
 
 window.openTutorial = openTutorial;
 window.nextTutorialSlide = nextTutorialSlide;
-window.prevTutorialSlide = prevTutorialSlide; 
+window.prevTutorialSlide = prevTutorialSlide;
+window.handleTutorialTouchStart = handleTutorialTouchStart;
+window.handleTutorialTouchEnd = handleTutorialTouchEnd;
 
 window.promptEditSessionDate = promptEditSessionDate;
 window.saveEditedSession = saveEditedSession;
