@@ -1832,44 +1832,44 @@ if (!isStandalone) {
 }
 
 // =========================================================================
-// --- TUTORIAL INTERACTIVO HAT ---
+// --- MOTOR DE DIAPOSITIVAS HAT (TUTORIAL) ---
 // =========================================================================
 
 const tutorialSlides = [
     {
-        title: "Central de Mando",
-        desc: "Bienvenido a la plataforma definitiva para el atleta híbrido. HAT combina el seguimiento de fuerza del gimnasio con la precisión del atletismo. Aquí puedes gestionar tu progreso, consultar a un Coach con IA y optimizar cada repetición.",
-        icon: `<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`
+        title: "Central de Mando HAT",
+        desc: "Bienvenido a la plataforma definitiva para el atleta híbrido. HAT combina el seguimiento de fuerza del gimnasio con la precisión del atletismo. Gestioná tu progreso, consultá al Coach IA y optimizá cada repetición en una interfaz de alto rendimiento.",
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>`
     },
     {
         title: "Estadísticas y Registro",
-        desc: "Tus entrenamientos se graban día a día automáticamente. Si olvidas registrar algo, usa el botón 'Agregar Sesión Manual'. También puedes editar la fecha o el tiempo de cualquier registro anterior tocando el ícono del lápiz en la lista.",
-        icon: `<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 20V10M12 20V4M6 20v-6"></path></svg>`
+        desc: "Tus entrenamientos se graban automáticamente. Usá el gráfico para ver los minutos invertidos. Si olvidás algo, usá el botón 'Agregar Sesión Manual'. También podés editar la fecha o el tiempo de cualquier registro tocando el lápiz en la lista.",
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M18 20V10M12 20V4M6 20v-6"></path></svg>`
     },
     {
-        title: "Tus Rutinas",
-        desc: "En 'Mis Rutinas' puedes guardar tu semana actual como plantilla o cargar una anterior. Para añadir ejercicios nuevos a tu día, usa el botón grande '+' al final de la pantalla. Arrástralos desde el ícono de las 3 rayas para reordenarlos.",
-        icon: `<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>`
+        title: "Gestión de Rutinas",
+        desc: "En 'Mis Rutinas' guardá tu semana actual como plantilla. Para añadir ejercicios nuevos a tu día, usá el botón grande '+' al final de la pantalla principal. Mantené presionado el ícono de las tres rayas para reordenar tu sesión.",
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>`
     },
     {
-        title: "Coach Inteligente",
-        desc: "Genera planes completos o resuelve dudas técnicas en tiempo real. Tienes 10 créditos ⚡ que se recargan 1 por hora automáticamente. Cada mensaje o generación de plan consume 1 crédito.",
-        icon: `<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>`
+        title: "Coach & Créditos ⚡",
+        desc: "Generá planes o resolvé dudas técnicas. Tenés 10 créditos diarios que se recargan 1 por hora automáticamente. Cada consulta o generación consume 1 crédito. ¡Usalos con inteligencia para optimizar tu rendimiento!",
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>`
     },
     {
-        title: "Análisis de IA",
-        desc: "Dentro de cada ejercicio, toca en 'Ver Progreso' para ver tus gráficos. Al presionar 'Analizar con IA', el Coach estudiará tu historial de cargas para darte una devolución técnica, identificando estancamientos o mejoras.",
-        icon: `<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>`
+        title: "Análisis con IA",
+        desc: "Dentro de cada ejercicio, tocá 'Ver Progreso' y luego 'Analizar con IA'. La inteligencia artificial estudiará tu historial de cargas y tiempos para darte una devolución técnica precisa sobre tu evolución.",
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>`
     },
     {
         title: "Borrar y Limpiar",
-        desc: "'Borrar Semana' sirve para limpiar tu planificación y empezar de cero, pero el histórico de cargas NUNCA se borra. Para quitar un ejercicio específico de tu día, usa el menú de tres puntos (⋮) en la esquina de su tarjeta.",
-        icon: `<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`
+        desc: "'Borrar Semana' limpia tu plan actual para uno nuevo, pero el histórico de cargas NUNCA se borra. Para quitar un solo ejercicio, usá el menú de tres puntos (⋮) en la esquina de su tarjeta.",
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>`
     },
     {
-        title: "Reportes en PDF",
-        desc: "Exporta tu éxito. 'Modo Oscuro' es ideal para enviarlo por WhatsApp o guardar en digital, mientras que el 'Modo Claro' está optimizado para imprimir. Incluye tus rutinas activas y los gráficos detallados de evolución.",
-        icon: `<svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`
+        title: "Reportes Profesionales",
+        desc: "Exportá tu éxito en PDF. 'Modo Oscuro' es ideal para digital, mientras que el 'Modo Claro' está optimizado para imprimir. Incluye tus rutinas activas y gráficos detallados de evolución.",
+        icon: `<svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>`
     }
 ];
 
@@ -1879,45 +1879,38 @@ function renderTutorialSlide() {
     const slide = tutorialSlides[currentTutorialSlide];
     const contentDiv = document.getElementById('tutorial-slide-content');
     
-    // Efecto de desvanecimiento
+    // Animación suave de salida
     contentDiv.style.opacity = '0';
+    contentDiv.style.transform = 'scale(0.95)';
     
     setTimeout(() => {
         document.getElementById('tutorial-icon').innerHTML = slide.icon;
         document.getElementById('tutorial-title').innerText = slide.title;
         document.getElementById('tutorial-desc').innerText = slide.desc;
         
-        // Manejar visibilidad del botón "Anterior"
         const prevBtn = document.getElementById('btn-tutorial-prev');
         const nextBtn = document.getElementById('btn-tutorial-next');
         
-        if (currentTutorialSlide === 0) {
-            prevBtn.classList.add('hidden');
-            prevBtn.classList.remove('block');
-        } else {
-            prevBtn.classList.remove('hidden');
-            prevBtn.classList.add('block');
-        }
+        // Control de botones
+        if (currentTutorialSlide === 0) prevBtn.classList.add('hidden');
+        else prevBtn.classList.remove('hidden');
         
-        // Cambiar texto de "Siguiente" en la última diapositiva
-        if (currentTutorialSlide === tutorialSlides.length - 1) {
-            nextBtn.innerText = "¡A ENTRENAR!";
-        } else {
-            nextBtn.innerText = "Siguiente";
-        }
+        if (currentTutorialSlide === tutorialSlides.length - 1) nextBtn.innerText = "¡A ENTRENAR!";
+        else nextBtn.innerText = "Siguiente";
         
-        // Renderizar y actualizar los puntitos indicadores
+        // Actualizar puntitos
         const dotsContainer = document.getElementById('tutorial-dots');
         dotsContainer.innerHTML = '';
-        tutorialSlides.forEach((_, index) => {
+        tutorialSlides.forEach((_, idx) => {
             const dot = document.createElement('div');
-            dot.className = `h-2 rounded-full transition-all duration-300 ${index === currentTutorialSlide ? 'bg-custom-primary w-6' : 'bg-[#262626] w-2'}`;
+            dot.className = `h-1.5 rounded-full transition-all duration-500 ${idx === currentTutorialSlide ? 'bg-custom-primary w-8' : 'bg-[#262626] w-2'}`;
             dotsContainer.appendChild(dot);
         });
         
-        // Restaurar opacidad
+        // Animación de entrada
         contentDiv.style.opacity = '1';
-    }, 150); // 150ms coincide con la transición CSS para que se sienta fluido
+        contentDiv.style.transform = 'scale(1)';
+    }, 150);
 }
 
 function openTutorial() {
@@ -1945,6 +1938,11 @@ function prevTutorialSlide() {
         renderTutorialSlide();
     }
 }
+
+// Exportación para que el HTML encuentre las funciones
+window.openTutorial = openTutorial;
+window.nextTutorialSlide = nextTutorialSlide;
+window.prevTutorialSlide = prevTutorialSlide;
 
 // =========================================================================
 // EXPORTACIÓN GLOBAL 
