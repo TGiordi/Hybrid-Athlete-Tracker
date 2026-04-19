@@ -86,8 +86,36 @@
     <svg class="w-3.5 h-3.5 text-custom-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
 </button>
 
-<div id="modal-tutorial" class="modal-content hidden bg-custom-card border border-custom-primary/20 p-0 rounded-3xl w-full max-w-2xl relative shadow-[0_0_50px_rgba(245,73,39,0.15)] overflow-hidden" onclick="event.stopPropagation()">
-    <div id="tutorial-widget-container"></div>
+<div id="modal-tutorial" class="modal-content hidden bg-[#0a0a0a] border border-[#262626] p-0 rounded-3xl w-full max-w-lg relative shadow-[0_0_50px_rgba(245,73,39,0.15)] overflow-hidden" onclick="event.stopPropagation()">
+    
+    <div class="absolute -top-20 -right-20 w-40 h-40 bg-custom-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-20 -left-20 w-40 h-40 bg-custom-primary/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <div class="p-6 md:p-8 relative z-10 flex flex-col min-h-[450px]">
+        <div class="flex justify-between items-center mb-6">
+            <span class="font-black italic text-xl tracking-tighter text-white"><span>H</span>AT</span>
+            <button onclick="closeAllModals()" class="text-custom-textMuted hover:text-white transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="flex-grow flex flex-col items-center justify-center text-center transition-opacity duration-300" id="tutorial-slide-content">
+            <div id="tutorial-icon" class="w-20 h-20 bg-custom-primary/10 text-custom-primary rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(245,73,39,0.2)] border border-custom-primary/20">
+                </div>
+            <h2 id="tutorial-title" class="text-2xl md:text-3xl font-black text-white mb-4 uppercase tracking-wide">Título</h2>
+            <p id="tutorial-desc" class="text-sm md:text-base text-custom-textMuted leading-relaxed">Descripción</p>
+        </div>
+
+        <div class="mt-8">
+            <div class="flex justify-center gap-2 mb-6" id="tutorial-dots">
+                </div>
+            
+            <div class="flex gap-3">
+                <button id="btn-tutorial-prev" onclick="prevTutorialSlide()" class="hidden flex-1 bg-[#171717] border border-[#262626] text-white py-3.5 rounded-xl font-bold hover:bg-[#262626] transition-colors">Anterior</button>
+                <button id="btn-tutorial-next" onclick="nextTutorialSlide()" class="flex-1 bg-custom-primary hover:bg-custom-hover text-white py-3.5 rounded-xl font-bold shadow-[0_0_20px_rgba(245,73,39,0.3)] transition-all">Siguiente</button>
+            </div>
+        </div>
+    </div>
 </div>
     </div>
 </nav>
